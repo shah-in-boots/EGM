@@ -39,3 +39,10 @@ vignettes/*.pdf
 .Renviron
 .Rproj.user
 docs
+
+# User protected items
+sandbox.R
+
+# Temp files
+.DS_Store
+tests/.DS_store
