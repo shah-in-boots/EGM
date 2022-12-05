@@ -19,7 +19,9 @@ Suggests:
 Imports: 
     coraline (>= 0.0.0.9000),
     data.table,
-    lifecycle
+    ggplot2,
+    gsignal,
+    lifecycle,
 Config/testthat/edition: 3
 URL: https://github.com/asshah4/rhythm
 BugReports: https://github.com/asshah4/rhythm/issues

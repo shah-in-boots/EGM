@@ -12,12 +12,31 @@
 #'   of a vector with a length of 2. The left value is the start, and right
 #'   value is the end time. This is given in seconds (decimals may be used).
 #'
+#' @param annotation_channel Identifies which of the selected channels will be
+#'   used for annotation. This channel will be used for the analysis of
+#'   intervals, peaks, etc. If NULL, no annotations will be made.
+#'
+#' @param beats A integer vector that represents the indexed beats that should
+#'   be analyzed within the plot. Each beat is indexed as `1...n` from what is
+#'   within the __time_frame__ indicated. For example, if 5 beats are seen,
+#'   `beats = c(1, 5)` would select the 1st and 5th beat. This can also refer to
+#'   any large deflection that is consistent an EGM.
+#'
+#' @param intervals A integer vector that represents the indexed intervals that
+#'   should be annotated. If NULL, no intervals will be annotated. For example,
+#'   if their are 5 beats, than there are 4 intervals between them that can be
+#'   labeled. They can be referenced by their index, e.g. `intervals = c(2)` to
+#'   reference the 2nd interval in a 5 beat range.
+#'
 #' @import ggplot2 data.table
 #' @export
 gg_egm <- function(data,
 									 frequency,
 									 channels,
 									 time_frame = NULL,
+									 annotation_channel = NULL,
+									 beats = NULL,
+									 intervals = NULL,
 									 ...) {
 
 	stopifnot(inherits(data, "data.frame"))
@@ -28,8 +47,6 @@ gg_egm <- function(data,
 	}
 	stopifnot("`time_frame` must be within available data" =
 							all(time_frame %in% data$time))
-
-
 
 	# Filter appropriately
 	start_time <- time_frame[1]
@@ -47,15 +64,87 @@ gg_egm <- function(data,
 				][grepl(chs, label)
 					]
 
-	ggplot(dt, aes(x = time, y = mV, color = source)) +
+	g <-
+		ggplot(dt, aes(x = time, y = mV, color = source)) +
 		geom_line() +
 		facet_wrap( ~ label,
 								ncol = 1,
 								scales = "free_y",
-								strip.position = "left") +
+								strip.position = "left")
+
+	# Add annotation labels if needed
+	if (!is.null(annotation_channel)) {
+		stopifnot("The annotation channel must be one of the selected channels" =
+								all(annotation_channel %in% channels))
+
+
+		ann <- dt[label == annotation_channel]
+		t <- ann$index
+		peaks <- gsignal::findpeaks(ann$mV, MinPeakHeight = max(ann$mV, na.rm = TRUE)/2, DoubleSided = TRUE)
+		pk_locs <- ann$time[peaks$loc]
+		ints <- diff(peaks$loc)
+		ints_locs <- pk_locs[1:length(ints)] + ints/(2 * frequency)
+		ht <- mean(peaks$pks, na.rm = TRUE)
+
+		# Interval Annotations
+		if (!is.null(intervals)) {
+			stopifnot(inherits(as.integer(intervals), "integer"))
+			stopifnot("Intervals are out of range based on channels selected" =
+									all(intervals %in% seq_along(ints)))
+			gseg <- lapply(intervals, function(.x) {
+				geom_segment(
+					data = ann,
+					aes(
+						x = pk_locs[.x],
+						xend = pk_locs[.x + 1],
+						y = ht,
+						yend = ht
+					),
+					linewidth = 0.1,
+					inherit.aes = FALSE
+				)
+			})
+
+			gtxt <- lapply(intervals, function(.x) {
+				geom_text(
+					data = ann,
+					aes(
+						x = ints_locs[.x],
+						y = ht / 2,
+						label = ints[.x]
+					),
+					color = "black",
+					inherit.aes = FALSE
+				)
+			})
+
+			gint <- list(
+				geom_vline(xintercept = pk_locs, alpha = 0.2),
+				gseg,
+				gtxt
+			)
+		}
+
+		g <- g + gint
+
+		# Beat Annotations
+		if (!is.null(beats)) {
+			stopifnot(inherits(as.integer(beats), "integer"))
+			stopifnot("Not enough beats are present for the index beats selected" =
+									all(beats <= length(peaks$pks)))
+
+		}
+
+	}
+
+	# Theming
+	g <- g +
 		theme_egm() +
 		scale_x_continuous(breaks = seq(time_frame[1], time_frame[2], by = 0.2),
 											 label = NULL)
+
+	# Return ggplot
+	g
 
 }
 

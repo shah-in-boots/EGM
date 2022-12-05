@@ -88,7 +88,7 @@ read_lspro <- function(file, n = Inf) {
 
 	# Overall header
 	hea <-
-		readLines(data_loc, n = 13) |>
+		readLines(file, n = 13) |>
 		tstrsplit(split = ":\ ", fill = NA) |>
 		{\(.x)
 			data.table(description = .x[[1]], value = .x[[2]])
@@ -125,7 +125,7 @@ read_lspro <- function(file, n = Inf) {
 	for (i in 1:hea$number_of_channels) {
 		ch_list[[i]] <-
 			fread(
-				data_loc,
+				file,
 				skip = 13 + (i - 1) * 8,
 				nrows = 8,
 				sep = NULL,
@@ -169,7 +169,7 @@ read_lspro <- function(file, n = Inf) {
 	# Read in the CSV-styled signal data quickly
 	sig <-
 		fread(
-			data_loc,
+			file,
 			skip = "[Data]",
 			header = FALSE,
 			col.names = channels$label,
