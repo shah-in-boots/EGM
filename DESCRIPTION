@@ -12,15 +12,16 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.2
 Suggests: 
     covr,
     testthat (>= 3.0.0)
 Imports: 
     coraline (>= 0.0.0.9000),
+    data.table,
     lifecycle
 Config/testthat/edition: 3
 URL: https://github.com/asshah4/rhythm
 BugReports: https://github.com/asshah4/rhythm/issues
-Remotes:  
+Remotes: 
     asshah4/coraline
