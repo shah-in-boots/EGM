@@ -1,6 +1,7 @@
 test_that("lspro data can be read in", {
 
-	dt <- read_lspro(test_path("sample-egm.txt"))
+	file <- test_path("sample-egm.txt")
+	dt <- read_lspro(file)
 	expect_type(dt, "list")
 	expect_length(dt, 2)
 	expect_s3_class(dt$signal, "data.table")

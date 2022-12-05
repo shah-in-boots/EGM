@@ -37,6 +37,8 @@ gg_egm <- function(data,
 									 annotation_channel = NULL,
 									 beats = NULL,
 									 intervals = NULL,
+									 hline = FALSE,
+									 vline = FALSE,
 									 ...) {
 
 	stopifnot(inherits(data, "data.frame"))
@@ -55,32 +57,40 @@ gg_egm <- function(data,
 	surface_leads <- c("I", "II", "III", paste0("V", 1:6), "AVF", "AVR", "AVR")
 	ch_exact <- ch[which(ch %in% surface_leads | grepl("\ ", ch))]
 	ch_fuzzy <- ch[which(!(ch %in% ch_exact))]
-	chs <-
+	ch_grep <-
 		paste0(c(paste0("^", ch_exact, "$", collapse = "|"), ch_fuzzy),
 					 collapse = "|")
 
 	dt <-
 		data[time >= start_time & time <= end_time
-				][grepl(chs, label)
+				][grepl(ch_grep, label)
 					]
 
+	# Final channels
+	chs <- unique(dt$label)
+
 	g <-
-		ggplot(dt, aes(x = time, y = mV, color = source)) +
+		ggplot(dt, aes(x = time, y = mV, color = color)) +
 		geom_line() +
 		facet_wrap( ~ label,
 								ncol = 1,
 								scales = "free_y",
-								strip.position = "left")
+								strip.position = "left") +
+		scale_color_identity()
 
 	# Add annotation labels if needed
 	if (!is.null(annotation_channel)) {
 		stopifnot("The annotation channel must be one of the selected channels" =
-								all(annotation_channel %in% channels))
+								all(annotation_channel %in% chs))
 
 
 		ann <- dt[label == annotation_channel]
 		t <- ann$index
-		peaks <- gsignal::findpeaks(ann$mV, MinPeakHeight = max(ann$mV, na.rm = TRUE)/2, DoubleSided = TRUE)
+		peaks <-
+			gsignal::findpeaks(ann$mV,
+												 MinPeakHeight = max(ann$mV, na.rm = TRUE) / 2,
+												 MinPeakDistance = 100,
+												 DoubleSided = TRUE)
 		pk_locs <- ann$time[peaks$loc]
 		ints <- diff(peaks$loc)
 		ints_locs <- pk_locs[1:length(ints)] + ints/(2 * frequency)
@@ -91,19 +101,29 @@ gg_egm <- function(data,
 			stopifnot(inherits(as.integer(intervals), "integer"))
 			stopifnot("Intervals are out of range based on channels selected" =
 									all(intervals %in% seq_along(ints)))
-			gseg <- lapply(intervals, function(.x) {
-				geom_segment(
-					data = ann,
-					aes(
-						x = pk_locs[.x],
-						xend = pk_locs[.x + 1],
-						y = ht,
-						yend = ht
-					),
-					linewidth = 0.1,
-					inherit.aes = FALSE
-				)
-			})
+
+			# Horizontal lines for intervals
+			if (hline) {
+				gseg <- lapply(intervals, function(.x) {
+					geom_segment(
+						data = ann,
+						aes(
+							x = pk_locs[.x],
+							xend = pk_locs[.x + 1],
+							y = ht,
+							yend = ht
+						),
+						linewidth = 0.1,
+						inherit.aes = FALSE
+					)
+				})
+				g <- g + gseg
+			}
+
+			# Vertical lines throughout
+			if (vline) {
+				g <- g + geom_vline(xintercept = pk_locs, alpha = 0.2)
+			}
 
 			gtxt <- lapply(intervals, function(.x) {
 				geom_text(
@@ -118,14 +138,9 @@ gg_egm <- function(data,
 				)
 			})
 
-			gint <- list(
-				geom_vline(xintercept = pk_locs, alpha = 0.2),
-				gseg,
-				gtxt
-			)
-		}
+			g <- g + gtxt
 
-		g <- g + gint
+		}
 
 		# Beat Annotations
 		if (!is.null(beats)) {
@@ -138,6 +153,7 @@ gg_egm <- function(data,
 	}
 
 	# Theming
+
 	g <- g +
 		theme_egm() +
 		scale_x_continuous(breaks = seq(time_frame[1], time_frame[2], by = 0.2),

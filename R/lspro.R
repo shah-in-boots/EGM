@@ -166,6 +166,13 @@ read_lspro <- function(file, n = Inf) {
 		dplyr::mutate(source = dplyr::if_else(is.na(source), "ECG", source)) |>
 		dplyr::mutate(lead = toupper(lead))
 
+	# Colors
+	channels$color[channels$source == "ECG"] <- "#37464E"
+	channels$color[channels$source == "ABL"] <- "#AC1357"
+	channels$color[channels$source == "CS"] <- c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687")
+	channels$color[channels$source == "HIS"] <- "#F8A72B"
+	channels$color[channels$source == "RV"] <- "#0C46A0"
+
 	# Read in the CSV-styled signal data quickly
 	sig <-
 		fread(

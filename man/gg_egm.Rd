@@ -12,6 +12,8 @@ gg_egm(
   annotation_channel = NULL,
   beats = NULL,
   intervals = NULL,
+  hline = FALSE,
+  vline = FALSE,
   ...
 )
 }
