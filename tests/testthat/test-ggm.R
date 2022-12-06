@@ -9,14 +9,14 @@ test_that("plots can be generated easily", {
 	expect_s3_class(data, "data.table")
 
 	channels <- c("I", "CS", "HIS d", "HIS m", "RV")
-	frequency <- 1000
 	time_frame <- c(.1, 3)
 
-	gg_egm(
+	ggm(
 		data = data,
-		frequency = frequency,
 		channels = channels,
-		time_frame = time_frame
+		time_frame = time_frame,
+		annotation_channel = "I",
+		intervals = TRUE
 	)
 
 })

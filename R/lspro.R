@@ -153,25 +153,60 @@ read_lspro <- function(file, n = Inf) {
 	}
 
 	# Table of channel information
+	# Clean up names if possible
+	# All are made upper character
 	channels <-
 		ch_list |>
 		rbindlist() |>
+		dplyr::mutate(label = toupper(label)) |>
 		tidyr::separate(
 			label,
 			into = c("source", "lead"),
-			sep = "\ ",
-			fill = "left",
-			remove = FALSE
+			sep = "(?<=[a-zA-Z])\\s*(?=[0-9])",
+			remove = FALSE,
+			fill = "right"
 		) |>
-		dplyr::mutate(source = dplyr::if_else(is.na(source), "ECG", source)) |>
-		dplyr::mutate(lead = toupper(lead))
+		dplyr::mutate(lead = dplyr::case_when(
+			label %in% c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6)) ~ label,
+			#grepl("\ ", source) ~ strsplit(source, split = "\ "),
+			TRUE ~ lead
+		)) |>
+		dplyr::mutate(source = dplyr::case_when(
+			label %in% c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6)) ~ "ECG",
+			TRUE ~ source
+		)) |>
+		tidyr::separate(
+			source,
+			into = c("source", "extra"),
+			sep = "\ ",
+			fill = "right"
+		) |>
+		dplyr::mutate(lead = dplyr::if_else(is.na(lead), extra, lead)) |>
+		dplyr::select(-extra) |>
+		dplyr::mutate(label = factor(sub("ECG\ ", "", paste(source, lead)), ordered = TRUE))
 
-	# Colors
-	channels$color[channels$source == "ECG"] <- "#37464E"
-	channels$color[channels$source == "ABL"] <- "#AC1357"
-	channels$color[channels$source == "CS"] <- c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687")
+	### Colors ###
+
+	# Surface leads (blues)
+	channels$color[channels$source == "ECG"] <- "#0C46A0"
+
+	# Ablation catheter (usually 2 leads) (purple-red)
+	channels$color[channels$source == "ABL"] <- "#870D4E"
+
+	# CS catheter, usually decapolar, 5 leads (teals)
+	channels$color[channels$source == "CS"] <-
+		c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687")
+
+	# Duodecapolar catheter, 10 leads (teals)
+	channels$color[channels$source == "DD"] <-
+		rep(c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687"), each = 2)
+
+	# His catheter tends to be 2-3 leads (gold)
 	channels$color[channels$source == "HIS"] <- "#F8A72B"
-	channels$color[channels$source == "RV"] <- "#0C46A0"
+
+	# RV and RA catheters are usually 2 leads (pink-reds)
+	channels$color[channels$source == "RV"] <- "#AC135F"
+	channels$color[channels$source == "RA"] <- "#C1185A"
 
 	# Read in the CSV-styled signal data quickly
 	sig <-
@@ -179,7 +214,7 @@ read_lspro <- function(file, n = Inf) {
 			file,
 			skip = "[Data]",
 			header = FALSE,
-			col.names = channels$label,
+			col.names = as.character(channels$label),
 			nrows = n
 		)
 
