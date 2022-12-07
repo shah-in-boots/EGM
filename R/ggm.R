@@ -50,15 +50,22 @@ ggm <- function(data,
 								vline = FALSE,
 								...) {
 
+	stopifnot(inherits(data, "egm"))
 
-	stopifnot(inherits(data, "data.frame"))
+	header <- data$header
+	signal <- data$signal
+
+	# Should be all of the same frequency of data
+	hz <- unique(header$freq)
+	signal$index <- 1:nrow(signal)
+	signal$time <- signal$index / hz
 
 	# Check if time frame exists within series
 	if (is.null(time_frame)) {
-		time_frame <- c(min(data$time, na.rm = TRUE), max(data$time, na.rm = TRUE))
+		time_frame <- c(min(signal$time, na.rm = TRUE), max(signal$time, na.rm = TRUE))
 	}
 	stopifnot("`time_frame` must be within available data" =
-							all(time_frame %in% data$time))
+							all(time_frame %in% signal$time))
 
 	# Filter appropriately
 	start_time <- time_frame[1]
@@ -71,13 +78,26 @@ ggm <- function(data,
 		paste0(c(paste0("^", ch_exact, "$", collapse = "|"), ch_fuzzy),
 					 collapse = "|")
 
+	# Lengthen for plotting
 	dt <-
-		data[time >= start_time & time <= end_time
-				][grepl(ch_grep, label)
+		melt(
+			signal,
+			id.vars = c("index", "time"),
+			variable.name = "label",
+			value.name = "mV"
+		) |>
+		{\(.x)
+			header[.x, on = .(label)]
+		}() |>
+		{\(.y)
+			.y[grepl(ch_grep, label),
+					][time >= start_time & time <= end_time,
 					]
+		}()
 
-	# Frequency check
-	hz <- unique(dt$freq)[1]
+
+	# Relevel
+	dt$label <- factor(dt$label, levels = levels(header$label))
 
 	# Final channels
 	chs <- unique(dt$label)
@@ -89,10 +109,12 @@ ggm <- function(data,
 								ncol = 1,
 								scales = "free_y",
 								strip.position = "left") +
-		scale_color_identity()
+		scale_color_identity() +
+		theme_egm() +
+		scale_x_continuous(breaks = seq(time_frame[1], time_frame[2], by = 0.2),
+											 label = NULL)
 
 	### ANNOTATIONS ###
-
 
 	if (!is.null(annotation_channel)) {
 		stopifnot("The annotation channel must be one of the selected channels" =
@@ -117,25 +139,6 @@ ggm <- function(data,
 			stopifnot("Intervals are out of range based on channels selected" =
 									all(intervals %in% seq_along(ints)))
 
-			# Horizontal lines for intervals
-			# Currently defunct
-			if (hline) {
-				gseg <- lapply(intervals, function(.x) {
-					geom_segment(
-
-										data = ann,
-						aes(
-							x = pk_locs[.x],
-							xend = pk_locs[.x + 1],
-							y = ht,
-							yend = ht
-						),
-						linewidth = 0.1,
-						inherit.aes = FALSE
-					)
-				})
-				#g <- g + gseg
-			}
 
 			# Selected annotations for intervals
 			if (isTRUE(intervals)) {
@@ -175,11 +178,6 @@ ggm <- function(data,
 			}
 		}
 
-		# Vertical lines throughout
-		if (vline) {
-			g <- g + geom_vline(xintercept = pk_locs, alpha = 0.2)
-		}
-
 		# Beat Annotations
 		if (!is.null(beats)) {
 			stopifnot(inherits(as.integer(beats), "integer"))
@@ -189,13 +187,8 @@ ggm <- function(data,
 
 	}
 
-	# Theming
-	g <- g +
-		theme_egm() +
-		scale_x_continuous(breaks = seq(time_frame[1], time_frame[2], by = 0.2),
-											 label = NULL)
-
-	# Return ggplot
+	# Return with updated class
+	class(g) <- c("ggm", class(g))
 	g
 
 }
@@ -230,62 +223,4 @@ theme_egm <- function() {
 			# Legend
 			legend.position = "none"
 		)
-}
-
-#' Long Format of Header and Signal Data
-#'
-#' @param header A header table that contains key information about the overall
-#'   signal in corresponding channels. Its assumed that the frequency of signal
-#'   sampling is equivalent across channels.
-#'
-#' @param signal A `data.frame` (or similar) that contains the necessary signal.
-#'   Each channel will be labeled using the header information (if unnamed).
-#'
-#' @param format The source of EGM information for specific formats. Support
-#'   formats include...
-#'
-#'   * __lspro__: The LabSystem PRO from Boston Scientific _ascii.txt_ format
-#'
-#' @import data.table
-#' @export
-melt_egm <- function(header,
-										 signal,
-										 format,
-										 ...) {
-
-	stopifnot(inherits(header, "data.frame"))
-	stopifnot(inherits(signal, "data.frame"))
-	stopifnot(inherits(format, "character"))
-	stopifnot(length(unique(header$freq)) == 1)
-
-	switch(
-		format,
-		lspro = {
-			# Ensure data.table format
-			sig <- data.table(signal)
-			hea <- data.table(header)
-
-			# Should be all of the same frequency of data
-			hz <- unique(header$freq)
-
-			sig$index <- 1:nrow(sig)
-			sig$time <- sig$index / hz
-			dt <-
-				melt(
-					sig,
-					id.vars = c("index", "time"),
-					variable.name = "label",
-					value.name = "mV"
-				) |>
-				{\(.x)
-					hea[.x, on = .(label)]
-				}()
-
-			# Return
-			dt
-		}
-	)
-
-
-
 }

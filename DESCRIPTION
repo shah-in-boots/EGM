@@ -13,19 +13,19 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.2
+Depends: 
+    data.table,
+    vctrs
 Suggests: 
     covr,
     testthat (>= 3.0.0)
 Imports: 
     coraline (>= 0.0.0.9000),
-    data.table,
     ggplot2,
     gsignal,
-    lifecycle,
+    lifecycle
 Config/testthat/edition: 3
 URL: https://github.com/asshah4/rhythm
 BugReports: https://github.com/asshah4/rhythm/issues
 Remotes: 
     asshah4/coraline
-Depends: 
-    vctrs

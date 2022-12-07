@@ -82,7 +82,6 @@
 #'
 #' @return A `list` of length = 2 that has a 1) header table and 2) signal
 #'   table.
-#' @import data.table
 #' @export
 read_lspro <- function(file, n = Inf) {
 
@@ -152,6 +151,28 @@ read_lspro <- function(file, n = Inf) {
 			}()
 	}
 
+	# Channels should be organized appropriately
+	# Top to bottom should be from high to low, and then from left to right
+	# Catheters/leads are specifically included
+	surface <-
+		c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6))
+	lead_pairs <-
+		paste0(seq(from = 1, to = 19, by = 2), "-", seq(from = 2, to = 20, by = 2))
+	lead_loc <- c("D", "DIST", "DISTAL",
+								"M", "MID", "MIDDLE",
+								"P", "PROX", "PROXIMAL")
+	hra <- rev(paste("RA", lead_pairs[1:2]))
+	his <- rev(paste("HIS", c(lead_pairs[1:3], lead_loc)))
+	cs <- rev(paste("CS", lead_pairs[1:5]))
+	dd <- rev(paste("DD", lead_pairs[1:10]))
+	rv <- rev(paste("RV", lead_pairs[1:2]))
+	abl <- rev(paste("ABL", c(lead_pairs[1:2], lead_loc[c(1:3, 7:9)])))
+
+	# Order patterns
+	lead_order <- c(surface, rev(c(lead_pairs, lead_loc)))
+	label_order <- c(surface, hra, his, cs, dd, rv, abl)
+	source_order <- c("ECG", "HRA", "RA", "HIS", "CS", "DD", "RV", "ABL")
+
 	# Table of channel information
 	# Clean up names if possible
 	# All are made upper character
@@ -167,12 +188,11 @@ read_lspro <- function(file, n = Inf) {
 			fill = "right"
 		) |>
 		dplyr::mutate(lead = dplyr::case_when(
-			label %in% c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6)) ~ label,
-			#grepl("\ ", source) ~ strsplit(source, split = "\ "),
+			label %in% surface ~ label,
 			TRUE ~ lead
 		)) |>
 		dplyr::mutate(source = dplyr::case_when(
-			label %in% c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6)) ~ "ECG",
+			label %in% surface ~ "ECG",
 			TRUE ~ source
 		)) |>
 		tidyr::separate(
@@ -183,7 +203,15 @@ read_lspro <- function(file, n = Inf) {
 		) |>
 		dplyr::mutate(lead = dplyr::if_else(is.na(lead), extra, lead)) |>
 		dplyr::select(-extra) |>
-		dplyr::mutate(label = factor(sub("ECG\ ", "", paste(source, lead)), ordered = TRUE))
+		dplyr::mutate(label = sub("ECG\ ", "", paste(source, lead)))
+
+	# Now reorder the levels by factor
+	channels$label <-
+		factor(channels$label, levels = intersect(label_order, channels$label))
+	channels$source <-
+		factor(channels$source, levels = intersect(source_order, channels$source))
+	channels$lead <-
+		factor(channels$lead, levels = intersect(lead_order, channels$lead))
 
 	### Colors ###
 
@@ -226,12 +254,8 @@ read_lspro <- function(file, n = Inf) {
 			sig[[i]] * channels$gain[channels$number == i] / ADC_saturation
 	}
 
-	# Return
-	list(
-		header = channels,
-		signal = sig
-	)
-
+	# Return a new list_of class
+	egm(header = channels, signal = sig)
 
 }
 
