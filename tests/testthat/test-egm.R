@@ -13,4 +13,7 @@ test_that("egm class can be made", {
 	expect_s3_class(x, "egm")
 	expect_s3_class(x$signal, "data.table")
 
+	expect_length(x, 2)
+	expect_output(print(x), "<electrogram>")
+
 })
