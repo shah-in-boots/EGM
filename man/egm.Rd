@@ -5,7 +5,7 @@
 \alias{is_egm}
 \title{Electrophysiology signal recording class definition}
 \usage{
-egm(header = data.table(), signal = data.table())
+egm(header = data.table(), channels = data.table(), signal = data.table(), ...)
 
 is_egm(x)
 }

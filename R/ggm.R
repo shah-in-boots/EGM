@@ -26,8 +26,8 @@ ggm <- function(data,
 
 	stopifnot(inherits(data, "egm"))
 
-	header <- data$header
-	signal <- data$signal
+	header <- .pull_header(data)
+	signal <- .pull_signal(data)
 
 	# Should be all of the same frequency of data
 	hz <- unique(header$freq)

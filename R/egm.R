@@ -1,27 +1,40 @@
+### Class Definitions ----
+
 #' Electrophysiology signal recording class definition
 #'
 #' @name egm
 #' @export
-egm <- function(header = data.table(), signal = data.table()) {
+egm <- function(header = data.table(),
+								channels = data.table(),
+								signal = data.table(),
+								...) {
 
 	new_egm(
 		header = header,
+		channels = channels,
 		signal = signal
 	)
 }
 
+
 #' @export
-new_egm <- function(header = data.table(), signal = data.table()) {
+new_egm <- function(header = data.table(),
+										channels = data.table(),
+										signal = data.table(),
+										...) {
 
 	stopifnot(is.data.table(header))
+	stopifnot(is.data.table(channels))
 	stopifnot(is.data.table(signal))
 
-	x <- list(header = header, signal = signal)
+	x <- list(header = header, channels = channels, signal = signal)
 
 	# List of header and signal information
 	new_list_of(x, ptype = data.table(), class = "egm")
 
 }
+
+### {vctr} Definitions ----
 
 #' @keywords internal
 #' @noRd
@@ -30,12 +43,18 @@ methods::setOldClass(c("egm", "vctrs_list_of"))
 #' @export
 format.egm <- function(x, ...) {
 	hea <- field(x, "header")
+	chs <- field(x, "channels")
 	sig <- field(x, "signal")
 
-	print(head(hea))
-	print(head(sig))
+	print(hea)
+
 }
 
+obj_print_data.egm <- function(x, ...) {
+	if (length(x) != 0) {
+		print(format(x), quote = FALSE)
+	}
+}
 
 
 #' @export
@@ -55,3 +74,58 @@ vec_ptype2.egm.egm <- function(x, y, ...) new_egm()
 
 #' @export
 vec_cast.egm.egm <- function(x, to, ...) x
+
+### External Helpers ----
+
+#' @export
+number_of_channels <- function(x) {
+	stopifnot("Requires `egm` class" = inherits(x, "egm"))
+	hea <- .pull_header(x)
+	hea$number_of_channels
+}
+
+#' @export
+sampling_frequency <- function(x) {
+	stopifnot("Requires `egm` class" = inherits(x, "egm"))
+	hea <- .pull_header(x)
+	hea$freq
+}
+
+#' @export
+recording_length <- function(x) {
+	stopifnot("Requires `egm` class" = inherits(x, "egm"))
+	hea <- .pull_header(x)
+	hea$start_time
+}
+
+### Internal Helpers ----
+
+#' Method to pull header data that allows for flexibility in internal functions
+#' @keywords internal
+#' @noRd
+.pull_header <- function(x) {
+	stopifnot("Requires `egm` class" = inherits(x, "egm"))
+
+	x$header
+
+}
+
+#' Method to pull channel data that allows for flexibility in internal functions
+#' @keywords internal
+#' @noRd
+.pull_channels <- function(x) {
+	stopifnot("Requires `egm` class" = inherits(x, "egm"))
+
+	x$channels
+
+}
+
+#' Method to pull signal data that allows for flexibility in internal functions
+#' @keywords internal
+#' @noRd
+.pull_signal <- function(x) {
+	stopifnot("Requires `egm` class" = inherits(x, "egm"))
+
+	x$signal
+
+}

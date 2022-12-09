@@ -86,6 +86,7 @@
 read_lspro <- function(file, n = Inf) {
 
 	# Overall header
+	file_nm <- deparse1(substitute(file))
 	hea <-
 		readLines(file, n = 13) |>
 		tstrsplit(split = ":\ ", fill = NA) |>
@@ -94,6 +95,7 @@ read_lspro <- function(file, n = Inf) {
 		}() |>
 		{\(.y)
 			list(
+				file_name = file_nm,
 				number_of_channels = as.numeric(.y$value[.y$description == "Channels exported"]),
 				samples = {
 					s <- .y$value[.y$description == "Samples per channel"]
@@ -255,7 +257,9 @@ read_lspro <- function(file, n = Inf) {
 	}
 
 	# Return a new list_of class
-	egm(header = channels, signal = sig)
+	egm(header = as.data.table(hea),
+			channels = channels,
+			signal = sig)
 
 }
 
