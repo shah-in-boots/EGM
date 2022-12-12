@@ -44,9 +44,13 @@ methods::setOldClass(c("egm", "vctrs_list_of"))
 format.egm <- function(x, ...) {
 	hea <- field(x, "header")
 	chs <- field(x, "channels")
-	sig <- field(x, "signal")
 
-	print(hea)
+	cat("Signal Data\n")
+	cat("-----------\n\n")
+	cat("Recording Duration: ", hea$samples/hea$freq, "seconds\n")
+	cat("Recording Frequency ", hea$freq, " Hz\n")
+	cat("Number of channels: ", hea$number_of_channels, "\n")
+	cat("Channel Names: ", paste(chs$label))
 
 }
 

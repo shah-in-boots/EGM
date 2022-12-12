@@ -26,11 +26,12 @@ ggm <- function(data,
 
 	stopifnot(inherits(data, "egm"))
 
-	header <- .pull_header(data)
-	signal <- .pull_signal(data)
+	hea <- .pull_header(data)
+	sig <- .pull_signal(data)
+	chs <- .pull_channels(data)
 
 	# Should be all of the same frequency of data
-	hz <- unique(header$freq)
+	hz <- hea$freq
 	signal$index <- 1:nrow(signal)
 	signal$time <- signal$index / hz
 
@@ -197,6 +198,117 @@ add_intervals <- function(object,
 	# Return updated plot
 	object + gtxt
 }
+
+#' Modify channel colors
+#' @param palette Color palette options for leads as below:
+#'
+#'   * __material__ - material color theme
+#'
+#'   * __bw__ - black or white color theme based on light/dark mode
+#'
+#' @param mode Adjust color settings for either light or dark mode
+#' @export
+color_channels <- function(x, palette, mode = "light") {
+
+	stopifnot("Requires `egm` class" = is_egm(x))
+
+	channels <- .pull_channels(x)
+
+	# Light to dark colors
+	switch(
+		palette,
+		material = {
+
+			# Yellow
+			his <-
+				c(
+					"#FFFDE6FF",
+					"#FFF8C4FF",
+					"#FFF49DFF",
+					"#FFF176FF",
+					"#FFED58FF",
+					"#FFEB3AFF",
+					"#FDD834FF",
+					"#FABF2CFF",
+					"#F8A725FF",
+					"#F47F17FF"
+				)
+
+			# RA and RV leads are pink
+			chamber <-
+				c(
+					"#FCE4EBFF",
+					"#F8BAD0FF",
+					"#F38EB1FF",
+					"#F06192FF",
+					"#EB3F79FF",
+					"#E91E63FF",
+					"#D81A5FFF",
+					"#C1185AFF",
+					"#AC1357FF",
+					"#870D4EFF"
+				)
+
+			# Surface leads are blue
+			surface <-
+				c(
+					"#E3F2FDFF",
+					"#BADEFAFF",
+					"#90CAF8FF",
+					"#64B4F6FF",
+					"#41A5F4FF",
+					"#2096F2FF",
+					"#1E87E5FF",
+					"#1976D2FF",
+					"#1465BFFF",
+					"#0C46A0FF"
+				)
+
+			# Extended length multipolar, such as DD or CS
+			cs <-
+				c(
+					"#DFF2F1FF",
+					"#B2DFDAFF",
+					"#7FCBC4FF",
+					"#4CB6ACFF",
+					"#26A599FF",
+					"#009687FF",
+					"#00887AFF",
+					"#00796BFF",
+					"#00685BFF",
+					"#004C3FFF"
+				)
+
+		}
+	)
+
+	# General color palette will be
+	# Surface leads (blues)
+	channels$color[channels$source == "ECG"] <- "#0C46A0"
+
+	# Ablation catheter (usually 2 leads) (purple-red)
+	channels$color[channels$source == "ABL"] <- "#870D4E"
+
+	# CS catheter, usually decapolar, 5 leads (teals)
+	channels$color[channels$source == "CS"] <-
+		c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687")
+
+	# Duodecapolar catheter, 10 leads (teals)
+	channels$color[channels$source == "DD"] <-
+		rep(c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687"), each = 2)
+
+	# His catheter tends to be 2-3 leads (gold)
+	channels$color[channels$source == "HIS"] <- "#F8A72B"
+
+	# RV and RA catheters are usually 2 leads (pink-reds)
+	channels$color[channels$source == "RV"] <- "#AC135F"
+	channels$color[channels$source == "RA"] <- "#C1185A"
+
+	# Return original `egm` object
+	field(x, "channels") <- channels
+
+}
+
 
 
 #' Custom theme for EGM data
