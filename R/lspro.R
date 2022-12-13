@@ -215,29 +215,6 @@ read_lspro <- function(file, n = Inf) {
 	channels$lead <-
 		factor(channels$lead, levels = intersect(lead_order, channels$lead))
 
-	### Colors ###
-
-	# Surface leads (blues)
-	channels$color[channels$source == "ECG"] <- "#0C46A0"
-
-	# Ablation catheter (usually 2 leads) (purple-red)
-	channels$color[channels$source == "ABL"] <- "#870D4E"
-
-	# CS catheter, usually decapolar, 5 leads (teals)
-	channels$color[channels$source == "CS"] <-
-		c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687")
-
-	# Duodecapolar catheter, 10 leads (teals)
-	channels$color[channels$source == "DD"] <-
-		rep(c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687"), each = 2)
-
-	# His catheter tends to be 2-3 leads (gold)
-	channels$color[channels$source == "HIS"] <- "#F8A72B"
-
-	# RV and RA catheters are usually 2 leads (pink-reds)
-	channels$color[channels$source == "RV"] <- "#AC135F"
-	channels$color[channels$source == "RA"] <- "#C1185A"
-
 	# Read in the CSV-styled signal data quickly
 	sig <-
 		fread(

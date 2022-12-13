@@ -34,3 +34,28 @@ test_that("plots can be generated easily", {
 		add_intervals(channel = "CS 9-10")
 
 })
+
+test_that("colors can be applied to a light or dark theme", {
+
+	data <- read_lspro(test_path('sample-egm.txt'))
+	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
+	time_frame <- c(.1, 3)
+
+	# Basic signal plot of egms
+	dark <- ggm(
+		data = data,
+		channels = channels,
+		time_frame = time_frame
+	)
+
+	expect_true("#FFFFFF" %in% dark$data$color)
+	expect_equal(dark$theme$plot.background$fill, "black")
+
+	light <-
+		dark |>
+		add_colors(palette = "material", mode = "light")
+
+	expect_length(light$theme$plot.background, 0)
+	expect_length(light$theme$panel.background, 0)
+
+})
