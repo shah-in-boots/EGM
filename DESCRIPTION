@@ -14,7 +14,6 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.2
 Depends: 
-    data.table,
     R (>= 2.10),
     vctrs
 Suggests: 
@@ -22,6 +21,7 @@ Suggests:
     testthat (>= 3.0.0)
 Imports: 
     coraline (>= 0.0.0.9000),
+    data.table,
     ggplot2,
     gsignal,
     lifecycle
