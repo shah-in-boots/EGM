@@ -19,4 +19,4 @@ sample <- "m3916_avnrt.txt"
 data_loc <- file.path(data_folder(), "signals", "lspro", sample)
 
 
-usethis::use_data(DATASET, overwrite = TRUE)
+usethis::use_data(signals, overwrite = TRUE)
