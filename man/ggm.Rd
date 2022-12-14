@@ -4,7 +4,7 @@
 \alias{ggm}
 \title{Visualization of EGMs using \code{ggplot}}
 \usage{
-ggm(data, channels, time_frame = NULL, ...)
+ggm(data, channels, time_frame = NULL, mode = "dark", ...)
 }
 \arguments{
 \item{data}{Data of the \code{egm} class, which inclues header (meta) and signal
@@ -18,9 +18,9 @@ the channel label (e.g "CS 1-2") or the recording device/catheter type (e.g
 of a vector with a length of 2. The left value is the start, and right
 value is the end time. This is given in seconds (decimals may be used).}
 
-\item{annotation_channel}{Identifies which of the selected channels will be
-used for annotation. This channel will be used for the analysis of
-intervals, peaks, etc. If NULL, no annotations will be made.}
+\item{mode}{The base color scheme to be used. Defaults to the a "white on
+black" scheme, similar to that of \emph{LabSystem Pro} format (and most other
+high-contrast visualizations), for minimizing eye strain.}
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}

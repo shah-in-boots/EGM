@@ -13,25 +13,26 @@
 #'   of a vector with a length of 2. The left value is the start, and right
 #'   value is the end time. This is given in seconds (decimals may be used).
 #'
-#' @param annotation_channel Identifies which of the selected channels will be
-#'   used for annotation. This channel will be used for the analysis of
-#'   intervals, peaks, etc. If NULL, no annotations will be made.
+#' @param mode The base color scheme to be used. Defaults to the a "white on
+#'   black" scheme, similar to that of _LabSystem Pro_ format (and most other
+#'   high-contrast visualizations), for minimizing eye strain.
 #'
 #' @import ggplot2 data.table
 #' @export
 ggm <- function(data,
 								channels,
 								time_frame = NULL,
+								mode = "dark",
 								...) {
 
 	stopifnot(inherits(data, "egm"))
 
-	hea <- .pull_header(data)
-	sig <- .pull_signal(data)
-	chs <- .pull_channels(data)
+	header <- .pull_header(data)
+	signal <- .pull_signal(data)
+	channels <- .pull_channels(data)
 
 	# Should be all of the same frequency of data
-	hz <- hea$freq
+	hz <- header$freq
 	signal$index <- 1:nrow(signal)
 	signal$time <- signal$index / hz
 
@@ -45,7 +46,7 @@ ggm <- function(data,
 	# Filter appropriately
 	start_time <- time_frame[1]
 	end_time <- time_frame[2]
-	ch <- channels
+	ch <- channels$label
 	surface_leads <- c("I", "II", "III", paste0("V", 1:6), "AVF", "AVR", "AVR")
 	ch_exact <- ch[which(ch %in% surface_leads | grepl("\ ", ch))]
 	ch_fuzzy <- ch[which(!(ch %in% ch_exact))]
@@ -62,7 +63,7 @@ ggm <- function(data,
 			value.name = "mV"
 		) |>
 		{\(.x)
-			header[.x, on = .(label)]
+			channels[.x, on = .(label)]
 		}() |>
 		{\(.y)
 			.y[grepl(ch_grep, label),
@@ -72,7 +73,7 @@ ggm <- function(data,
 
 
 	# Relevel
-	dt$label <- factor(dt$label, levels = levels(header$label))
+	dt$label <- factor(dt$label, levels = levels(channels$label))
 
 	# Final channels
 	chs <- unique(dt$label)
@@ -85,7 +86,7 @@ ggm <- function(data,
 								scales = "free_y",
 								strip.position = "left") +
 		scale_color_identity() +
-		theme_egm() +
+		theme_egm_dark() +
 		scale_x_continuous(breaks = seq(time_frame[1], time_frame[2], by = 0.2),
 											 label = NULL)
 
@@ -118,6 +119,8 @@ new_ggm <- function(object = ggplot()) {
 #'   if their are 5 beats, than there are 4 intervals between them that can be
 #'   labeled. They can be referenced by their index, e.g. `intervals = c(2)` to
 #'   reference the 2nd interval in a 5 beat range.
+#'
+#' @return Returns an updated `ggm` object
 #' @export
 add_intervals <- function(object,
 													intervals = TRUE,
@@ -199,7 +202,38 @@ add_intervals <- function(object,
 	object + gtxt
 }
 
+
+#' Add color scheme to a `ggm` object
+#'
+#' @inheritParams color_channels
+#'
+#' @return Returns an updated `ggm` object
+#' @export
+add_colors <- function(object, palette, mode = "light") {
+
+	stopifnot("Requires `ggm` class" = inherits(object, "ggm"))
+
+	# Extract data from ggplot
+	dt <- object$data
+	dt$color <- color_channels(dt$label, palette = palette, mode = mode)
+	object$data <- dt
+
+	# Depends on mode to add or update theme
+	if (mode == "light") {
+		object + theme_egm_light()
+	} else if (mode == "dark") {
+		object + theme_egm_dark()
+	} else {
+		message("Return unmodified `ggm` plot object")
+		object
+	}
+
+
+}
+
+
 #' Modify channel colors
+#'
 #' @param palette Color palette options for leads as below:
 #'
 #'   * __material__ - material color theme
@@ -207,113 +241,220 @@ add_intervals <- function(object,
 #'   * __bw__ - black or white color theme based on light/dark mode
 #'
 #' @param mode Adjust color settings for either light or dark mode
+#' @return Character vector of hex code colors based on the selected palette and
+#'   light/dark mode
 #' @export
 color_channels <- function(x, palette, mode = "light") {
 
-	stopifnot("Requires `egm` class" = is_egm(x))
+	# Requires a character vector that has appropriate ECG lead types
+	# Need unique levels
+	stopifnot("Requires a `character` or `factor` input" = inherits(x, c("character", "factor")))
+	y <- as.character(unique(x))
 
-	channels <- .pull_channels(x)
+	# Lead/source labels as below
+	surface <-
+		c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6))
+	lead_pairs <-
+		paste0(seq(from = 1, to = 19, by = 2), "-", seq(from = 2, to = 20, by = 2))
+	lead_loc <- c("D", "DIST", "DISTAL",
+								"M", "MID", "MIDDLE",
+								"P", "PROX", "PROXIMAL")
+	hra <- paste("RA", lead_pairs[1:2])
+	his <- paste("HIS", c(lead_pairs[1:3], lead_loc))
+	cs <- paste("CS", lead_pairs[1:5])
+	dd <- paste("DD", lead_pairs[1:10])
+	rv <- paste("RV", lead_pairs[1:2])
+	abl <- paste("ABL", c(lead_pairs[1:2], lead_loc[c(1:3, 7:9)]))
+	lead_order <- c(surface, rev(c(lead_pairs, lead_loc)))
+	label_order <- c(surface, hra, his, cs, dd, rv, abl)
+	source_order <- c("ECG", "HRA", "RA", "HIS", "CS", "DD", "RV", "ABL")
+	leads <- list(
+		ECG = c("ECG", surface),
+		HRA = c("HRA", hra),
+		HIS = c("HIS", his),
+		CS = c("CS", cs),
+		DD = c("DD", dd),
+		RV = c("RV", rv),
+		ABL = c("ABL", abl)
+	)
 
-	# Light to dark colors
+	# Colors in light to dark sequence
+	# Includes surface, His, chambers (RA/RV and ablation), CS (and DD)
+	# Each has an option for 10 colors (max)
 	switch(
 		palette,
 		material = {
 
-			# Yellow
-			his <-
-				c(
-					"#FFFDE6FF",
-					"#FFF8C4FF",
-					"#FFF49DFF",
-					"#FFF176FF",
-					"#FFED58FF",
-					"#FFEB3AFF",
-					"#FDD834FF",
-					"#FABF2CFF",
-					"#F8A725FF",
-					"#F47F17FF"
-				)
+			colors <- list(
+				# Yellow
+				HIS =
+					c(
+						"#FFFDE6",
+						"#FFF8C4",
+						"#FFF49D",
+						"#FFF176",
+						"#FFED58",
+						"#FFEB3A",
+						"#FDD834",
+						"#FABF2C",
+						"#F8A725",
+						"#F47F17"
+					),
 
-			# RA and RV leads are pink
-			chamber <-
-				c(
-					"#FCE4EBFF",
-					"#F8BAD0FF",
-					"#F38EB1FF",
-					"#F06192FF",
-					"#EB3F79FF",
-					"#E91E63FF",
-					"#D81A5FFF",
-					"#C1185AFF",
-					"#AC1357FF",
-					"#870D4EFF"
-				)
+				# RA and RV leads are pink
+				RA =
+					c(
+						"#FCE4EB",
+						"#F8BAD0",
+						"#F38EB1",
+						"#F06192",
+						"#EB3F79",
+						"#E91E63",
+						"#D81A5F",
+						"#C1185A",
+						"#AC1357",
+						"#870D4E"
+					),
 
-			# Surface leads are blue
-			surface <-
-				c(
-					"#E3F2FDFF",
-					"#BADEFAFF",
-					"#90CAF8FF",
-					"#64B4F6FF",
-					"#41A5F4FF",
-					"#2096F2FF",
-					"#1E87E5FF",
-					"#1976D2FF",
-					"#1465BFFF",
-					"#0C46A0FF"
-				)
+				# RV
+				RV =
+					c(
+						"#FCE4EB",
+						"#F8BAD0",
+						"#F38EB1",
+						"#F06192",
+						"#EB3F79",
+						"#E91E63",
+						"#D81A5F",
+						"#C1185A",
+						"#AC1357",
+						"#870D4E"
+					),
 
-			# Extended length multipolar, such as DD or CS
-			cs <-
-				c(
-					"#DFF2F1FF",
-					"#B2DFDAFF",
-					"#7FCBC4FF",
-					"#4CB6ACFF",
-					"#26A599FF",
-					"#009687FF",
-					"#00887AFF",
-					"#00796BFF",
-					"#00685BFF",
-					"#004C3FFF"
+				# Ablation
+				ABL =
+					c(
+						"#FCE4EB",
+						"#F8BAD0",
+						"#F38EB1",
+						"#F06192",
+						"#EB3F79",
+						"#E91E63",
+						"#D81A5F",
+						"#C1185A",
+						"#AC1357",
+						"#870D4E"
+					),
+
+				# Surface leads are blue
+				ECG = rep(
+					c(
+						"#E3F2FD",
+						"#BADEFA",
+						"#90CAF8",
+						"#64B4F6",
+						"#41A5F4",
+						"#2096F2",
+						"#1E87E5",
+						"#1976D2",
+						"#1465BF",
+						"#0C46A0"
+					),
+					each = 2
+				),
+
+				### Green = Extended length multipolar, such as DD or CS
+
+				# Decapolar / coronary sinus
+				CS = c(
+					"#DFF2F1",
+					"#B2DFDA",
+					"#7FCBC4",
+					"#4CB6AC",
+					"#26A599",
+					"#009687",
+					"#00887A",
+					"#00796B",
+					"#00685B",
+					"#004C3F"
+				),
+
+				# Duodecapolar catheter
+				DD = rep(
+					c(
+						"#DFF2F1",
+						"#B2DFDA",
+						"#7FCBC4",
+						"#4CB6AC",
+						"#26A599",
+						"#009687",
+						"#00887A",
+						"#00796B",
+						"#00685B",
+						"#004C3F"
+					),
+					each = 2
 				)
+			)
 
 		}
 	)
 
-	# General color palette will be
-	# Surface leads (blues)
-	channels$color[channels$source == "ECG"] <- "#0C46A0"
+	# Create a table of the potential lead types
+	z <- y
+	for (i in names(leads)) {
+		for (j in seq_along(y)) {
+			if (y[j] %in% leads[[i]]) {
+				z[j] <- i
+			}
+		}
+	}
 
-	# Ablation catheter (usually 2 leads) (purple-red)
-	channels$color[channels$source == "ABL"] <- "#870D4E"
+	# Table them to know how many colors to select
+	chs <- as.list(y)
+	names(chs) <- z
+	clrs <- as.list(table(z))
 
-	# CS catheter, usually decapolar, 5 leads (teals)
-	channels$color[channels$source == "CS"] <-
-		c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687")
+	# Apply colors based on mode to a template of the leads
+	if (mode == "light") {
 
-	# Duodecapolar catheter, 10 leads (teals)
-	channels$color[channels$source == "DD"] <-
-		rep(c("#004C3F", "#00685B", "#00796B", "#00887A", "#009687"), each = 2)
+		for (i in names(clrs)) {
 
-	# His catheter tends to be 2-3 leads (gold)
-	channels$color[channels$source == "HIS"] <- "#F8A72B"
+			clrs[[i]] <- rev(colors[[i]])[seq(clrs[[i]])]
+		}
 
-	# RV and RA catheters are usually 2 leads (pink-reds)
-	channels$color[channels$source == "RV"] <- "#AC135F"
-	channels$color[channels$source == "RA"] <- "#C1185A"
+	} else if (mode == "dark") {
 
-	# Return original `egm` object
-	field(x, "channels") <- channels
+		for (i in names(clrs)) {
+			clrs[[i]] <- colors[[i]][seq(clrs[[i]])]
+		}
+
+	}
+
+	# Apply back to original template
+	for (i in names(clrs)) {
+		chs[names(chs) == i] <- clrs[[i]]
+	}
+
+	# Rename the channels with values being the colors
+	names(chs) <- y
+	new_colors <- as.character(x)
+
+	for (i in names(chs)) {
+		new_colors[new_colors == i] <- chs[[i]]
+	}
+
+	# Return
+	new_colors
 
 }
 
 
 
 #' Custom theme for EGM data
-#' @export
-theme_egm <- function() {
+#' @keywords internal
+#' @noRd
+theme_egm_light <- function() {
 	font <- "Arial"
 	theme_minimal() %+replace%
 		theme(
@@ -335,6 +476,39 @@ theme_egm <- function() {
 			panel.spacing = unit(0, units = "npc"),
 			panel.background = element_blank(),
 			strip.text.y.left = element_text(angle = 0, hjust = 1),
+
+			# Legend
+			legend.position = "none"
+		)
+}
+
+#' Custom theme for EGM data
+#' @keywords internal
+#' @noRd
+theme_egm_dark <- function() {
+	font <- "Arial"
+	theme_minimal() %+replace%
+		theme(
+
+			# Panels and background
+			panel.grid.major.y = element_blank(),
+			panel.grid.minor.y = element_blank(),
+			panel.grid.major.x = element_blank(),
+			panel.grid.minor.x = element_blank(),
+			panel.background = element_rect(fill = "black"),
+			plot.background = element_rect(fill = "black"),
+
+			# Axes
+			axis.ticks.y = element_blank(),
+			axis.title.y = element_blank(),
+			axis.text.y = element_blank(),
+			axis.title.x = element_blank(),
+			axis.text.x = element_text(color = "white"),
+			axis.ticks.x = element_line(color = "white"),
+
+			# Facets
+			panel.spacing = unit(0, units = "npc"),
+			strip.text.y.left = element_text(angle = 0, hjust = 1, color = "white"),
 
 			# Legend
 			legend.position = "none"

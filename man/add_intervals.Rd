@@ -19,6 +19,9 @@ labeled. They can be referenced by their index, e.g. \code{intervals = c(2)} to
 reference the 2nd interval in a 5 beat range.
 }}
 }
+\value{
+Returns an updated \code{ggm} object
+}
 \description{
 Add intervals
 }
