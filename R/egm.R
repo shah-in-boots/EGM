@@ -1,6 +1,6 @@
 ### Class Definitions ----
 
-#' Electrophysiology signal recording class definition
+#' Electrogram and electrocardiogram data class definition
 #'
 #' @name egm
 #' @export

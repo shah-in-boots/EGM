@@ -3,12 +3,12 @@
 \name{egm}
 \alias{egm}
 \alias{is_egm}
-\title{Electrophysiology signal recording class definition}
+\title{Electrogram and electrocardiogram data class definition}
 \usage{
 egm(header = data.table(), channels = data.table(), signal = data.table(), ...)
 
 is_egm(x)
 }
 \description{
-Electrophysiology signal recording class definition
+Electrogram and electrocardiogram data class definition
 }
