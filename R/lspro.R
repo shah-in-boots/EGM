@@ -85,7 +85,8 @@
 #' @export
 read_lspro <- function(file, n = Inf) {
 
-	# Overall header
+	### Header ----
+
 	file_nm <- deparse1(substitute(file))
 	hea <-
 		readLines(file, n = 13) |>
@@ -119,6 +120,8 @@ read_lspro <- function(file, n = Inf) {
 				}
 			)
 		}()
+
+	### Channels ----
 
 	# Individual channel data, 8 elements each
 	# Written after header/channel info (13 + 8 * n + 2) ... Blank + [Data] Line
@@ -190,11 +193,11 @@ read_lspro <- function(file, n = Inf) {
 			fill = "right"
 		) |>
 		dplyr::mutate(lead = dplyr::case_when(
-			label %in% surface ~ label,
+			label %in% .leads$ECG ~ label,
 			TRUE ~ lead
 		)) |>
 		dplyr::mutate(source = dplyr::case_when(
-			label %in% surface ~ "ECG",
+			label %in% .leads$ECG ~ "ECG",
 			TRUE ~ source
 		)) |>
 		tidyr::separate(
@@ -209,11 +212,11 @@ read_lspro <- function(file, n = Inf) {
 
 	# Now reorder the levels by factor
 	channels$label <-
-		factor(channels$label, levels = intersect(label_order, channels$label))
+		factor(channels$label, levels = intersect(.labels, channels$label))
 	channels$source <-
-		factor(channels$source, levels = intersect(source_order, channels$source))
-	channels$lead <-
-		factor(channels$lead, levels = intersect(lead_order, channels$lead))
+		factor(channels$source, levels = intersect(.source, channels$source))
+
+	### Signals ----
 
 	# Read in the CSV-styled signal data quickly
 	sig <-
@@ -225,18 +228,26 @@ read_lspro <- function(file, n = Inf) {
 			nrows = n
 		)
 
+	# Combine channels into a list
+	# Adjust for gain at the same time as lapply function is being used
 	# Convert to milivolts from ADC units
 	# [mV] = [ADC value] * [Range or gain in mV] / 32768
 	ADC_saturation <- 32768
+
 	for (i in 1:hea$number_of_channels) {
+
+		.x <- sig[[i]] * channels$gain[i] / ADC_saturation
 		sig[[i]] <-
-			sig[[i]] * channels$gain[channels$number == i] / ADC_saturation
+			eps(
+				x = .x,
+				frequency = channels$freq[i],
+				label = channels$label[i],
+				color = channels$color[i]
+			)
 	}
 
-	# Return a new list_of class
-	egm(header = as.data.table(hea),
-			channels = channels,
+	# Return new data.table class of EGMs
+	egm(header = hea,
 			signal = sig)
-
 }
 

@@ -1,9 +1,10 @@
-test_that("signal class definition works", {
+test_that("eps/signal class definition works", {
 
 	# Random signal with peaks and troughs, cosine pattern
 	x <- cos(2 * pi * (1:1000) * (1:100)/1e+5)
 
 	# Components of vector
+	label <- "V1"
 	label <- .labels[.labels == "V1"]
 	for (i in names(.leads)) {
 		if (label %in% .leads[[i]]) {
@@ -14,7 +15,7 @@ test_that("signal class definition works", {
 	voltage <- "mV"
 	frequency <- as.integer(1000)
 
-	s <- new_signal(
+	s <- new_eps(
 		x = x,
 		label = label,
 		source = source,
@@ -22,9 +23,9 @@ test_that("signal class definition works", {
 		frequency = frequency,
 		voltage = voltage
 	)
-	expect_s3_class(s, "signal")
+	expect_s3_class(s, "eps")
 
-	s <- signal(
+	s <- eps(
 		x = x,
 		label = label,
 		source = source,
@@ -32,6 +33,15 @@ test_that("signal class definition works", {
 		frequency = frequency,
 		voltage = voltage
 	)
-	expect_s3_class(s, "signal")
+	expect_s3_class(s, "eps")
+
+	# Basic output data
+	expect_output(print(s), "electrical_signal")
+
+	if (isTRUE(requireNamespace("tibble", quietly = TRUE))) {
+		tibble::tibble(s) |>
+			print() |>
+			expect_output("<eps>")
+	}
 
 })

@@ -27,9 +27,8 @@ ggm <- function(data,
 
 	stopifnot(inherits(data, "egm"))
 
-	header <- .pull_header(data)
-	signal <- .pull_signal(data)
-	channels <- .pull_channels(data)
+	header <- get_header(data)
+	signal <- data
 
 	# Should be all of the same frequency of data
 	hz <- header$freq

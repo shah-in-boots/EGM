@@ -5,7 +5,7 @@
 \alias{is_egm}
 \title{Electrogram and electrocardiogram data class definition}
 \usage{
-egm(header = data.table(), channels = data.table(), signal = data.table(), ...)
+egm(header = list(), signal = multi_channel(), ...)
 
 is_egm(x)
 }
