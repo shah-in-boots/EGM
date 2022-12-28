@@ -1,4 +1,4 @@
 library(testthat)
-library(rhythm)
+library(shiva)
 
-test_check("rhythm")
+test_check("shiva")
