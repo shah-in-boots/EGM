@@ -58,12 +58,5 @@ charLabels <- as.character(c(.ecg, .hra, .his, .cs, .dd, .rv, .abl))
 usethis::use_data(.labels,
 									.leads,
 									.source,
-									.ecg,
-									.hra,
-									.his,
-									.cs,
-									.dd,
-									.rv,
-									.abl,
 									overwrite = TRUE,
 									internal = TRUE)
