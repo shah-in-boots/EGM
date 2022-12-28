@@ -14,8 +14,9 @@ read_lspro(file, n = Inf)
 channel of data). Defaults to all values.}
 }
 \value{
-A \code{list} of length = 2 that has a 1) header table and 2) signal
-table.
+An \code{egm} class object that is a list of \code{eps} signals the format of a
+\code{data.table}, with an attached \strong{header} attribute that contains
+additional recording data.
 }
 \description{
 This function allows for reading in LS Pro data based on their text export of

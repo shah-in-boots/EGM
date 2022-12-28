@@ -2,6 +2,7 @@
 % Please edit documentation in R/eps.R
 \name{eps}
 \alias{eps}
+\alias{is_eps}
 \title{Electrophysiology eps class definition}
 \usage{
 eps(
@@ -12,6 +13,8 @@ eps(
   color = "#FFFFFF",
   ...
 )
+
+is_eps(x)
 }
 \description{
 Electrophysiology eps class definition

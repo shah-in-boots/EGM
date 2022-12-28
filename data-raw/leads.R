@@ -41,7 +41,8 @@ lead_loc <- c("D",
 				 ordered = TRUE)
 
 # Order patterns
-.labels <- c(.ecg, .hra, .his, .cs, .dd, .rv, .abl)
+charLabels <- as.character(c(.ecg, .hra, .his, .cs, .dd, .rv, .abl))
+.labels <- factor(charLabels, levels = charLabels, ordered = TRUE)
 .leads <- list(
 	ECG = .ecg,
 	HRA = .hra,

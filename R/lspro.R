@@ -80,8 +80,9 @@
 #' @param n Number of signal values to return (this will be the same for each
 #'   channel of data). Defaults to all values.
 #'
-#' @return A `list` of length = 2 that has a 1) header table and 2) signal
-#'   table.
+#' @return An `egm` class object that is a list of `eps` signals the format of a
+#'   `data.table`, with an attached __header__ attribute that contains
+#'   additional recording data.
 #' @export
 read_lspro <- function(file, n = Inf) {
 
@@ -157,30 +158,12 @@ read_lspro <- function(file, n = Inf) {
 	}
 
 	# Channels should be organized appropriately
-	# Top to bottom should be from high to low, and then from left to right
-	# Catheters/leads are specifically included
-	surface <-
-		c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6))
-	lead_pairs <-
-		paste0(seq(from = 1, to = 19, by = 2), "-", seq(from = 2, to = 20, by = 2))
-	lead_loc <- c("D", "DIST", "DISTAL",
-								"M", "MID", "MIDDLE",
-								"P", "PROX", "PROXIMAL")
-	hra <- rev(paste("RA", lead_pairs[1:2]))
-	his <- rev(paste("HIS", c(lead_pairs[1:3], lead_loc)))
-	cs <- rev(paste("CS", lead_pairs[1:5]))
-	dd <- rev(paste("DD", lead_pairs[1:10]))
-	rv <- rev(paste("RV", lead_pairs[1:2]))
-	abl <- rev(paste("ABL", c(lead_pairs[1:2], lead_loc[c(1:3, 7:9)])))
-
-	# Order patterns
-	lead_order <- c(surface, rev(c(lead_pairs, lead_loc)))
-	label_order <- c(surface, hra, his, cs, dd, rv, abl)
-	source_order <- c("ECG", "HRA", "RA", "HIS", "CS", "DD", "RV", "ABL")
-
+	# 	Top to bottom should be from high to low, and then from left to right
+	# 	Catheters/leads are specifically included
+	# 	Retrieved from "data-raw" folder from leads.R file
 	# Table of channel information
-	# Clean up names if possible
-	# All are made upper character
+	# 	Clean up names if possible
+	# 	All are made upper character
 	channels <-
 		ch_list |>
 		rbindlist() |>
@@ -241,7 +224,7 @@ read_lspro <- function(file, n = Inf) {
 			eps(
 				x = .x,
 				frequency = channels$freq[i],
-				label = channels$label[i],
+				label = as.character(channels$label[i]),
 				color = channels$color[i]
 			)
 	}

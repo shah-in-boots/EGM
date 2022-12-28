@@ -35,47 +35,61 @@ ggm <- function(data,
 	signal$index <- 1:nrow(signal)
 	signal$time <- signal$index / hz
 
-	# Check if time frame exists within series
+	# Check if time frame exists within series, allowing for
+	# indexed rounding based on frequency
 	if (is.null(time_frame)) {
 		time_frame <- c(min(signal$time, na.rm = TRUE), max(signal$time, na.rm = TRUE))
 	}
-	stopifnot("`time_frame` must be within available data" =
-							all(time_frame %in% signal$time))
+	stopifnot("`time_frame` must be within available data" = all(
+		min(time_frame) + 1 / hz >= min(signal$time) &
+			max(time_frame) - 1 / hz <= max(signal$time)
+	))
 
-	# Filter appropriately
-	start_time <- time_frame[1]
-	end_time <- time_frame[2]
-	ch <- channels$label
-	surface_leads <- c("I", "II", "III", paste0("V", 1:6), "AVF", "AVR", "AVR")
-	ch_exact <- ch[which(ch %in% surface_leads | grepl("\ ", ch))]
-	ch_fuzzy <- ch[which(!(ch %in% ch_exact))]
-	ch_grep <-
-		paste0(c(paste0("^", ch_exact, "$", collapse = "|"), ch_fuzzy),
+	# Filter time appropriately
+	startTime <- time_frame[1]
+	endTime <- time_frame[2]
+
+	# Make sure appropriate channels are selected
+	availableChannels <- names(signal)[1:(ncol(signal) - 2)] # Removes index/time cols
+	exactChannels <- channels[channels %in% .labels]
+	fuzzyChannels <- channels[!(channels %in% .labels)]
+	channelGrep <-
+		paste0(c(paste0("^", exactChannels, "$", collapse = "|"), fuzzyChannels),
 					 collapse = "|")
+	selectedChannels <- grep(channelGrep, availableChannels, value = TRUE)
+	stopifnot("No requested channels existed within the signal data" =
+							length(selectedChannels) > 0)
 
-	# Lengthen for plotting
+	# Get channel data from individual signals
+	channelData <-
+		lapply(
+			signal[, ..selectedChannels],
+			FUN = function(.x) {
+				attributes(.x) |>
+					head(-1)
+			}
+		) |>
+		rbindlist()
+
 	dt <-
 		melt(
-			signal,
+			signal[, c(..selectedChannels, "index", "time")],
 			id.vars = c("index", "time"),
 			variable.name = "label",
 			value.name = "mV"
 		) |>
-		{\(.x)
-			channels[.x, on = .(label)]
-		}() |>
-		{\(.y)
-			.y[grepl(ch_grep, label),
-					][time >= start_time & time <= end_time,
-					]
+		{
+			\(.x)
+			channelData[.x, on = .(label)
+									][time >= startTime & time <= endTime
+									][, mV := as.numeric(mV)]
 		}()
 
-
-	# Relevel
-	dt$label <- factor(dt$label, levels = levels(channels$label))
-
-	# Final channels
-	chs <- unique(dt$label)
+	# Relevel because order is lost in the labels during transformation
+	dt$label <-
+		factor(dt$label,
+					 levels = intersect(.labels, selectedChannels),
+					 ordered = TRUE)
 
 	g <-
 		ggplot(dt, aes(x = time, y = mV, color = color)) +
@@ -231,222 +245,6 @@ add_colors <- function(object, palette, mode = "light") {
 }
 
 
-#' Modify channel colors
-#'
-#' @param palette Color palette options for leads as below:
-#'
-#'   * __material__ - material color theme
-#'
-#'   * __bw__ - black or white color theme based on light/dark mode
-#'
-#' @param mode Adjust color settings for either light or dark mode
-#' @return Character vector of hex code colors based on the selected palette and
-#'   light/dark mode
-#' @export
-color_channels <- function(x, palette, mode = "light") {
-
-	# Requires a character vector that has appropriate ECG lead types
-	# Need unique levels
-	stopifnot("Requires a `character` or `factor` input" = inherits(x, c("character", "factor")))
-	y <- as.character(unique(x))
-
-	# Lead/source labels as below
-	surface <-
-		c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6))
-	lead_pairs <-
-		paste0(seq(from = 1, to = 19, by = 2), "-", seq(from = 2, to = 20, by = 2))
-	lead_loc <- c("D", "DIST", "DISTAL",
-								"M", "MID", "MIDDLE",
-								"P", "PROX", "PROXIMAL")
-	hra <- paste("RA", lead_pairs[1:2])
-	his <- paste("HIS", c(lead_pairs[1:3], lead_loc))
-	cs <- paste("CS", lead_pairs[1:5])
-	dd <- paste("DD", lead_pairs[1:10])
-	rv <- paste("RV", lead_pairs[1:2])
-	abl <- paste("ABL", c(lead_pairs[1:2], lead_loc[c(1:3, 7:9)]))
-	lead_order <- c(surface, rev(c(lead_pairs, lead_loc)))
-	label_order <- c(surface, hra, his, cs, dd, rv, abl)
-	source_order <- c("ECG", "HRA", "RA", "HIS", "CS", "DD", "RV", "ABL")
-	leads <- list(
-		ECG = c("ECG", surface),
-		HRA = c("HRA", hra),
-		HIS = c("HIS", his),
-		CS = c("CS", cs),
-		DD = c("DD", dd),
-		RV = c("RV", rv),
-		ABL = c("ABL", abl)
-	)
-
-	# Colors in light to dark sequence
-	# Includes surface, His, chambers (RA/RV and ablation), CS (and DD)
-	# Each has an option for 10 colors (max)
-	switch(
-		palette,
-		material = {
-
-			colors <- list(
-				# Yellow
-				HIS =
-					c(
-						"#FFFDE6",
-						"#FFF8C4",
-						"#FFF49D",
-						"#FFF176",
-						"#FFED58",
-						"#FFEB3A",
-						"#FDD834",
-						"#FABF2C",
-						"#F8A725",
-						"#F47F17"
-					),
-
-				# RA and RV leads are pink
-				RA =
-					c(
-						"#FCE4EB",
-						"#F8BAD0",
-						"#F38EB1",
-						"#F06192",
-						"#EB3F79",
-						"#E91E63",
-						"#D81A5F",
-						"#C1185A",
-						"#AC1357",
-						"#870D4E"
-					),
-
-				# RV
-				RV =
-					c(
-						"#FCE4EB",
-						"#F8BAD0",
-						"#F38EB1",
-						"#F06192",
-						"#EB3F79",
-						"#E91E63",
-						"#D81A5F",
-						"#C1185A",
-						"#AC1357",
-						"#870D4E"
-					),
-
-				# Ablation
-				ABL =
-					c(
-						"#FCE4EB",
-						"#F8BAD0",
-						"#F38EB1",
-						"#F06192",
-						"#EB3F79",
-						"#E91E63",
-						"#D81A5F",
-						"#C1185A",
-						"#AC1357",
-						"#870D4E"
-					),
-
-				# Surface leads are blue
-				ECG = rep(
-					c(
-						"#E3F2FD",
-						"#BADEFA",
-						"#90CAF8",
-						"#64B4F6",
-						"#41A5F4",
-						"#2096F2",
-						"#1E87E5",
-						"#1976D2",
-						"#1465BF",
-						"#0C46A0"
-					),
-					each = 2
-				),
-
-				### Green = Extended length multipolar, such as DD or CS
-
-				# Decapolar / coronary sinus
-				CS = c(
-					"#DFF2F1",
-					"#B2DFDA",
-					"#7FCBC4",
-					"#4CB6AC",
-					"#26A599",
-					"#009687",
-					"#00887A",
-					"#00796B",
-					"#00685B",
-					"#004C3F"
-				),
-
-				# Duodecapolar catheter
-				DD = rep(
-					c(
-						"#DFF2F1",
-						"#B2DFDA",
-						"#7FCBC4",
-						"#4CB6AC",
-						"#26A599",
-						"#009687",
-						"#00887A",
-						"#00796B",
-						"#00685B",
-						"#004C3F"
-					),
-					each = 2
-				)
-			)
-
-		}
-	)
-
-	# Create a table of the potential lead types
-	z <- y
-	for (i in names(leads)) {
-		for (j in seq_along(y)) {
-			if (y[j] %in% leads[[i]]) {
-				z[j] <- i
-			}
-		}
-	}
-
-	# Table them to know how many colors to select
-	chs <- as.list(y)
-	names(chs) <- z
-	clrs <- as.list(table(z))
-
-	# Apply colors based on mode to a template of the leads
-	if (mode == "light") {
-
-		for (i in names(clrs)) {
-
-			clrs[[i]] <- rev(colors[[i]])[seq(clrs[[i]])]
-		}
-
-	} else if (mode == "dark") {
-
-		for (i in names(clrs)) {
-			clrs[[i]] <- colors[[i]][seq(clrs[[i]])]
-		}
-
-	}
-
-	# Apply back to original template
-	for (i in names(clrs)) {
-		chs[names(chs) == i] <- clrs[[i]]
-	}
-
-	# Rename the channels with values being the colors
-	names(chs) <- y
-	new_colors <- as.character(x)
-
-	for (i in names(chs)) {
-		new_colors[new_colors == i] <- chs[[i]]
-	}
-
-	# Return
-	new_colors
-
-}
 
 
 
