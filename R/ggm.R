@@ -141,7 +141,8 @@ add_intervals <- function(object,
 													minimum_interval = 100) {
 
 	# Initial validation
-	stopifnot("`add_intervals()` requires a `ggm` object" = inherits(object, "ggm"))
+	stopifnot("`add_intervals()` requires a `ggm` object" =
+							inherits(object, "ggm"))
 
 	# Get channels and check
 	dt <- object$data

@@ -329,7 +329,7 @@ color_channels <- function(x, palette, mode = "light") {
 
 #' Get components of EPS data
 #' @param x signal data from `eps` class
-#' @name epsGetters
+#' @name eps_retrieval
 #' @return Request value based on attribute that is being called
 #' @export
 get_frequency <- function(x) {
@@ -337,14 +337,14 @@ get_frequency <- function(x) {
 	attr(x, "frequency")
 }
 
-#' @rdname epsGetters
+#' @rdname eps_retrieval
 #' @export
 get_voltage <- function(x) {
 	stopifnot("Object must be an `eps` class" = inherits(x, "eps"))
 	attr(x, "voltage")
 }
 
-#' @rdname epsGetters
+#' @rdname eps_retrieval
 #' @export
 get_source <- function(x) {
 	stopifnot("Object must be an `eps` class" = inherits(x, "eps"))
@@ -352,14 +352,14 @@ get_source <- function(x) {
 }
 
 
-#' @rdname epsGetters
+#' @rdname eps_retrieval
 #' @export
 get_label <- function(x) {
 	stopifnot("Object must be an `eps` class" = inherits(x, "eps"))
 	attr(x, "label")
 }
 
-#' @rdname epsGetters
+#' @rdname eps_retrieval
 #' @export
 get_color <- function(x) {
 	stopifnot("Object must be an `eps` class" = inherits(x, "eps"))
