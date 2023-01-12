@@ -100,7 +100,6 @@ vec_cast.eps.double <- function(x, to, ...) eps(x, ...)
 #' @export
 vec_cast.double.eps <- function(x, to, ...) vec_data(x)
 
-
 #' @export
 format.eps <- function(x, ...) {
 	if (vec_size(x) == 0) {

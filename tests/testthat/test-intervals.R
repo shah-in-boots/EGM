@@ -3,6 +3,7 @@ test_that("can find peaks in a single channel", {
 
 	hz <- attr(df$I, "frequency")
 	sig <- as.numeric(df$I)
+	sig <- as.numeric(df$`HIS D`)
 
 	plot(sig, type = "l")
 	plot(df$I, type = "l")
@@ -12,7 +13,8 @@ test_that("can find peaks in a single channel", {
 	peaks <-
 		gsignal::findpeaks(
 			sig,
-			MinPeakDistance = 100,
+			MinPeakDistance = 200,
+			MinPeakHeight = max(abs(sig), na.rm = TRUE) / 5,
 			MinPeakWidth = 20,
 			DoubleSided = TRUE
 		)
