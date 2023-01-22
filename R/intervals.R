@@ -83,5 +83,4 @@ find_minor_peaks <- function(x, hz = 1000L, sensitivity = 0.2, specificity = 0.8
 	# Return list
 	list(peaks = pks$pks, location = pks$loc)
 
-
 }

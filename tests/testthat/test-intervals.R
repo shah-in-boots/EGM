@@ -7,5 +7,6 @@ test_that("can find peaks in a single channel", {
 
 	plot(sig, type = "l", col = "black")
 	points(pks$location, pks$peaks, type = "p", col = "orange")
+	expect_length(pks$peaks, 7)
 
 })

@@ -24,9 +24,12 @@ Imports:
     data.table,
     ggplot2,
     gsignal,
-    lifecycle
+    lifecycle,
+    Rcpp
 Config/testthat/edition: 3
 URL: https://github.com/asshah4/shiva
 BugReports: https://github.com/asshah4/shiva/issues
 Remotes: 
     asshah4/coraline
+LinkingTo: 
+    Rcpp
