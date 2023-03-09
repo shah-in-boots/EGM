@@ -32,4 +32,5 @@ BugReports: https://github.com/asshah4/shiva/issues
 Remotes: 
     asshah4/coraline
 LinkingTo: 
-    Rcpp
+    Rcpp,
+    RcppArmadillo
