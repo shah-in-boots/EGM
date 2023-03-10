@@ -5,6 +5,12 @@
 #' R implementation: Anish S. Shah
 #' Last updated: 01/22/23
 #'
+#' @description
+#'
+#' This implementation of WFDB is a back-end for the WFDB using a combination of
+#' _python_, _C++_, and _C_ language. The related functions are documented
+#' separately.
+#'
 #' @details
 #'
 #' # WFDB
@@ -35,4 +41,27 @@
 #' 1. Annotations: information about the record such as abeat
 #' labels or alarm triggers
 #' @name wfdb
+#' @export
+wfdb <- NULL
 
+#' Describes signals based on header file contents {wfdb}
+#' @param record Name of the record as a string, with no extensions
+#' @param location The directory that the target record is located within. As
+#'   this is related to the [PhysioNet](https://physionet.org), using the
+#'   location name `mitdb` will access the online directory for the MIT
+#'   Database.
+#' @export
+wfdbdesc <- function(record,
+										 location = ".") {
+
+	if (location == "mitdb") {
+		out <- reticulate::py_capture_output(wfdb$wfdbdesc(record, location))
+	} else {
+		fp <- file.path(location, record)
+		ft <- paste0(fp, c(".ann", ".atr", ".dat", ".hea", ".sig"))
+		stopifnot("The record name does not exist within the directory"
+							= any(file.exists(ft)))
+		out <- reticulate::py_capture_output(wfdb$wfdbdesc(fp))
+	}
+
+}

@@ -20,5 +20,6 @@
 #' @importFrom Rcpp evalCpp
 #' @importFrom Rcpp sourceCpp
 #' @useDynLib shiva, .registration = TRUE
+#' @exportPattern "ˆ[[:alpha:]]+"
 ## usethis namespace: end
 NULL
