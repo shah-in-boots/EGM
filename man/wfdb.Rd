@@ -5,10 +5,13 @@
 \alias{wfdb}
 \title{Waveform Database (WFDB) Software Package}
 \format{
-An object of class \code{python.builtin.module} (inherits from \code{python.builtin.object}) of length 1.
+An object of class \code{python.builtin.module} (inherits from \code{python.builtin.object}) of length 0.
 }
 \usage{
 wfdb
+}
+\value{
+On call, loads series of WFDB functions
 }
 \description{
 This implementation of WFDB is a back-end for the WFDB using a combination of
@@ -33,7 +36,7 @@ the Macintosh OS, and VMS.
 \section{Data format}{
 The records that the WFDB uses have three components...
 \enumerate{
-\item Signals: integer value that are at equal intervals at a certain sampling
+\item Signals: integer values that are at equal intervals at a certain sampling
 frequency
 \item Attributes: recording information such as sample number, gain,
 sampling frequency

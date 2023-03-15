@@ -32,7 +32,7 @@
 #'
 #' The records that the WFDB uses have three components...
 #'
-#' 1. Signals: integer value that are at equal intervals at a certain sampling
+#' 1. Signals: integer values that are at equal intervals at a certain sampling
 #' frequency
 #'
 #' 1. Attributes: recording information such as sample number, gain,
@@ -40,19 +40,22 @@
 #'
 #' 1. Annotations: information about the record such as abeat
 #' labels or alarm triggers
+#'
+#' @return On call, loads series of WFDB functions
 #' @name wfdb
 #' @export
 wfdb <- NULL
 
-#' Describes signals based on header file contents {wfdb}
+#' Describes signals based on WFDB-formatted files
 #' @param record Name of the record as a string, with no extensions
 #' @param location The directory that the target record is located within. As
 #'   this is related to the [PhysioNet](https://physionet.org), using the
 #'   location name `mitdb` will access the online directory for the MIT
 #'   Database.
 #' @export
-wfdbdesc <- function(record,
-										 location = ".") {
+describe_wfdb <- function(record,
+													location = ".") {
+
 
 	if (location == "mitdb") {
 		out <- reticulate::py_capture_output(wfdb$wfdbdesc(record, location))
@@ -61,7 +64,75 @@ wfdbdesc <- function(record,
 		ft <- paste0(fp, c(".ann", ".atr", ".dat", ".hea", ".sig"))
 		stopifnot("The record name does not exist within the directory"
 							= any(file.exists(ft)))
-		out <- reticulate::py_capture_output(wfdb$wfdbdesc(fp))
+		out <- reticulate::py_capture_output(wfdb$wfdbdesc(r_to_py(fp)))
 	}
+
+}
+
+#' Create WFDB-compatible signal and header files from EP recording systems
+#'
+#' This function allows for WFDB files to be read from specific EP recording
+#' systems, as indicated by the __type__ argument below.
+#'
+#' @param file File path of signal data
+#'
+#' @param type Type of signal data, as specified by the recording system.
+#'   Currently supports:
+#'
+#' * _lspro_ = Boston Scientific LabSystem Pro (Bard)
+#'
+#' @param record String that will be used to name the WFDB record. Cannot
+#'   include extensions, and is not a filepath. alphanumeric characters are
+#'   acceptable, as well as hyphens (-) and underscores (_)
+#'
+#' @importFrom reticulate r_to_py
+#' @export
+write_wfdb <- function(file,
+											 type,
+											 record,
+											 read_location = ".",
+											 write_location = ".",
+											 ...) {
+
+
+	# Read in data appropriately
+	switch(type,
+				 lspro = {
+				 	hea <- read_lspro_header(file)
+				 	sig <- as.matrix(read_lspro_signal(file, n = Inf))
+
+				 	dt <- reticulate::import("datetime", convert = FALSE)
+				 	start_time <- dt$datetime(
+				 		year(hea$start_time),
+				 		month(hea$start_time),
+				 		mday(hea$start_time),
+				 		hour(hea$start_time),
+				 		minute(hea$start_time),
+				 		second(hea$start_time)
+				 	)
+
+				 	invisible(reticulate::py_capture_output(wfdb$wrsamp(
+				 		record_name = r_to_py(record),
+				 		fs = r_to_py(hea$freq),
+				 		units = r_to_py(as.list(rep("mV", hea$number_of_channels))),
+				 		sig_name = r_to_py(hea$channels$label),
+				 		d_signal = r_to_py(sig),
+				 		adc_gain = r_to_py(hea$channels$gain / hea$ADC_saturation),
+				 		fmt = r_to_py(as.list(rep("16", hea$number_of_channels))),
+				 		baseline = r_to_py(as.list(rep(0L, hea$number_of_channels))),
+				 		base_datetime = start_time,
+				 		write_dir = r_to_py(write_location)
+				 	)))
+
+				 	message("`write_wfdb` successfully wrote `",
+				 					record,
+				 					"` to `",
+				 					write_location,
+				 					"`")
+
+
+				 },
+				 message("`write_wfdb` not supported for the supplied `type`")
+				 )
 
 }
