@@ -170,3 +170,5 @@ read_wfdb <- function(record, location = ".", channels = NULL, ...) {
 	))
 	# nocov end
 }
+
+#'
