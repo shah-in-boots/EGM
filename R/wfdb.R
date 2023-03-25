@@ -47,13 +47,16 @@
 wfdb <- NULL
 
 #' Describes signals based on WFDB-formatted files
+#'
 #' @param record String that will be used to name the WFDB record. Cannot
 #'   include extensions, and is not a filepath. alphanumeric characters are
 #'   acceptable, as well as hyphens (-) and underscores (_)
+#'
 #' @param location The directory that the target record is located within. As
 #'   this is related to the [PhysioNet](https://physionet.org), using the
 #'   location name `mitdb` will access the online directory for the MIT
 #'   Database.
+#'
 #' @export
 describe_wfdb <- function(record,
 													location = ".") {
@@ -69,7 +72,8 @@ describe_wfdb <- function(record,
 		stopifnot("The record name does not exist within the directory"
 							= any(file.exists(ft)))
 		# nocov start
-		out <- reticulate::py_capture_output(wfdb$wfdbdesc(r_to_py(fp)))
+		out <-
+			reticulate::py_capture_output(wfdb$wfdbdesc(reticulate::r_to_py(fp)))
 		# nocov end
 	}
 
@@ -149,11 +153,13 @@ write_wfdb <- function(file,
 #' an annotation file (if applicable).
 #'
 #' @inheritParams describe_wfdb
+#'
 #' @return Returns a list of two objects. The first object is a matrix of
 #'   signals, with each column representing a specific channel. Each row is a
 #'   sample point. The second object is a summary of the header field, with
 #'   information on channel names/number, signal length, sampling frequency,
 #'   etc.
+#'
 #' @export
 read_wfdb <- function(record, location = ".", channels = NULL, ...) {
 
@@ -171,4 +177,68 @@ read_wfdb <- function(record, location = ".", channels = NULL, ...) {
 	# nocov end
 }
 
+#' Read in WFDB-compatible annotation files
 #'
+#' @inheritParams describe_wfdb
+#'
+#' @param annotator A character string (usually 3 letters) that represents the
+#'   type of annotation file or algorithm that generated it. These are the
+#'   naming conventions used in the WFDB toolkits
+#'
+#' @details
+#'
+#' # Annotation files
+#'
+#' The types of annotations that are supported are described below:
+#'
+#' * atr = manually reviewed and corrected reference annotation files
+#'
+#' * ann = general annotator file
+#'
+#' @return Annotation file
+#' @export
+read_annotation <- function(record, location, annotator, ...) {
+
+	fp <- file.path(location, record)
+	ft <- paste0(fp, c(".ann", ".atr", ".qrs", ".wabp"))
+	stopifnot("The annotation name does not exist within the directory" =
+							any(file.exists(ft)))
+
+	# nocov start
+	annotation <-
+		reticulate::py_to_r(wfdb$rdann(
+			record_name = reticulate::r_to_py(fp),
+			extension = reticulate::r_to_py(annotator)
+		))
+
+
+	# Index position
+	sample <- annotation$sample
+
+	# Labels or annotations (an array)
+	annotationSymbol <- annotation$symbol
+
+	# Subtype of annotation or category
+	annotationSubtype <- annotation$subtype
+
+	# Length or number of annotations
+	annotationNumber <- annotation$ann_len
+
+	# The channel the annotation was applied to
+	annotationChannel <- annotation$chan
+
+	annotationNumber <- annotation$num
+
+	# Additional notes obatined for the rhythm as a string
+	annotationNotes <- annotation$aux_note
+	# nocov end
+
+	list(
+		sample = annotationSample,
+		label = annotationSymbol,
+		subtype = annotationSubtype,
+		channel = annotationChannel,
+		number = annotationNumber,
+		auxillary_note = annotationNotes
+	)
+}
