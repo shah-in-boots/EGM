@@ -53,8 +53,13 @@ test_that("annotations can be read in", {
 	location = test_path()
 
 	sig <- read_wfdb(record = record, location = location)
-	a <- read_annotation(record = record, location = location, annotator = "atr")
-	a$fs <- reticulate::r_to_py(360)
+	ann <- read_annotation(record = record, location = location, annotator = "atr")
+
+	# Create p wave detections
+	detect_waveforms(record, location, detector = "/usr/bin/local/ecgpuwave")
+	ecg <- read_annotation(record, location, annotator = "ecgpuwave")
+
+
 
 	wfdb$plot_wfdb(record = reticulate::r_to_py(sig),
 								 annotation = reticulate::r_to_py(a))

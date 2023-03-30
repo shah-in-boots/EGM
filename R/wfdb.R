@@ -181,7 +181,7 @@ read_wfdb <- function(record, location = ".", channels = NULL, ...) {
 #'
 #' @inheritParams describe_wfdb
 #'
-#' @param annotator A character string (usually 3 letters) that represents the
+#' @param extension A character string (usually 3 letters) that represents the
 #'   type of annotation file or algorithm that generated it. These are the
 #'   naming conventions used in the WFDB toolkits
 #'
@@ -197,23 +197,20 @@ read_wfdb <- function(record, location = ".", channels = NULL, ...) {
 #'
 #' @return Annotation file
 #' @export
-read_annotation <- function(record, location, annotator, ...) {
+read_annotation <- function(record, extension, location,  ...) {
 
 	fp <- file.path(location, record)
-	ft <- paste0(fp, c(".ann", ".atr", ".qrs", ".wabp"))
-	stopifnot("The annotation name does not exist within the directory" =
-							any(file.exists(ft)))
 
 	# nocov start
 	annotation <-
 		reticulate::py_to_r(wfdb$rdann(
 			record_name = reticulate::r_to_py(fp),
-			extension = reticulate::r_to_py(annotator)
+			extension = reticulate::r_to_py(extension)
 		))
 
 
 	# Index position
-	sample <- annotation$sample
+	annotationSample <- annotation$sample
 
 	# Labels or annotations (an array)
 	annotationSymbol <- annotation$symbol
@@ -242,3 +239,25 @@ read_annotation <- function(record, location, annotator, ...) {
 		auxillary_note = annotationNotes
 	)
 }
+
+#' @export
+write_annotation <- function(record, extension, location, ...) {
+
+}
+
+
+#' @export
+detect_waveforms <- function(record, location, detector, ...) {
+
+	# ECGPUWAVE command
+	detector <- '/usr/local/bin/ecgpuwave'
+	rec <- paste('-r', file.path(location, record))
+	ann <- paste('-a', basename(detector))
+
+
+	# Writing files in same location as the original location
+	system2(command = detector,
+					args = c(rec, ann))
+
+}
+
