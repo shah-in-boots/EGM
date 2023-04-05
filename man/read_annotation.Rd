@@ -2,35 +2,18 @@
 % Please edit documentation in R/wfdb.R
 \name{read_annotation}
 \alias{read_annotation}
-\title{Read in WFDB-compatible annotation files}
+\title{Read WFDB-compatible annotation file}
 \usage{
-read_annotation(record, extension, location, ...)
+read_annotation(record, annotator, record_dir = ".", ...)
 }
 \arguments{
 \item{record}{String that will be used to name the WFDB record. Cannot
 include extensions, and is not a filepath. alphanumeric characters are
 acceptable, as well as hyphens (-) and underscores (_)}
 
-\item{extension}{A character string (usually 3 letters) that represents the
-type of annotation file or algorithm that generated it. These are the
-naming conventions used in the WFDB toolkits}
-
-\item{location}{The directory that the target record is located within. As
-this is related to the \href{https://physionet.org}{PhysioNet}, using the
-location name \code{mitdb} will access the online directory for the MIT
-Database.}
-}
-\value{
-Annotation file
+\item{record_dir}{File path of directory that should be used read and write
+files. Defaults to current directory.}
 }
 \description{
-Read in WFDB-compatible annotation files
+Read WFDB-compatible annotation file
 }
-\section{Annotation files}{
-The types of annotations that are supported are described below:
-\itemize{
-\item atr = manually reviewed and corrected reference annotation files
-\item ann = general annotator file
-}
-}
-

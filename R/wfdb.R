@@ -1,7 +1,9 @@
+# Signal -----------------------------------------------------------------------
+
 #' Waveform Database (WFDB) Software Package
 #'
 #' @author
-#' Original software: George Moody, Tom Pollard, Benjamin Moody
+#' Original software: George Moody, Tom Pollard, Benjamin Moody.
 #' R implementation: Anish S. Shah
 #' Last updated: 01/22/23
 #'
@@ -40,224 +42,397 @@
 #'
 #' 1. Annotations: information about the record such as abeat
 #' labels or alarm triggers
-#'
-#' @return On call, loads series of WFDB functions
 #' @name wfdb
-#' @export
-wfdb <- NULL
-
-#' Describes signals based on WFDB-formatted files
-#'
-#' @param record String that will be used to name the WFDB record. Cannot
-#'   include extensions, and is not a filepath. alphanumeric characters are
-#'   acceptable, as well as hyphens (-) and underscores (_)
-#'
-#' @param location The directory that the target record is located within. As
-#'   this is related to the [PhysioNet](https://physionet.org), using the
-#'   location name `mitdb` will access the online directory for the MIT
-#'   Database.
-#'
-#' @export
-describe_wfdb <- function(record,
-													location = ".") {
-
-
-	if (location == "mitdb") {
-		# nocov start
-		out <- reticulate::py_capture_output(wfdb$wfdbdesc(record, location))
-		# nocov end
-	} else {
-		fp <- file.path(location, record)
-		ft <- paste0(fp, c(".ann", ".atr", ".dat", ".hea", ".sig"))
-		stopifnot("The record name does not exist within the directory"
-							= any(file.exists(ft)))
-		# nocov start
-		out <-
-			reticulate::py_capture_output(wfdb$wfdbdesc(reticulate::r_to_py(fp)))
-		# nocov end
-	}
-
-}
+NULL
 
 #' Create WFDB-compatible signal and header files from EP recording systems
 #'
 #' This function allows for WFDB files to be read from specific EP recording
 #' systems, as indicated by the __type__ argument below.
 #'
-#' @param file File path of signal data
+#' @param file Name of file. If it is a full path, then `read_location` is
+#'   ignored
 #'
 #' @param type Type of signal data, as specified by the recording system.
 #'   Currently supports:
 #'
 #' * _lspro_ = Boston Scientific LabSystem Pro (Bard)
 #'
-#' @param write_location File path of directory that should be used to place
-#'   files. Defaults to current working directory.
-#' @inheritParams describe_wfdb
+#' @param record String that will be used to name the WFDB record. Cannot
+#'   include extensions, and is not a filepath. alphanumeric characters are
+#'   acceptable, as well as hyphens (-) and underscores (_)
+#'
+#' @param record_dir File path of directory that should be used read and write
+#'   files. Defaults to current directory.
+#'
 #' @export
 write_wfdb <- function(file,
 											 type,
-											 record,
-											 write_location = ".",
+											 record = file,
+											 record_dir = ".",
+											 wfdb_path,
 											 ...) {
 
+	# Validate WFDB software
+	cmd <- find_wfdb_software(wfdb_path, "wrsamp")
 
-	# Read in data appropriately
-	switch(type,
-				 lspro = {
-				 	hea <- read_lspro_header(file)
-				 	sig <- as.matrix(read_lspro_signal(file, n = Inf))
+	# Validate working directories and paths
+	# 	Current or parent working directory
+	# 	Reading directory and relevant file
+	# 	Writing directory
+	if (fs::file_exists(file)) {
+		fp <- fs::path(file)
+	} else if (fs::file_exists(fs::path(record_dir, file))) {
+		fp <- fs::path(record_dir, file)
+	} else {
+		stop("Cannot find the file in the the reading directory")
+	}
 
-				 	# nocov start
-				 	dt <- reticulate::import("datetime", convert = FALSE)
-				 	start_time <- dt$datetime(
-				 		year(hea$start_time),
-				 		month(hea$start_time),
-				 		mday(hea$start_time),
-				 		hour(hea$start_time),
-				 		minute(hea$start_time),
-				 		second(hea$start_time)
-				 	)
+	if (fs::dir_exists(record_dir)) {
+		wd <- fs::path(record_dir)
+	} else {
+		wd <- getwd()
+	}
 
-				 	invisible(reticulate::py_capture_output(wfdb$wrsamp(
-				 		record_name = reticulate::r_to_py(record),
-				 		fs = reticulate::r_to_py(hea$freq),
-				 		units = reticulate::r_to_py(as.list(rep("mV", hea$number_of_channels))),
-				 		sig_name = reticulate::r_to_py(hea$channels$label),
-				 		d_signal = reticulate::r_to_py(sig),
-				 		adc_gain = reticulate::r_to_py(hea$channels$gain / hea$ADC_saturation),
-				 		fmt = reticulate::r_to_py(as.list(rep("16", hea$number_of_channels))),
-				 		baseline = reticulate::r_to_py(as.list(rep(0L, hea$number_of_channels))),
-				 		base_datetime = start_time,
-				 		write_dir = reticulate::r_to_py(write_location)
-				 	)))
-				 	# nocov end
+	# Validate record name
+	record <-
+		record |>
+		fs::path_sanitize() |>
+		fs::path_ext_remove()
 
-				 	message("`write_wfdb` successfully wrote `",
-				 					record,
-				 					"` to `",
-				 					write_location,
-				 					"`")
+	if (type == "lspro") {
 
+		# Get LSPro data
+		hea <- read_lspro_header(fp)
+		sig <- read_lspro_signal(fp, n = Inf)
 
-				 },
-				 message("`write_wfdb` not supported for the supplied `type`")
-				 )
+		# Write out temporary CSV file for WFDB to use
+		# Add a timestamp for wfdb::wrsamp() to pull this in
+		tmpFile <- fs::file_temp("lspro", ext = "csv")
+		withr::defer(fs::file_delete(tmpFile))
+		data.table::fwrite(sig, file = tmpFile, col.names = FALSE)
 
-}
+		# Options for `wrsamp`
+		# 	-F <numeric>		sampling frequency, default is 250
+		# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
+		#		-i <string>			input file (default standard input)
+		#		-o <string>			Write the signal file in current directory as 'record'
+		#												record.dat
+		#												record.hea
+		#		-x <numeric>		Scaling factor if needed
 
-#' Read in WFDB-compatible signal files
-#'
-#' `read_wfdb()` reads in signal files based on the `rdsamp` function provided
-#' by the original WFDB toolbox. It requires a signal file, a header file, and
-#' an annotation file (if applicable).
-#'
-#' @inheritParams describe_wfdb
-#'
-#' @return Returns a list of two objects. The first object is a matrix of
-#'   signals, with each column representing a specific channel. Each row is a
-#'   sample point. The second object is a summary of the header field, with
-#'   information on channel names/number, signal length, sampling frequency,
-#'   etc.
-#'
-#' @export
-read_wfdb <- function(record, location = ".", channels = NULL, ...) {
+		# Frequency
+		hz <- paste("-F", hea$freq)
 
-	fp <- file.path(location, record)
-	ft <- paste0(fp, c(".ann", ".atr", ".dat", ".hea", ".sig"))
-	stopifnot("The record name does not exist within the directory" =
-							any(file.exists(ft)))
-
-	# nocov start
-	# Return list of 2 (from py to r)
-	reticulate::py_to_r(wfdb$rdsamp(
-		record_name = reticulate::r_to_py(fp),
-		channel_names = reticulate::r_to_py(channels)
-	))
-	# nocov end
-}
-
-#' Read in WFDB-compatible annotation files
-#'
-#' @inheritParams describe_wfdb
-#'
-#' @param extension A character string (usually 3 letters) that represents the
-#'   type of annotation file or algorithm that generated it. These are the
-#'   naming conventions used in the WFDB toolkits
-#'
-#' @details
-#'
-#' # Annotation files
-#'
-#' The types of annotations that are supported are described below:
-#'
-#' * atr = manually reviewed and corrected reference annotation files
-#'
-#' * ann = general annotator file
-#'
-#' @return Annotation file
-#' @export
-read_annotation <- function(record, extension, location,  ...) {
-
-	fp <- file.path(location, record)
-
-	# nocov start
-	annotation <-
-		reticulate::py_to_r(wfdb$rdann(
-			record_name = reticulate::r_to_py(fp),
-			extension = reticulate::r_to_py(extension)
+		# ADC
+		adc <- paste("-G", paste0(
+			'"',
+			paste(hea$ADC_saturation / hea$channels$gain, collapse = " "),
+			'"'
 		))
 
+		# Input (full file path)
+		ip <- paste("-i", tmpFile)
 
-	# Index position
-	annotationSample <- annotation$sample
+		# Output
+		op <- paste("-o", record)
 
-	# Labels or annotations (an array)
-	annotationSymbol <- annotation$symbol
+		# Write with `wrsamp`
+		# 	Change into correct folder/directory (the writing directory)
+		# 	Then reset to base directory
+		# 	Cleanup and remove temporary CSV file immediately
+		withr::local_dir(new = wd)
+		system2(command = cmd,
+						args = c(hz, adc, ip, op))
 
-	# Subtype of annotation or category
-	annotationSubtype <- annotation$subtype
+		# Modify header file with more data
+			# Record line (first one) needs a date and time appended
+			# Then handle the signal specification files
+		headLine <-
+			readLines(con = paste0(record, ".hea"), n = 1) |>
+			paste(format(hea$start_time, "%H:%M:%S %d/%m/%Y"))
 
-	# Length or number of annotations
-	annotationNumber <- annotation$ann_len
+		# 10 columns:
+		# 	>= V9 and V10 are descriptive fields
+		# 		Should be a tab-delim field
+		#			Can contain spaces internal to it
+		# 	V3 is ADC units
+		#			Can be appended with baseline value "(0)"
+		# 		Can be appended with "/mV" to specify units
+		header <-
+			read.table(file = paste0(record, ".hea"),
+								 skip = 1)
+		header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
+		header <- header[1:9]
+		header[9] <- hea$channels$label
 
-	# The channel the annotation was applied to
-	annotationChannel <- annotation$chan
+		# Write header back in place
+		writeLines(text = headLine,
+							 con = paste0(record, ".hea"))
+		write.table(
+			header,
+			file = paste0(record, ".hea"),
+			sep = "\t",
+			quote = FALSE,
+			col.names = FALSE,
+			row.names = FALSE,
+			append = TRUE
+		)
+	}
 
-	annotationNumber <- annotation$num
-
-	# Additional notes obatined for the rhythm as a string
-	annotationNotes <- annotation$aux_note
-	# nocov end
-
-	list(
-		sample = annotationSample,
-		label = annotationSymbol,
-		subtype = annotationSubtype,
-		channel = annotationChannel,
-		number = annotationNumber,
-		auxillary_note = annotationNotes
-	)
 }
 
+#' Reading in WFDB signal
+#'
+#' @param begin,end,interval Timepoint in seconds, which is converted to an
+#'   index position based on sampling frequency. The default is to start at the
+#'   beginning of the record. If `end` or `interval` are given, the earlier of
+#'   the two will be returned. The `end` argument gives a time index to read
+#'   until. The `interval` argument is the length of time past the start point.
+#'
+#' @param units A string representing either `digital` (DEFAULT) or
+#'   `physical` units that should be returned, if available.
+#'
+#'		- digital = Index in sample number, signal in integers (A/D units)
+#'
+#'		- physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
+#'		This will include 1 additional row over the header/column names that
+#'		describes units
+#'
+#' @param channels Either the signal/channel in a vector as a name or number.
+#'   Allows for duplication of signal or to re-order signal if needed.
+#'
+#' @return Data table
 #' @export
-write_annotation <- function(record, extension, location, ...) {
+read_wfdb <- function(record,
+											record_dir = ".",
+											wfdb_path,
+											begin = 0,
+											end = NA_integer_,
+											interval = NA_integer_,
+											units = "digital",
+											channels = character(),
+											...) {
 
+	# Validate:
+	#		WFDB software command
+	# 	Current or parent working directory
+	# 	Directory of the record/WFDB files
+	# 	Variable definitions
+	rdsamp <- find_wfdb_software(wfdb_path, "rdsamp")
+
+	if (fs::dir_exists(record_dir)) {
+		wd <- fs::path(record_dir)
+	} else {
+		wd <- getwd()
+	}
+
+	checkmate::assert_number(begin)
+	checkmate::assert_number(end, na.ok = TRUE)
+	checkmate::assert_number(interval, na.ok = TRUE)
+
+	# Create all the necessary parameters for rdsamp
+	#		-f			Start time
+	#		-l, -t	Interval length OR end time ... one or other, not both
+	#		-H			High resolution mode for high-sampling frequencies
+	#		-p			Uses physical units instead of digital
+	#							Miliseconds/physical (mV) units
+	#							default is sample interval (index) and A/D units
+	# 	-P			Capital P gives back higher number of decimal places
+	#		-s			Select which signals to print out (can duplicate + re-order)
+	#							Name or Number, separated by spaces
+	#							Default prints all signals
+	#		-v			Column headings
+	#		-X, -c	Output format: either XML or CSV, default = tab (not needed)
+
+	cmd <-
+		paste(rdsamp, '-r', record) |>
+		{
+			\(.) {
+				if (begin != 0) {
+					paste(., "-f", begin)
+				} else {
+					.
+				}
+			}
+		}() |>
+		{
+			\(.) {
+				if (!is.na(interval)) {
+					paste(., "-l", interval)
+				} else {
+					.
+				}
+			}
+		}() |>
+		{
+			\(.) {
+				if (!is.na(end)) {
+					paste(., "-t", end)
+				} else {
+					.
+				}
+			}
+		}() |>
+		{
+			\(.) {
+				if (units == "physical") {
+					paste(., "-p")
+				} else {
+					.
+				}
+			}
+		}() |>
+		{
+			\(.) {
+				if (length(channels) > 0) {
+					paste(., "-s", paste(channels, collapse = " "))
+				} else {
+					.
+				}
+			}
+		}() |>
+		paste("-v")
+
+	# Temporary local/working directory, to reset at end of function
+	withr::with_dir(new = wd, code = {
+		dat <- data.table::fread(cmd = cmd)
+	})
+
+	# Return data
+	dat
 }
 
+# Annotation -------------------------------------------------------------------
 
+#' ECG waveform detection
+#'
+#' @return Creates a WFDB-compatible annotation file
+#'
+#' @inheritParams write_wfdb
+#'
+#' @param detector Signal detector that can create WFDB-compatible annotation
+#'   files
+#'
+#' @examples
+#' record <- "sample"
+#' detector <- "ecgpuwave"
 #' @export
-detect_waveforms <- function(record, location, detector, ...) {
+detect_beats <- function(record,
+												 record_dir = ".",
+												 detector,
+												 wfdb_path,
+												 ...) {
 
-	# ECGPUWAVE command
-	detector <- '/usr/local/bin/ecgpuwave'
-	rec <- paste('-r', file.path(location, record))
-	ann <- paste('-a', basename(detector))
+	# Validate
+	# 	WFDB software - must be an ECG detector software
+	#		WFDB must be on path
+	# 	Reading/writing directory must be on path
+	if (checkmate::check_subset(detector, c("gqrs",
+																					"sqrs",
+																					"sqrs125",
+																					"wqrs",
+																					"ecgpuwave"))) {
+		ext <- "qrs"
+	}
 
+	cmd <- find_wfdb_software(wfdb_path, detector)
 
-	# Writing files in same location as the original location
-	system2(command = detector,
-					args = c(rec, ann))
+	if (fs::dir_exists(record_dir)) {
+		wd <- fs::path(record_dir)
+	} else {
+		wd <- getwd()
+	}
+
+	rec <- paste("-r", record)
+	ann <- paste("-a", ext)
+
+	# Change working directory for writing purposes
+	# 	This should change back at end of writing process
+	withr::with_dir(new = wd,
+									code = {
+										# System call to beat detector/annotator
+										system2(command = cmd,
+														args = c(rec, ann),
+														stdout = FALSE)
+
+										# Clean up extraneous files that were created
+										# 	`ecgpuwave` -> fortran files
+										fs::file_delete(c("fort.21", "fort.20"))
+									})
+
 
 }
 
+#' Read WFDB-compatible annotation file
+#'
+#' @inheritParams write_wfdb
+#' @inheritParams read_wfdb
+#'
+#' @export
+read_annotation <- function(record,
+														annotator,
+														record_dir = ".",
+														begin = 0,
+														end = NA_integer_,
+														...) {
+
+	# Validate:
+	#		WFDB software command
+	# 	Current or parent working directory
+	# 	Directory of the record/WFDB files
+	# 	Variable definitions
+	rdann <- find_wfdb_software(wfdb_path, "rdann")
+
+	if (fs::dir_exists(record_dir)) {
+		wd <- fs::path(record_dir)
+	} else {
+		wd <- getwd()
+	}
+
+	checkmate::assert_number(begin)
+	checkmate::assert_number(end, na.ok = TRUE)
+	checkmate::assert_number(interval, na.ok = TRUE)
+
+	# Create all the necessary parameters for rdann
+	#		-f			Start time
+	#		-t			End time
+	#		-v			Column headings
+	#		-e			Elapsed time as (versus absolute time)
+	# TODO filtering flags not yet included
+	cmd <-
+		paste(rdann, '-r', record, '-a', annotator) |>
+		{
+			\(.) {
+				if (begin != 0) {
+					paste(., "-f", begin)
+				} else {
+					.
+				}
+			}
+		}() |>
+		{
+			\(.) {
+				if (!is.na(end)) {
+					paste(., "-t", end)
+				} else {
+					.
+				}
+			}
+		}() |>
+		paste('-v')
+
+	# Temporary local/working directory, to reset at end of function
+	withr::with_dir(new = wd, code = {
+		dat <-
+			data.table::fread(
+				cmd = cmd,
+				header = TRUE,
+				fill = TRUE,
+				sep = "\t"
+			)
+	})
+
+	# Return data
+	dat
+}

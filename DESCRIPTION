@@ -22,6 +22,7 @@ Suggests:
 Imports: 
     coraline (>= 0.0.0.9000),
     data.table,
+    fs,
     ggplot2,
     gsignal,
     lifecycle,
@@ -32,5 +33,3 @@ URL: https://github.com/asshah4/shiva
 BugReports: https://github.com/asshah4/shiva/issues
 Remotes: 
     asshah4/coraline
-LinkingTo: 
-    Rcpp

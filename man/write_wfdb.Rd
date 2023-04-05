@@ -4,10 +4,11 @@
 \alias{write_wfdb}
 \title{Create WFDB-compatible signal and header files from EP recording systems}
 \usage{
-write_wfdb(file, type, record, write_location = ".", ...)
+write_wfdb(file, type, record = file, record_dir = ".", wfdb_path, ...)
 }
 \arguments{
-\item{file}{File path of signal data}
+\item{file}{Name of file. If it is a full path, then \code{read_location} is
+ignored}
 
 \item{type}{Type of signal data, as specified by the recording system.
 Currently supports:
@@ -19,8 +20,8 @@ Currently supports:
 include extensions, and is not a filepath. alphanumeric characters are
 acceptable, as well as hyphens (-) and underscores (_)}
 
-\item{write_location}{File path of directory that should be used to place
-files. Defaults to current working directory.}
+\item{record_dir}{File path of directory that should be used read and write
+files. Defaults to current directory.}
 }
 \description{
 This function allows for WFDB files to be read from specific EP recording
