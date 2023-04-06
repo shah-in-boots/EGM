@@ -210,7 +210,7 @@ read_wfdb <- function(record,
 											begin = 0,
 											end = NA_integer_,
 											interval = NA_integer_,
-											units = "digital",
+											units = c("digital", "physical"),
 											channels = character(),
 											...) {
 
@@ -420,19 +420,63 @@ read_annotation <- function(record,
 				}
 			}
 		}() |>
-		paste('-v')
+		paste('-e')
 
 	# Temporary local/working directory, to reset at end of function
 	withr::with_dir(new = wd, code = {
 		dat <-
-			data.table::fread(
-				cmd = cmd,
-				header = TRUE,
-				fill = TRUE,
-				sep = "\t"
-			)
+			readr::read_table(file = system(cmd, intern = TRUE),
+												col_names = FALSE,
+												col_types = c("ciciii"))
+
 	})
 
 	# Return data
 	dat
+}
+
+#' Write an annotation into a WFDB-compatible file
+#' @param data A table containing 6 columns
+#' @return Outputs a WFDB with the provided extension
+#' @export
+write_annotation <- function(data,
+														 record,
+														 annotator,
+														 record_dir = ".",
+														 wfdb_path,
+														 ...) {
+
+	# Validate:
+	#		WFDB software command
+	# 	Current or parent working directory
+	# 	Variable definitions
+	wrann <- find_wfdb_software(wfdb_path, "wrann")
+
+	if (fs::dir_exists(record_dir)) {
+		wd <- fs::path(record_dir)
+	} else {
+		wd <- getwd()
+	}
+
+	checkmate::assert_data_frame(data)
+
+	# Take annotation data and write to temporary file
+	# 	This later is sent to `wrann` through `cat` with a pipe
+	#		The temp file must be deleted after
+	tmpFile <- fs::file_temp("annotation_", ext = "txt")
+	withr::defer(fs::file_delete(tmpFile))
+
+	data |>
+		annotation_table_to_lines() |>
+		writeLines(tmpFile)
+
+	# Prepare the command for writing this into a WFDB format
+	#		Cat annotation file
+	#		Pipe
+	# 	Write out file
+	cat_cmd <- paste('cat', tmpFile)
+	wfdb_cmd <- paste(wrann, '-r', record, '-a', annotator)
+	cmd <- paste(cat_cmd, wfdb_cmd, sep = " | ")
+	withr::with_dir(new = wd, code = system(cmd))
+
 }

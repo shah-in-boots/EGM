@@ -11,7 +11,7 @@ read_wfdb(
   begin = 0,
   end = NA_integer_,
   interval = NA_integer_,
-  units = "digital",
+  units = c("digital", "physical"),
   channels = character(),
   ...
 )
@@ -23,7 +23,7 @@ read_wfdb(
   begin = 0,
   end = NA_integer_,
   interval = NA_integer_,
-  units = "digital",
+  units = c("digital", "physical"),
   channels = character(),
   ...
 )

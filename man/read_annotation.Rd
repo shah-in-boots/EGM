@@ -4,7 +4,14 @@
 \alias{read_annotation}
 \title{Read WFDB-compatible annotation file}
 \usage{
-read_annotation(record, annotator, record_dir = ".", ...)
+read_annotation(
+  record,
+  annotator,
+  record_dir = ".",
+  begin = 0,
+  end = NA_integer_,
+  ...
+)
 }
 \arguments{
 \item{record}{String that will be used to name the WFDB record. Cannot

@@ -9,8 +9,8 @@ test_that("wrsamp works", {
 			file = "sample-egm.txt",
 			type = "lspro",
 			record = "sample",
-			wfdb_path = "/usr/local/bin",
-			working_dir = test_path()
+			record_dir = test_path(),
+			wfdb_path = "/usr/local/bin"
 		)
 	)
 
@@ -37,8 +37,8 @@ test_that("ecgpuwave creates annotation file", {
 		detect_beats(
 			record = "sample",
 			detector = "ecgpuwave",
-			wfdb_path = "/usr/local/bin",
-			working_dir = test_path()
+			record_dir = test_path(),
+			wfdb_path = "/usr/local/bin"
 		)
 	)
 

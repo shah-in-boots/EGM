@@ -36,7 +36,7 @@ labels or alarm triggers
 }
 
 \author{
-Original software: George Moody, Tom Pollard, Benjamin Moody
+Original software: George Moody, Tom Pollard, Benjamin Moody.
 R implementation: Anish S. Shah
 Last updated: 01/22/23
 }
