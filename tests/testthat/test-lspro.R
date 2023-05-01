@@ -5,4 +5,10 @@ test_that("lspro data can be read in", {
 	expect_s3_class(x, "egm")
 	expect_s3_class(x[[1]], "eps")
 
+	hea <- read_lspro_header(file)
+	sig <- read_lspro_signal(file)
+
+	expect_type(hea, "list")
+	expect_s3_class(sig, "data.table")
+
 })

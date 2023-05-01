@@ -3,9 +3,9 @@
 #' Waveform Database (WFDB) Software Package
 #'
 #' @author
-#' Original software: George Moody, Tom Pollard, Benjamin Moody.
-#' R implementation: Anish S. Shah
-#' Last updated: 01/22/23
+#' Original software: George Moody, Tom Pollard, Benjamin Moody \cr
+#' R implementation: Anish S. Shah \cr
+#' Last updated: 04/28/23 \cr
 #'
 #' @description
 #'
@@ -45,13 +45,13 @@
 #' @name wfdb
 NULL
 
-#' Create WFDB-compatible signal and header files from EP recording systems
+#' I/O of WFDB-compatible signal & header files from EP recording systems
 #'
 #' This function allows for WFDB files to be read from specific EP recording
 #' systems, as indicated by the __type__ argument below.
 #'
-#' @param file Name of file. If it is a full path, then `read_location` is
-#'   ignored
+#' @param data A `data.frame` (or similar) that has a column that represents a
+#'   time point or index, and columns that represent signal values.
 #'
 #' @param type Type of signal data, as specified by the recording system.
 #'   Currently supports:
@@ -65,13 +65,137 @@ NULL
 #' @param record_dir File path of directory that should be used read and write
 #'   files. Defaults to current directory.
 #'
+#' @name wfdb_io
 #' @export
-write_wfdb <- function(file,
+write_wfdb <- function(data,
 											 type,
 											 record = file,
 											 record_dir = ".",
 											 wfdb_path,
 											 ...) {
+
+	# TODO How do you write a R-object data file into a WFDB-format?
+
+	# Validate WFDB software
+	cmd <- find_wfdb_software(wfdb_path, "wrsamp")
+
+	# Validate working directories and paths
+	# 	Current or parent working directory
+	# 	Reading directory and relevant file
+	# 	Writing directory
+	if (fs::file_exists(file)) {
+		fp <- fs::path(file)
+	} else if (fs::file_exists(fs::path(record_dir, file))) {
+		fp <- fs::path(record_dir, file)
+	} else {
+		stop("Cannot find the file in the the reading directory")
+	}
+
+	if (fs::dir_exists(record_dir)) {
+		wd <- fs::path(record_dir)
+	} else {
+		wd <- getwd()
+	}
+
+	# Validate record name
+	record <-
+		record |>
+		fs::path_sanitize() |>
+		fs::path_ext_remove()
+
+	if (type == "lspro") {
+
+		# Get LSPro data
+		hea <- read_lspro_header(fp)
+		sig <- read_lspro_signal(fp, n = Inf)
+
+		# Write out temporary CSV file for WFDB to use
+		# Add a timestamp for wfdb::wrsamp() to pull this in
+		tmpFile <- fs::file_temp("lspro", ext = "csv")
+		withr::defer(fs::file_delete(tmpFile))
+		data.table::fwrite(sig, file = tmpFile, col.names = FALSE)
+
+		# Options for `wrsamp`
+		# 	-F <numeric>		sampling frequency, default is 250
+		# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
+		#		-i <string>			input file (default standard input)
+		#		-o <string>			Write the signal file in current directory as 'record'
+		#												record.dat
+		#												record.hea
+		#		-x <numeric>		Scaling factor if needed
+
+		# Frequency
+		hz <- paste("-F", hea$freq)
+
+		# ADC
+		adc <- paste("-G", paste0(
+			'"',
+			paste(hea$ADC_saturation / hea$channels$gain, collapse = " "),
+			'"'
+		))
+
+		# Input (full file path)
+		ip <- paste("-i", tmpFile)
+
+		# Output
+		op <- paste("-o", record)
+
+		# Write with `wrsamp`
+		# 	Change into correct folder/directory (the writing directory)
+		# 	Then reset to base directory
+		# 	Cleanup and remove temporary CSV file immediately
+		withr::local_dir(new = wd)
+		system2(command = cmd,
+						args = c(hz, adc, ip, op))
+
+		# Modify header file with more data
+			# Record line (first one) needs a date and time appended
+			# Then handle the signal specification files
+		headLine <-
+			readLines(con = paste0(record, ".hea"), n = 1) |>
+			paste(format(hea$start_time, "%H:%M:%S %d/%m/%Y"))
+
+		# 10 columns:
+		# 	>= V9 and V10 are descriptive fields
+		# 		Should be a tab-delim field
+		#			Can contain spaces internal to it
+		# 	V3 is ADC units
+		#			Can be appended with baseline value "(0)"
+		# 		Can be appended with "/mV" to specify units
+		header <-
+			read.table(file = paste0(record, ".hea"),
+								 skip = 1)
+		header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
+		header <- header[1:9]
+		header[9] <- hea$channels$label
+
+		# Write header back in place
+		writeLines(text = headLine,
+							 con = paste0(record, ".hea"))
+		write.table(
+			header,
+			file = paste0(record, ".hea"),
+			sep = "\t",
+			quote = FALSE,
+			col.names = FALSE,
+			row.names = FALSE,
+			append = TRUE
+		)
+	}
+}
+
+#' @rdname wfdb_io
+#' @param file Name of file. If it is a full path, then `read_location` is
+#'   ignored
+#'
+#' @inheritParams wfdb_io
+#' @export
+rewrite_wfdb <- function(file,
+												 type,
+												 record = file,
+												 record_dir = ".",
+												 wfdb_path,
+												 ...) {
 
 	# Validate WFDB software
 	cmd <- find_wfdb_software(wfdb_path, "wrsamp")
@@ -182,27 +306,26 @@ write_wfdb <- function(file,
 
 }
 
-#' Reading in WFDB signal
-#'
+#' @rdname wfdb_io
+#' @inheritParams wfdb_io
 #' @param begin,end,interval Timepoint in seconds, which is converted to an
 #'   index position based on sampling frequency. The default is to start at the
 #'   beginning of the record. If `end` or `interval` are given, the earlier of
 #'   the two will be returned. The `end` argument gives a time index to read
 #'   until. The `interval` argument is the length of time past the start point.
 #'
-#' @param units A string representing either `digital` (DEFAULT) or
-#'   `physical` units that should be returned, if available.
+#' @param units A string representing either `digital` (DEFAULT) or `physical`
+#'   units that should be used, if available.
 #'
-#'		- digital = Index in sample number, signal in integers (A/D units)
+#'   * digital = Index in sample number, signal in integers (A/D units)
 #'
-#'		- physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
-#'		This will include 1 additional row over the header/column names that
-#'		describes units
+#'   * physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
+#'   This will include 1 additional row over the header/column names that
+#'   describes units
 #'
 #' @param channels Either the signal/channel in a vector as a name or number.
 #'   Allows for duplication of signal or to re-order signal if needed.
 #'
-#' @return Data table
 #' @export
 read_wfdb <- function(record,
 											record_dir = ".",
@@ -303,131 +426,3 @@ read_wfdb <- function(record,
 	dat
 }
 
-# Annotation -------------------------------------------------------------------
-
-
-#' Read WFDB-compatible annotation file
-#'
-#' @inheritParams write_wfdb
-#' @inheritParams read_wfdb
-#'
-#' @details
-#'
-#' # Annotation files
-#'
-#' The types of annotations that are supported are described below:
-#'
-#' * atr = manually reviewed and corrected reference annotation files
-#'
-#' * ann = general annotator file
-#' @export
-read_annotation <- function(record,
-														annotator,
-														record_dir = ".",
-														begin = 0,
-														end = NA_integer_,
-														...) {
-
-	# Validate:
-	#		WFDB software command
-	# 	Current or parent working directory
-	# 	Directory of the record/WFDB files
-	# 	Variable definitions
-	rdann <- find_wfdb_software(wfdb_path, "rdann")
-
-	if (fs::dir_exists(record_dir)) {
-		wd <- fs::path(record_dir)
-	} else {
-		wd <- getwd()
-	}
-
-	checkmate::assert_number(begin)
-	checkmate::assert_number(end, na.ok = TRUE)
-	checkmate::assert_number(interval, na.ok = TRUE)
-
-	# Create all the necessary parameters for rdann
-	#		-f			Start time
-	#		-t			End time
-	#		-v			Column headings
-	#		-e			Elapsed time as (versus absolute time)
-	# TODO filtering flags not yet included
-	cmd <-
-		paste(rdann, '-r', record, '-a', annotator) |>
-		{
-			\(.) {
-				if (begin != 0) {
-					paste(., "-f", begin)
-				} else {
-					.
-				}
-			}
-		}() |>
-		{
-			\(.) {
-				if (!is.na(end)) {
-					paste(., "-t", end)
-				} else {
-					.
-				}
-			}
-		}() |>
-		paste('-e')
-
-	# Temporary local/working directory, to reset at end of function
-	withr::with_dir(new = wd, code = {
-		dat <-
-			readr::read_table(file = system(cmd, intern = TRUE),
-												col_names = FALSE,
-												col_types = c("ciciii"))
-
-	})
-
-	# Return data
-	dat
-}
-
-#' Write an annotation into a WFDB-compatible file
-#' @param data A table containing 6 columns
-#' @return Outputs a WFDB with the provided extension
-#' @export
-write_annotation <- function(data,
-														 record,
-														 annotator,
-														 record_dir = ".",
-														 wfdb_path,
-														 ...) {
-
-	# Validate:
-	#		WFDB software command
-	# 	Current or parent working directory
-	# 	Variable definitions
-	wrann <- find_wfdb_software(wfdb_path, "wrann")
-
-	if (fs::dir_exists(record_dir)) {
-		wd <- fs::path(record_dir)
-	} else {
-		wd <- getwd()
-	}
-
-	checkmate::assert_data_frame(data)
-
-	# Take annotation data and write to temporary file
-	# 	This later is sent to `wrann` through `cat` with a pipe
-	#		The temp file must be deleted after
-	tmpFile <- fs::file_temp("annotation_", ext = "txt")
-	withr::defer(fs::file_delete(tmpFile))
-
-	data |>
-		annotation_table_to_lines() |>
-		writeLines(tmpFile)
-
-	# Prepare the command for writing this into a WFDB format
-	#		Cat annotation file
-	#		Pipe
-	# 	Write out file
-	cat_cmd <- paste('cat', tmpFile)
-	wfdb_cmd <- paste(wrann, '-r', record, '-a', annotator)
-	cmd <- paste(cat_cmd, wfdb_cmd, sep = " | ")
-	withr::with_dir(new = wd, code = system(cmd))
-
-}

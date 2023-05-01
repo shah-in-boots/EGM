@@ -1,13 +1,8 @@
-#' EGM waveform detection
-#' @export
-
-
-
 #' ECG waveform detection
 #'
 #' @return Creates a WFDB-compatible annotation file
 #'
-#' @inheritParams write_wfdb
+#' @inheritParams rewrite_wfdb
 #'
 #' @param detector Signal detector that can create WFDB-compatible annotation
 #'   files
