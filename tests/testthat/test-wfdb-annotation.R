@@ -12,6 +12,3 @@ test_that("can read in annotation files", {
 
 })
 
-test_that("can write annotation files", {
-
-})

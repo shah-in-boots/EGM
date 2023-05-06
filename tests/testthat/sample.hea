@@ -1,15 +1,15 @@
-sample 14 1000 3522 15:09:20 30/04/2023
-sample.dat	16	6553.6(0)/mV	16	0	-342	29735	0	I
-sample.dat	16	6553.6(0)/mV	16	0	427	-3360	0	III
-sample.dat	16	6553.6(0)/mV	16	0	366	-7721	0	V1
-sample.dat	16	6553.6(0)/mV	16	0	-168	29164	0	ABL D
-sample.dat	16	6553.6(0)/mV	16	0	23	-191	0	ABL P
-sample.dat	16	6553.6(0)/mV	16	0	-6	-12098	0	CS 1-2
-sample.dat	16	6553.6(0)/mV	16	0	-27	-2132	0	CS 3-4
-sample.dat	16	6553.6(0)/mV	16	0	-55	-15479	0	CS 5-6
-sample.dat	16	6553.6(0)/mV	16	0	-76	2758	0	CS 7-8
-sample.dat	16	6553.6(0)/mV	16	0	-35	3489	0	CS 9-10
-sample.dat	16	6553.6(0)/mV	16	0	53	-3667	0	HIS D
-sample.dat	16	6553.6(0)/mV	16	0	-99	-31662	0	HIS M
-sample.dat	16	6553.6(0)/mV	16	0	-1331	-1730	0	HIS P
-sample.dat	16	6553.6(0)/mV	16	0	2221	25739	0	RV 1-2
+sample 14 1000 3522 15:09:20 30/04/2023 15:09:20 04/05/2023
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-342	29735	0	I
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	427	-3360	0	III
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	366	-7721	0	V1
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-168	29164	0	ABL D
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	23	-191	0	ABL P
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-6	-12098	0	CS 1-2
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-27	-2132	0	CS 3-4
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-55	-15479	0	CS 5-6
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-76	2758	0	CS 7-8
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-35	3489	0	CS 9-10
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	53	-3667	0	HIS D
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-99	-31662	0	HIS M
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	-1331	-1730	0	HIS P
+sample.dat	16	6553.6(0)/mV(0)/mV	16	0	2221	25739	0	RV 1-2

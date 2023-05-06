@@ -24,8 +24,8 @@ read_wfdb(
 )
 }
 \arguments{
-\item{data}{Name of file. If it is a full path, then \code{read_location} is
-ignored}
+\item{data}{A \code{data.frame} (or similar) that has a column that represents a
+time point or index, and columns that represent signal values.}
 
 \item{type}{Type of signal data, as specified by the recording system.
 Currently supports:
@@ -50,7 +50,7 @@ the two will be returned. The \code{end} argument gives a time index to read
 until. The \code{interval} argument is the length of time past the start point.}
 
 \item{units}{A string representing either \code{digital} (DEFAULT) or \code{physical}
-units that should be returned, if available.
+units that should be used, if available.
 \itemize{
 \item digital = Index in sample number, signal in integers (A/D units)
 \item physical = Index in elapsed time, signal in decimal voltage (e.g. mV).

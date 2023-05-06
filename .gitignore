@@ -46,3 +46,4 @@ sandbox.R
 # Temp files
 .DS_Store
 tests/.DS_store
+inst/doc

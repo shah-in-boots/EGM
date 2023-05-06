@@ -11,7 +11,7 @@ test_that("plots can be generated easily", {
 		data = data,
 		channels = channels,
 		time_frame = time_frame
-	)
+	) + theme_egm_light()
 
 	expect_s3_class(object, "ggm")
 	expect_s3_class(object, "ggplot")
