@@ -307,9 +307,12 @@ rewrite_wfdb <- function(file,
 		header <-
 			read.table(file = paste0(record, ".hea"),
 								 skip = 1)
+		header <-
+			data.table::fread(file = paste0(record, ".hea"),
+												skip = 1)
 		header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
-		header <- header[1:9]
-		header[9] <- hea$abel
+		header <- header[, 1:9]
+		header[, 9] <- hea$channels$label
 
 		# Write header back in place
 		writeLines(text = headLine,

@@ -2,17 +2,35 @@
 #' @noRd
 find_wfdb_software <- function(.path, .app) {
 
-	# Systematic checks to make sure the paths/files are correct and available
-	#		Check that the directory path is a absolute path
-	#		Check if directory exists
-	#		Check if the application file exists
-	if (fs::is_absolute_path(.path) &
-			fs::dir_exists(.path) &
-			fs::file_exists(fs::path(.path, .app))) {
-
-		wfdbPath <- fs::path(.path, .app)
+	# COnfirm operating system structure for pulling
+	if (grepl("windows|Windows", sessionInfo()$running)) {
+		os <- "win"
+	} else if (grepl("mac", sessionInfo()$running)) {
+		os <- "mac"
 	} else {
-		stop(paste("Incorrect path or `", .app, "` could not be found"))
+		stop("Operating system could not be identified or WFDB is not compatible")
+	}
+
+
+	if (os == "mac") {
+		# Systematic checks to make sure the paths/files are correct and available
+		#		Check that the directory path is a absolute path
+		#		Check if directory exists
+		#		Check if the application file exists
+		if (fs::is_absolute_path(.path) &
+				fs::dir_exists(.path) &
+				fs::file_exists(fs::path(.path, .app))) {
+
+			wfdbPath <- fs::path(.path, .app)
+		} else {
+			stop(paste("Incorrect path or `", .app, "` could not be found"))
+		}
+	} else if (os == "win") {
+
+		# Cannot directly check if system path is available
+		# Would need to append the path appropriately
+		wfdbPath <- paste("wsl", fs::path(.path, .app))
+
 	}
 
 	wfdbPath
