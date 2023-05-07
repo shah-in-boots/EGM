@@ -87,152 +87,12 @@
 #' @export
 read_lspro <- function(file, n = Inf) {
 
-	### Header ----
+	# Read in the LSPro data and package it into a simple "EGM" table
+	# This is to ensure class safety when plotting
+	sig <- read_lspro_signal(file = file, n = n)
+	hea <- read_lspro_header(file = file)
+	egm(signal = sig, header = hea)
 
-	file_nm <- deparse1(substitute(file))
-	hea <-
-		readLines(file, n = 13) |>
-		tstrsplit(split = ":\ ", fill = NA) |>
-		{\(.x)
-			data.table(description = .x[[1]], value = .x[[2]])
-		}() |>
-		{\(.y)
-			list(
-				file_name = file_nm,
-				number_of_channels = as.numeric(.y$value[.y$description == "Channels exported"]),
-				samples = {
-					s <- .y$value[.y$description == "Samples per channel"]
-					if (grepl(":", s)) {
-						substr(s, start = 1, stop = nchar(s) - 8) |>
-							as.numeric()
-					} else {
-						as.numeric(s)
-					}
-				},
-				start_time = as.POSIXct(strptime(.y$value[.y$description == "Start time"], format = "%H:%M:%S")),
-				end_time = as.POSIXct(strptime(.y$value[.y$description == "End time"], format = "%H:%M:%S")),
-				freq = {
-					f <- .y$value[.y$description == "Sample Rate"]
-					if (grepl("Hz", f)) {
-						gsub("Hz", "", f) |>
-							as.numeric()
-					} else {
-						as.numeric(f)
-					}
-				}
-			)
-		}()
-
-	### Channels ----
-
-	# Individual channel data, 8 elements each
-	# Written after header/channel info (13 + 8 * n + 2) ... Blank + [Data] Line
-	ch_list <- list()
-	for (i in 1:hea$number_of_channels) {
-		ch_list[[i]] <-
-			fread(
-				file,
-				skip = 13 + (i - 1) * 8,
-				nrows = 8,
-				sep = NULL,
-				header = FALSE
-			) |>
-			unlist() |>
-			tstrsplit(split = ":\ ") |>
-			{
-				\(.x)
-				data.table(description = .x[[1]], value = .x[[2]])
-			}() |>
-			{
-				\(.y)
-				list(
-					number = as.numeric(.y[1, 2]),
-					label = as.character(.y[2, 2]),
-					gain = as.numeric(gsub("mv", "", .y[3, 2])),
-					low = as.numeric(gsub("Hz", "", .y[4, 2])),
-					high = as.numeric(gsub("Hz", "", .y[5, 2])),
-					freq = as.numeric(gsub("Hz", "", .y[6, 2])),
-					color = paste0("#", .y[7, 2]),
-					scale = as.numeric(.y[8, 2])
-				)
-			}()
-	}
-
-	# Channels should be organized appropriately
-	# 	Top to bottom should be from high to low, and then from left to right
-	# 	Catheters/leads are specifically included
-	# 	Retrieved from "data-raw" folder from leads.R file
-	# Table of channel information
-	# 	Clean up names if possible
-	# 	All are made upper character
-	channels <-
-		ch_list |>
-		rbindlist() |>
-		dplyr::mutate(label = toupper(label)) |>
-		tidyr::separate(
-			label,
-			into = c("source", "lead"),
-			sep = "(?<=[a-zA-Z])\\s*(?=[0-9])",
-			remove = FALSE,
-			fill = "right"
-		) |>
-		dplyr::mutate(lead = dplyr::case_when(
-			label %in% .leads$ECG ~ label,
-			TRUE ~ lead
-		)) |>
-		dplyr::mutate(source = dplyr::case_when(
-			label %in% .leads$ECG ~ "ECG",
-			TRUE ~ source
-		)) |>
-		tidyr::separate(
-			source,
-			into = c("source", "extra"),
-			sep = "\ ",
-			fill = "right"
-		) |>
-		dplyr::mutate(lead = dplyr::if_else(is.na(lead), extra, lead)) |>
-		dplyr::select(-extra) |>
-		dplyr::mutate(label = sub("ECG\ ", "", paste(source, lead)))
-
-	# Now reorder the levels by factor
-	channels$label <-
-		factor(channels$label, levels = intersect(.labels, channels$label))
-	channels$source <-
-		factor(channels$source, levels = intersect(.source, channels$source))
-
-	### Signals ----
-
-	# Read in the CSV-styled signal data quickly
-	sig <-
-		fread(
-			file,
-			skip = "[Data]",
-			header = FALSE,
-			col.names = as.character(channels$label),
-			nrows = n
-		)
-
-	# Combine channels into a list
-	# Adjust for gain at the same time as lapply function is being used
-	# Convert to milivolts from ADC units
-	# [mV] = [ADC value] * [Range or gain in mV] / 32768
-	ADC_saturation <- 32768
-
-	for (i in 1:hea$number_of_channels) {
-
-		.x <- sig[[i]] * channels$gain[i] / ADC_saturation
-		sig[[i]] <-
-			eps(
-				x = .x,
-				frequency = channels$freq[i],
-				label = as.character(channels$label[i]),
-				color = channels$color[i]
-			)
-	}
-
-	# Return new data.table class of EGMs
-	egm(header = hea,
-			signal = sig)
 }
 
 #' @rdname lspro
@@ -261,7 +121,7 @@ read_lspro_header <- function(file) {
 				},
 				start_time = as.POSIXct(strptime(.y$value[.y$description == "Start time"], format = "%H:%M:%S")),
 				end_time = as.POSIXct(strptime(.y$value[.y$description == "End time"], format = "%H:%M:%S")),
-				freq = {
+				frequency = {
 					f <- .y$value[.y$description == "Sample Rate"]
 					if (grepl("Hz", f)) {
 						gsub("Hz", "", f) |>
@@ -304,7 +164,7 @@ read_lspro_header <- function(file) {
 					gain = as.numeric(gsub("mv", "", .y[3, 2])),
 					low = as.numeric(gsub("Hz", "", .y[4, 2])),
 					high = as.numeric(gsub("Hz", "", .y[5, 2])),
-					freq = as.numeric(gsub("Hz", "", .y[6, 2])),
+					frequency = as.numeric(gsub("Hz", "", .y[6, 2])),
 					color = paste0("#", .y[7, 2]),
 					scale = as.numeric(.y[8, 2])
 				)
@@ -353,14 +213,24 @@ read_lspro_header <- function(file) {
 	channels$source <-
 		factor(channels$source, levels = intersect(.source, channels$source))
 
-	# Place back in header file
-	hea$channels <- channels
+	# Place back in header file as individual lists based on the characteristics
+	hea$number <- channels$number
+	hea$label <- channels$label
+	hea$source <- channels$source
+	hea$lead <- channels$lead
+	hea$gain <- channels$gain
+	hea$low_pass <- channels$low
+	hea$high_pass <- channels$high
+	hea$color <- channels$color
+	hea$scale <- channels$scale
+
+	# Update gain now that is present
+	hea$adc_gain <- hea$ADC_saturation / hea$gain
 
 	# Return
 	hea
 
 }
-
 
 
 #' @rdname lspro

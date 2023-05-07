@@ -58,7 +58,7 @@ annotation_table_to_lines <- function(data) {
 	# Output will be put back into `wrann` compatible lines
 	# 	base::sprintf() is 2-3 faster than paste
 	# 	lines <- paste0(v1, v2, v3, v4, v5, v6)
-	lines <- sprint(paste0(rep("%s", 6), collapse = ""), v1, v2, v3, v4, v5, v6)
+	lines <- sprintf(paste0(rep("%s", 6), collapse = ""), v1, v2, v3, v4, v5, v6)
 
 	# Return
 	lines

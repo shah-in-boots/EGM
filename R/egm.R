@@ -4,33 +4,44 @@
 #'
 #' @name egm
 #' @export
-egm <- function(header = list(),
-								signal = multi_channel(),
+egm <- function(signal,
+								header,
+								annotation = NULL,
 								...) {
 
+	# Signal data will be in multi-channel format for EPS data, e.g. data.table
 	# Header will be  a list
-	# Signal data will be in multi-channel format for EPS data
-	# Each column in the dataframe is an informative `eps` signal data
+	# Annotation is a simple data.table
+	if (is.null(annotation)) {
+		annotation <-
+			data.table(
+				time = numeric(),
+				sample = integer(),
+				type = character(),
+				subtype = character(),
+				channel = integer(),
+				number = integer()
+			)
+	}
 
-	new_egm(
-		header = header,
-		signal = signal
-	)
+	new_egm(signal = signal,
+					header = header,
+					annotation = annotation)
 }
 
-
 #' @export
-new_egm <- function(header = list(),
-										signal = data.frame(),
+new_egm <- function(signal = data.table(),
+										header = list(),
+										annotation = data.frame(),
 										...) {
 
 	# Signal will become a data frame (coerced into a data table)
 	structure(
 		signal,
 		header = header,
-		class = c("egm", "data.table", "data.frame")
+		annotation = annotation,
+		class = c("egm", class(signal))
 	)
-
 
 }
 
@@ -42,23 +53,21 @@ methods::setOldClass(c("egm", "vctrs_list_of"))
 
 #' @export
 format.egm <- function(x, ...) {
-	hea <- field(x, "header")
-	chs <- field(x, "channels")
+	hea <- attr(x, "header")
 
 	cat("Signal Data\n")
-	cat("-----------\n\n")
-	cat("Recording Duration: ", hea$samples/hea$freq, "seconds\n")
-	cat("Recording Frequency ", hea$freq, " Hz\n")
+	cat("-----------\n")
+	cat("Recording Duration: ", hea$samples/hea$frequency, "seconds\n")
+	cat("Recording frequency ", hea$frequency, " Hz\n")
 	cat("Number of channels: ", hea$number_of_channels, "\n")
-	cat("Channel Names: ", paste(chs$label))
-
+	cat("Channel Names: ", paste(hea$label))
 }
 
-obj_print_data.egm <- function(x, ...) {
-	if (length(x) != 0) {
-		print(format(x), quote = FALSE)
-	}
+#' @export
+print.egm <- function(x, ...) {
+	format(x)
 }
+
 
 
 #' @export
@@ -78,20 +87,4 @@ vec_ptype2.egm.egm <- function(x, y, ...) new_egm()
 
 #' @export
 vec_cast.egm.egm <- function(x, to, ...) x
-
-### External Helpers ----
-
-#' @export
-get_header <- function(x) {
-	stopifnot("Requires `egm` class" = inherits(x, "egm"))
-	attributes(x)$header
-}
-
-#' @export
-get_signal <- function(x) {
-	stopifnot("Requires `egm` class" = inherits(x, "egm"))
-	vec_data(x)
-}
-
-### Internal Helpers ----
 
