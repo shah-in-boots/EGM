@@ -15,8 +15,13 @@ test_that("plots can be generated easily", {
 
 	expect_s3_class(object, "ggm")
 	expect_s3_class(object, "ggplot")
+})
 
-	# Add intervals to the surface lead
+test_that("simple intervals can be added to surface leads", {
+
+	object <- ggm(data = read_lspro(test_path('sample-egm.txt')),
+								channels = c("I", "CS", "HIS D", "HIS M", "RV"))
+
 	obj1 <-
 		object |>
 		add_intervals(channel = "I")
@@ -32,6 +37,8 @@ test_that("plots can be generated easily", {
 		object |>
 		add_intervals(channel = "I") |>
 		add_intervals(channel = "CS 9-10")
+
+	expect_s3_class(obj3, "ggm")
 
 })
 
@@ -59,3 +66,4 @@ test_that("colors can be applied to a light or dark theme", {
 	expect_length(light$theme$panel.background, 0)
 
 })
+

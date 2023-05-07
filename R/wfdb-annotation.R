@@ -20,7 +20,7 @@ read_annotation <- function(record,
 														record_dir = ".",
 														wfdb_path,
 														begin = 0,
-														end = NA_integer_,
+														end = NULL,
 														...) {
 
 	# Validate:
@@ -37,7 +37,6 @@ read_annotation <- function(record,
 	}
 
 	checkmate::assert_number(begin)
-	checkmate::assert_number(end, na.ok = TRUE)
 
 	# Create all the necessary parameters for rdann
 	#		-f			Start time
@@ -58,7 +57,7 @@ read_annotation <- function(record,
 		}() |>
 		{
 			\(.) {
-				if (!is.na(end)) {
+				if (!is.null(end)) {
 					paste(., "-t", end)
 				} else {
 					.
@@ -70,14 +69,12 @@ read_annotation <- function(record,
 	# Temporary local/working directory, to reset at end of function
 	withr::with_dir(new = wd, code = {
 		dat <-
-			readr::read_table(file = system(cmd, intern = TRUE),
-												col_names = FALSE,
-												col_types = c("ciciii"))
+			data.table::fread(cmd = cmd, header = FALSE)
 
 	})
 
-	# Return data
-	names(dat) <- c("Time", "Sample", "Type", "Subtype", "Channel", "Number")
+	# Rename and return
+	names(dat) <- c("time", "sample", "type", "subtype", "channel", "number")
 	dat
 }
 

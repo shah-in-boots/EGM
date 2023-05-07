@@ -5,9 +5,10 @@
 \alias{write_wfdb}
 \alias{rewrite_wfdb}
 \alias{read_wfdb}
+\alias{read_header}
 \title{I/O of WFDB-compatible signal & header files from EP recording systems}
 \usage{
-write_wfdb(data, type, record = file, record_dir = ".", wfdb_path, ...)
+write_wfdb(data, type, record, record_dir = ".", wfdb_path, header = NULL, ...)
 
 rewrite_wfdb(file, type, record = file, record_dir = ".", wfdb_path, ...)
 
@@ -18,14 +19,16 @@ read_wfdb(
   begin = 0,
   end = NA_integer_,
   interval = NA_integer_,
-  units = c("digital", "physical"),
+  units = "digital",
   channels = character(),
   ...
 )
+
+read_header(record, record_dir = ".", wfdb_path, ...)
 }
 \arguments{
-\item{data}{Name of file. If it is a full path, then \code{read_location} is
-ignored}
+\item{data}{A \code{data.frame} (or similar) that has a column that represents a
+time point or index, and columns that represent signal values.}
 
 \item{type}{Type of signal data, as specified by the recording system.
 Currently supports:
@@ -40,6 +43,17 @@ acceptable, as well as hyphens (-) and underscores (_)}
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
 
+\item{header}{A header file is a named list of parameters that will be used
+to organize and describe the signal input from the \code{data} argument. If the
+\code{type} is given, specific additional elements will be searched for, such as
+the low or high pass filters, colors, or other signal attributes. At
+minimum, the following elements are required (as cannot be calculated):
+\itemize{
+\item frequency = sample frequency in Hertz \if{html}{\out{<integer>}}
+\item label = vector of names for each channel \if{html}{\out{<character>}}
+\item start_time = date/time object \if{html}{\out{<date>}}
+}}
+
 \item{file}{Name of file. If it is a full path, then \code{read_location} is
 ignored}
 
@@ -50,11 +64,11 @@ the two will be returned. The \code{end} argument gives a time index to read
 until. The \code{interval} argument is the length of time past the start point.}
 
 \item{units}{A string representing either \code{digital} (DEFAULT) or \code{physical}
-units that should be returned, if available.
+units that should be used, if available.
 \itemize{
 \item digital = Index in sample number, signal in integers (A/D units)
 \item physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
-This will include 1 additional row over the header/column names that
+This will \strong{include 1 additional row over the header/column names} that
 describes units
 }}
 

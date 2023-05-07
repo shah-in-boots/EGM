@@ -10,7 +10,7 @@ read_annotation(
   record_dir = ".",
   wfdb_path,
   begin = 0,
-  end = NA_integer_,
+  end = NULL,
   ...
 )
 }

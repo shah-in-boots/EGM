@@ -1,4 +1,4 @@
-# Signal -----------------------------------------------------------------------
+# Writing WFDB format data -----------------------------------------------------
 
 #' Waveform Database (WFDB) Software Package
 #'
@@ -65,55 +65,68 @@ NULL
 #' @param record_dir File path of directory that should be used read and write
 #'   files. Defaults to current directory.
 #'
+#' @param header A header file is a named list of parameters that will be used
+#'   to organize and describe the signal input from the `data` argument. If the
+#'   `type` is given, specific additional elements will be searched for, such as
+#'   the low or high pass filters, colors, or other signal attributes. At
+#'   minimum, the following elements are required (as cannot be calculated):
+#'
+#'   * frequency = sample frequency in Hertz <integer>
+#'
+#'   * label = vector of names for each channel <character>
+#'
+#'   * start_time = date/time object <date>
+#'
 #' @name wfdb_io
 #' @export
 write_wfdb <- function(data,
 											 type,
-											 record = file,
+											 record,
 											 record_dir = ".",
 											 wfdb_path,
+											 header = NULL,
 											 ...) {
 
 	# TODO How do you write a R-object data file into a WFDB-format?
+		# Options for `wrsamp`
+		# 	-F <numeric>		sampling frequency, default is 250
+		# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
+		#		-i <string>			input file (default standard input)
+		#		-o <string>			Write the signal file in current directory as 'record'
+		#												record.dat
+		#												record.hea
+		#		-x <numeric>		Scaling factor if needed
 
-	# Validate WFDB software
+
+	# Validation of paths
 	cmd <- find_wfdb_software(wfdb_path, "wrsamp")
-
-	# Validate working directories and paths
-	# 	Current or parent working directory
-	# 	Reading directory and relevant file
-	# 	Writing directory
-	if (fs::file_exists(file)) {
-		fp <- fs::path(file)
-	} else if (fs::file_exists(fs::path(record_dir, file))) {
-		fp <- fs::path(record_dir, file)
-	} else {
-		stop("Cannot find the file in the the reading directory")
-	}
-
 	if (fs::dir_exists(record_dir)) {
 		wd <- fs::path(record_dir)
 	} else {
 		wd <- getwd()
 	}
 
-	# Validate record name
-	record <-
-		record |>
-		fs::path_sanitize() |>
-		fs::path_ext_remove()
+	# Validate arguments
+	checkmate::assert_character(record)
+	checkmate::assert_data_frame(data)
 
+	# If header is available, check to see if key variables are present
+	if (!is.null(header)) {
+		checkmate::assert_names(names(header),
+														must.include = c("frequency", "adc_gain", "label", "start_time"))
+
+		checkmate::assert_integerish(header$frequency)
+		checkmate::assert_character(as.character(header$label), len = ncol(data))
+		checkmate::assert_numeric(header$adc_gain, lower = 0, len = ncol(data))
+	}
+
+	# Write out temporary CSV file for WFDB to use
+	tmpFile <- fs::file_temp("lspro", ext = "csv")
+	withr::defer(fs::file_delete(tmpFile))
+	data.table::fwrite(data, file = tmpFile, col.names = FALSE)
+
+	# Based on type, can change how header information is stored
 	if (type == "lspro") {
-
-		# Get LSPro data
-		hea <- read_lspro_header(fp)
-		sig <- read_lspro_signal(fp, n = Inf)
-
-		# Write out temporary CSV file for WFDB to use
-		# Add a timestamp for wfdb::wrsamp() to pull this in
-		tmpFile <- fs::file_temp("lspro", ext = "csv")
-		withr::defer(fs::file_delete(tmpFile))
-		data.table::fwrite(sig, file = tmpFile, col.names = FALSE)
 
 		# Options for `wrsamp`
 		# 	-F <numeric>		sampling frequency, default is 250
@@ -125,14 +138,10 @@ write_wfdb <- function(data,
 		#		-x <numeric>		Scaling factor if needed
 
 		# Frequency
-		hz <- paste("-F", hea$freq)
+		hz <- paste("-F", header$frequency)
 
-		# ADC
-		adc <- paste("-G", paste0(
-			'"',
-			paste(hea$ADC_saturation / hea$channels$gain, collapse = " "),
-			'"'
-		))
+		# ADC = -G "adc adc adc adc" format
+		adc <- paste('-G', paste0('"', paste(header$adc_gain, collapse = " "), '"'))
 
 		# Input (full file path)
 		ip <- paste("-i", tmpFile)
@@ -153,7 +162,7 @@ write_wfdb <- function(data,
 			# Then handle the signal specification files
 		headLine <-
 			readLines(con = paste0(record, ".hea"), n = 1) |>
-			paste(format(hea$start_time, "%H:%M:%S %d/%m/%Y"))
+			paste(format(header$start_time, "%H:%M:%S %d/%m/%Y"))
 
 		# 10 columns:
 		# 	>= V9 and V10 are descriptive fields
@@ -162,18 +171,19 @@ write_wfdb <- function(data,
 		# 	V3 is ADC units
 		#			Can be appended with baseline value "(0)"
 		# 		Can be appended with "/mV" to specify units
-		header <-
+		headerFile <-
 			read.table(file = paste0(record, ".hea"),
 								 skip = 1)
-		header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
-		header <- header[1:9]
-		header[9] <- hea$channels$label
+		headerFile[[3]] <- paste0(headerFile[[3]], "(0)", "/mV", sep = "")
+		headerFile <- headerFile[1:9]
+		headerFile[9] <- header$label
 
 		# Write header back in place
 		writeLines(text = headLine,
 							 con = paste0(record, ".hea"))
+
 		write.table(
-			header,
+			headerFile,
 			file = paste0(record, ".hea"),
 			sep = "\t",
 			quote = FALSE,
@@ -181,14 +191,25 @@ write_wfdb <- function(data,
 			row.names = FALSE,
 			append = TRUE
 		)
+
+		# Add additional information at end of header
+		info <- c(paste("# low_pass", paste(header$low_pass, collapse = " ")),
+							paste("# high_pass", paste(header$high_pass, collapse = " ")),
+							paste("# color", paste(header$color, collapse = " ")),
+							paste("# source", paste(header$source, collapse = " ")))
+
+		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
 	}
+
 }
 
 #' @rdname wfdb_io
+#'
 #' @param file Name of file. If it is a full path, then `read_location` is
 #'   ignored
 #'
 #' @inheritParams wfdb_io
+#'
 #' @export
 rewrite_wfdb <- function(file,
 												 type,
@@ -246,12 +267,12 @@ rewrite_wfdb <- function(file,
 		#		-x <numeric>		Scaling factor if needed
 
 		# Frequency
-		hz <- paste("-F", hea$freq)
+		hz <- paste("-F", hea$frequency)
 
 		# ADC
 		adc <- paste("-G", paste0(
 			'"',
-			paste(hea$ADC_saturation / hea$channels$gain, collapse = " "),
+			paste(hea$ADC_saturation / hea$gain, collapse = " "),
 			'"'
 		))
 
@@ -288,7 +309,7 @@ rewrite_wfdb <- function(file,
 								 skip = 1)
 		header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
 		header <- header[1:9]
-		header[9] <- hea$channels$label
+		header[9] <- hea$abel
 
 		# Write header back in place
 		writeLines(text = headLine,
@@ -302,9 +323,19 @@ rewrite_wfdb <- function(file,
 			row.names = FALSE,
 			append = TRUE
 		)
+
+		# Add additional information at end of header specific to LSPro data
+		info <- c(paste("# low_pass", paste(header$low_pass, collapse = " ")),
+							paste("# high_pass", paste(header$high_pass, collapse = " ")),
+							paste("# color", paste(header$color, collapse = " ")),
+							paste("# source", paste(header$source, collapse = " ")))
+
+		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
 	}
 
 }
+
+# Reading WFDB format data -----------------------------------------------------
 
 #' @rdname wfdb_io
 #' @inheritParams wfdb_io
@@ -320,7 +351,7 @@ rewrite_wfdb <- function(file,
 #'   * digital = Index in sample number, signal in integers (A/D units)
 #'
 #'   * physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
-#'   This will include 1 additional row over the header/column names that
+#'   This will __include 1 additional row over the header/column names__ that
 #'   describes units
 #'
 #' @param channels Either the signal/channel in a vector as a name or number.
@@ -333,7 +364,7 @@ read_wfdb <- function(record,
 											begin = 0,
 											end = NA_integer_,
 											interval = NA_integer_,
-											units = c("digital", "physical"),
+											units = "digital",
 											channels = character(),
 											...) {
 
@@ -353,6 +384,7 @@ read_wfdb <- function(record,
 	checkmate::assert_number(begin)
 	checkmate::assert_number(end, na.ok = TRUE)
 	checkmate::assert_number(interval, na.ok = TRUE)
+	checkmate::assert_choice(units, choices = c("digital", "physical"))
 
 	# Create all the necessary parameters for rdsamp
 	#		-f			Start time
@@ -422,7 +454,22 @@ read_wfdb <- function(record,
 		dat <- data.table::fread(cmd = cmd)
 	})
 
-	# Return data
+	# Return data after cleaning names
+	names(dat)[1] <- "sample"
 	dat
 }
 
+#' @rdname wfdb_io
+#'
+#' @inheritParams wfdb_io
+#'
+#' @export
+read_header <- function(record,
+												record_dir = ".",
+												wfdb_path,
+												...) {
+
+
+	# TODO read header files directly from text files *.hea
+	# TODO include the 'getinfo' at bottom, encased in '# name x x x' format
+}
