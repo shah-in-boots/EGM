@@ -27,11 +27,14 @@ ggm <- function(data,
 
 	stopifnot(inherits(data, "egm"))
 
-	header <- get_header(data)
-	signal <- data
+	hea <- attr(data, "hea")
+	hea$label <- as.character(hea$label)
+	ann <- attr(data, "annotation")
+	signal <- data.table::as.data.table(data)
+	names(signal) <- hea$label
 
 	# Should be all of the same frequency of data
-	hz <- header$freq
+	hz <- hea$frequency
 	signal$index <- 1:nrow(signal)
 	signal$time <- signal$index / hz
 
@@ -62,17 +65,11 @@ ggm <- function(data,
 
 	# Get channel data from individual signals
 	channelData <-
-		lapply(
-			signal[, ..selectedChannels],
-			FUN = function(.x) {
-				attributes(.x) |>
-					head(-1)
-			}
-		) |>
-		rbindlist()
+		hea[c("number", "label", "source", "lead", "color")] |>
+		as.data.table()
 
 	dt <-
-		melt(
+		data.table::melt(
 			signal[, c(..selectedChannels, "index", "time")],
 			id.vars = c("index", "time"),
 			variable.name = "label",
@@ -104,17 +101,23 @@ ggm <- function(data,
 											 label = NULL)
 
 	# Return with updated class
-	new_ggm(g)
+	new_ggm(g,
+					header = hea,
+					annotation = ann)
 
 }
 
 #' Construct `ggm` class
-new_ggm <- function(object = ggplot()) {
+new_ggm <- function(object = ggplot(),
+										header = list(),
+										annotation = data.table()) {
 
 	stopifnot(is.ggplot(object))
 
 	structure(
 		object,
+		header = header,
+		annotation = annotation,
 		class = c("ggm", class(object))
 	)
 }
@@ -146,9 +149,9 @@ add_intervals <- function(object,
 
 	# Get channels and check
 	dt <- object$data
-	chs <- unique(dt$label)
+	chs <- attributes(object)$header$label
 	stopifnot("The channel must be in the plot to annotate." = channel %in% chs)
-	hz <- unique(dt$freq)
+	hz <- attributes(object)$header$frequency
 
 	# Subset data for an annotation channel
 	ann <- dt[label == channel]
@@ -167,7 +170,6 @@ add_intervals <- function(object,
 	ints_locs <- pk_locs[1:length(ints)] + ints/(2 * hz)
 	ht <- mean(abs(peaks$pks), na.rm = TRUE)
 
-
 	dt_locs <- round(ints_locs*hz, digits = 0)
 	dt_ann <- ann[dt_locs, ]
 
@@ -175,6 +177,10 @@ add_intervals <- function(object,
 	stopifnot(inherits(as.integer(intervals), "integer"))
 	stopifnot("Intervals not available based on number of beats." =
 							all(intervals %in% seq_along(ints)))
+
+	# Color choice for text annotation
+	bg <- object$theme$plot.background$fill
+	txtColor <- ifelse(bg == "black", "white", "black")
 
 	# For all intervals
 	if (isTRUE(intervals)) {
@@ -189,7 +195,7 @@ add_intervals <- function(object,
 					y = ht / 2,
 					label = ints[.x]
 				),
-				color = "black",
+				color = txtColor,
 				inherit.aes = FALSE
 			)
 		})
@@ -205,7 +211,7 @@ add_intervals <- function(object,
 					y = ht / 2,
 					label = ints[.x]
 				),
-				color = "black",
+				color = txtColor,
 				inherit.aes = FALSE
 			)
 		})
