@@ -45,7 +45,6 @@ new_egm <- function(signal = data.table(),
 
 }
 
-### {vctr} Definitions ----
 
 #' @keywords internal
 #' @noRd
@@ -68,6 +67,11 @@ print.egm <- function(x, ...) {
 	format(x)
 }
 
+#' @export
+vec_ptype_abbr.egm <- function(x, ...) "egm"
+
+#' @export
+vec_ptype_full.egm <- function(x, ...) "electrogram"
 
 
 #' @export
@@ -76,11 +80,21 @@ is_egm <- function(x) {
 	inherits(x, "egm")
 }
 
-#' @export
-vec_ptype_abbr.egm <- function(x, ...) "egm"
+# Casting and coercion -------------------------------------------------------
+
+## HELPERS
 
 #' @export
-vec_ptype_full.egm <- function(x, ...) "electrogram"
+egm_ptype2 <- function(x, y, ...) {
+	as.data.table(df_ptype2(x, y, ...))
+}
+
+#' @export
+egm_cast <- function(x, to, ...) {
+	as.data.table(df_cast(x, to, ...))
+}
+
+## SELF
 
 #' @export
 vec_ptype2.egm.egm <- function(x, y, ...) new_egm()
@@ -88,3 +102,14 @@ vec_ptype2.egm.egm <- function(x, y, ...) new_egm()
 #' @export
 vec_cast.egm.egm <- function(x, to, ...) x
 
+## DATA.TABLE
+
+#' @export
+vec_ptype2.egm.data.table <- function(x, y, ...) {
+	egm_ptype2(x, y, ...)
+}
+
+#' @export
+vec_cast.egm.data.table <- function(x, to, ...) {
+	egm_cast(x, to, ...)
+}
