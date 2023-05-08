@@ -17,9 +17,5 @@
 #' @importFrom data.table .NGRP
 #' @importFrom data.table .SD
 #' @importFrom data.table data.table
-#' @importFrom Rcpp evalCpp
-#' @importFrom Rcpp sourceCpp
-#' @useDynLib shiva, .registration = TRUE
-#' @exportPattern "ˆ[[:alpha:]]+"
 ## usethis namespace: end
 NULL

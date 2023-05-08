@@ -66,33 +66,3 @@ test_that("colors can be applied to a light or dark theme", {
 	expect_length(light$theme$panel.background, 0)
 
 })
-
-test_that("plotting works for multiple file types", {
-
-
-	dir <- "/Users/asshah4/projects/clinical/lectures/avnrt-series/tmf_data"
-	fp <- system.file("extdata", "avnrt.txt", package = "shiva")
-	fp <- fs::path(dir, "lsp-tach-initiation.txt")
-	fp <- fs::path(dir, "lsp-avnrt-ongoing.txt")
-	fp <- fs::path(dir, "lsp-single-pvc.txt")
-
-
-	data <- read_lspro(fp)
-	expect_s3_class(data, "egm")
-
-	channels <- c("I", "CS", "HIS", "DD", "RV")
-	time_frame <- NULL
-	time_frame <- c(0, 1)
-
-
-	# Basic signal plot of egms
-	g <-
-		ggm(data = data,
-				channels = channels,
-				time_frame = time_frame) |>
-		add_colors(palette = "material", mode = "light")
-
-	g +
-		scale_x_continuous(breaks = seq(0, 1, by = 0.2), labels = c("0 ms", "200 ms", "400 ms", "600 ms", "800 ms", "1000 ms"))
-
-})
