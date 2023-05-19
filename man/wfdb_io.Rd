@@ -34,7 +34,7 @@ time point or index, and columns that represent signal values.}
 Currently supports:
 \itemize{
 \item \emph{lspro} = Boston Scientific LabSystem Pro (Bard)
-\item \emph{muse} = MUSE
+\item \emph{muse} = GE MUSE
 }}
 
 \item{record}{String that will be used to name the WFDB record. Cannot

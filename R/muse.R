@@ -50,7 +50,7 @@ read_muse <- function(file) {
 		ampPerByte <- as.numeric(lead$LeadAmplitudeUnitsPerBit[[1]])
 		waveform <- lead$WaveFormData[[1]]
 		bin <- base64enc::base64decode(waveform)
-		sig <- readBin(bin, integer(), n, size = 2) * ampPerByte
+		sig <- readBin(bin, integer(), sampleCount, size = 2) * ampPerByte
 		leadMatrix[, id] <- sig
 	}
 
