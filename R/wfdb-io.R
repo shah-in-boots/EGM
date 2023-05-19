@@ -58,6 +58,8 @@ NULL
 #'
 #' * _lspro_ = Boston Scientific LabSystem Pro (Bard)
 #'
+#' * _muse_ = GE MUSE
+#'
 #' @param record String that will be used to name the WFDB record. Cannot
 #'   include extensions, and is not a filepath. alphanumeric characters are
 #'   acceptable, as well as hyphens (-) and underscores (_)
@@ -84,7 +86,7 @@ write_wfdb <- function(data,
 											 record,
 											 record_dir = ".",
 											 wfdb_path,
-											 header = NULL,
+											 header,
 											 ...) {
 
 	# TODO How do you write a R-object data file into a WFDB-format?
@@ -96,7 +98,6 @@ write_wfdb <- function(data,
 		#												record.dat
 		#												record.hea
 		#		-x <numeric>		Scaling factor if needed
-
 
 	# Validation of paths
 	cmd <- find_wfdb_software(wfdb_path, "wrsamp")
@@ -110,23 +111,25 @@ write_wfdb <- function(data,
 	checkmate::assert_character(record)
 	checkmate::assert_data_frame(data)
 
-	# If header is available, check to see if key variables are present
-	if (!is.null(header)) {
-		checkmate::assert_names(names(header),
-														must.include = c("frequency", "adc_gain", "label", "start_time"))
-
-		checkmate::assert_integerish(header$frequency)
-		checkmate::assert_character(as.character(header$label), len = ncol(data))
-		checkmate::assert_numeric(header$adc_gain, lower = 0, len = ncol(data))
-	}
-
-	# Write out temporary CSV file for WFDB to use
-	tmpFile <- fs::file_temp("lspro", ext = "csv")
-	withr::defer(fs::file_delete(tmpFile))
-	data.table::fwrite(data, file = tmpFile, col.names = FALSE)
-
 	# Based on type, can change how header information is stored
+	# 	LSPRO (EPS)
+	# 	MUSE (ECG)
 	if (type == "lspro") {
+
+		# If header is available, check to see if key variables are present
+		if (!is.null(header)) {
+			checkmate::assert_names(names(header),
+															must.include = c("frequency", "adc_gain", "label", "start_time"))
+
+			checkmate::assert_integerish(header$frequency)
+			checkmate::assert_character(as.character(header$label), len = ncol(data))
+			checkmate::assert_numeric(header$adc_gain, lower = 0, len = ncol(data))
+		}
+
+		# Write out temporary CSV file for WFDB to use
+		tmpFile <- fs::file_temp("lspro", ext = "csv")
+		withr::defer(fs::file_delete(tmpFile))
+		data.table::fwrite(data, file = tmpFile, col.names = FALSE)
 
 		# Options for `wrsamp`
 		# 	-F <numeric>		sampling frequency, default is 250
@@ -199,6 +202,89 @@ write_wfdb <- function(data,
 							paste("# source", paste(header$source, collapse = " ")))
 
 		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
+	}
+
+	# For MUSE ECGs
+	if (type == "muse") {
+
+		# Write out temporary CSV file for WFDB to use
+		tmpFile <- fs::file_temp("muse", ext = "csv")
+		withr::defer(fs::file_delete(tmpFile))
+		data.table::fwrite(data, file = tmpFile, col.names = FALSE)
+
+		# Options for `wrsamp`
+		# 	-F <numeric>		sampling frequency, default is 250
+		# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
+		#		-i <string>			input file (default standard input)
+		#		-o <string>			Write the signal file in current directory as 'record'
+		#												record.dat
+		#												record.hea
+		#		-x <numeric>		Scaling factor if needed
+
+		# Frequency
+		hz <- paste("-F", header$frequency)
+
+		# ADC = -G "adc adc adc adc" format
+		# adc <- paste('-G', paste0('"', paste(header$adc_gain, collapse = " "), '"'))
+
+		# Input (full file path)
+		ip <- paste("-i", tmpFile)
+
+		# Output
+		op <- paste("-o", record)
+
+		# Write with `wrsamp`
+		# 	Change into correct folder/directory (the writing directory)
+		# 	Then reset to base directory
+		# 	Cleanup and remove temporary CSV file immediately
+		withr::local_dir(new = wd)
+		system2(command = cmd,
+						args = c(hz, ip, op))
+
+		# Modify header file with more data
+			# Record line (first one) needs a date and time appended
+			# Then handle the signal specification files
+		headLine <-
+			readLines(con = paste0(record, ".hea"), n = 1) |>
+			paste(format(header$start_time, "%H:%M:%S %d/%m/%Y"))
+
+		# 10 columns:
+		# 	>= V9 and V10 are descriptive fields
+		# 		Should be a tab-delim field
+		#			Can contain spaces internal to it
+		# 	V3 is ADC units
+		#			Can be appended with baseline value "(0)"
+		# 		Can be appended with "/mV" to specify units
+		headerFile <-
+			read.table(file = paste0(record, ".hea"),
+								 skip = 1)
+		headerFile[[3]] <- paste0(headerFile[[3]], "(0)", "/mV", sep = "")
+		headerFile <- headerFile[1:9]
+		headerFile[9] <- header$label
+
+		# Write header back in place
+		writeLines(text = headLine,
+							 con = paste0(record, ".hea"))
+
+		write.table(
+			headerFile,
+			file = paste0(record, ".hea"),
+			sep = "\t",
+			quote = FALSE,
+			col.names = FALSE,
+			row.names = FALSE,
+			append = TRUE
+		)
+
+		# Add additional information at end of header for MUSE ecg data
+		info <- c(paste("# mrn", paste(header$mrn, collapse = " ")),
+							paste("# age", paste(header$age, collapse = " ")),
+							paste("# sex", paste(header$sex, collapse = " ")),
+							paste("# race", paste(header$race, collapse = " ")),
+							paste("# diagnosis", paste(header$diagnosis, collapse = " ")))
+
+		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
+
 	}
 
 }

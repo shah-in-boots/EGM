@@ -8,7 +8,7 @@
 \alias{read_header}
 \title{I/O of WFDB-compatible signal & header files from EP recording systems}
 \usage{
-write_wfdb(data, type, record, record_dir = ".", wfdb_path, header = NULL, ...)
+write_wfdb(data, type, record, record_dir = ".", wfdb_path, header, ...)
 
 rewrite_wfdb(file, type, record = file, record_dir = ".", wfdb_path, ...)
 
@@ -34,6 +34,7 @@ time point or index, and columns that represent signal values.}
 Currently supports:
 \itemize{
 \item \emph{lspro} = Boston Scientific LabSystem Pro (Bard)
+\item \emph{muse} = MUSE
 }}
 
 \item{record}{String that will be used to name the WFDB record. Cannot

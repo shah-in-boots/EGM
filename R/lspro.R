@@ -232,7 +232,6 @@ read_lspro_header <- function(file) {
 
 }
 
-
 #' @rdname lspro
 #' @export
 read_lspro_signal <- function(file, n = Inf) {
