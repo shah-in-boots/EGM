@@ -2,17 +2,19 @@
 #' @noRd
 find_wfdb_software <- function(.path, .app) {
 
-	# COnfirm operating system structure for pulling
+	# Confirm operating system structure for pulling
 	if (grepl("windows|Windows", sessionInfo()$running)) {
 		os <- "win"
 	} else if (grepl("mac", sessionInfo()$running)) {
 		os <- "mac"
+	} else if (grepl("*nix", sessionInfo()$running)) {
+		os <- "nix"
 	} else {
 		stop("Operating system could not be identified or WFDB is not compatible")
 	}
 
 
-	if (os == "mac") {
+	if (os == "mac" | os == "nix") {
 		# Systematic checks to make sure the paths/files are correct and available
 		#		Check that the directory path is a absolute path
 		#		Check if directory exists
