@@ -7,7 +7,7 @@ find_wfdb_software <- function(.path, .app) {
 		os <- "win"
 	} else if (grepl("mac", sessionInfo()$running)) {
 		os <- "mac"
-	} else if (grepl("*nix", sessionInfo()$running)) {
+	} else if (grepl("n*x", sessionInfo()$running)) {
 		os <- "nix"
 	} else {
 		stop("Operating system could not be identified or WFDB is not compatible")
