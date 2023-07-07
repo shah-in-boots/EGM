@@ -4,7 +4,14 @@
 \alias{write_annotation}
 \title{Write an annotation into a WFDB-compatible file}
 \usage{
-write_annotation(data, record, annotator, record_dir = ".", wfdb_path, ...)
+write_annotation(
+  data,
+  record,
+  annotator,
+  record_dir = ".",
+  wfdb_path = getOption("wfdb_path"),
+  ...
+)
 }
 \arguments{
 \item{data}{A table containing 6 columns}

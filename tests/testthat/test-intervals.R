@@ -1,5 +1,5 @@
 test_that("can find peaks in a single channel", {
-	df <- read_lspro(file = test_path("sample-egm.txt"))
+	df <- read_lspro(file = test_path("egm.txt"))
 	pks <- find_major_peaks(df$I)
 	sig <- as.numeric(df$I)
 	expect_length(pks, 2)

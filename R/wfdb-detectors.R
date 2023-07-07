@@ -14,7 +14,7 @@
 detect_surface_beats <- function(record,
 																 record_dir = ".",
 																 detector,
-																 wfdb_path,
+																 wfdb_path = getOption("wfdb_path"),
 																 ...) {
 
 	# Validate
@@ -29,7 +29,7 @@ detect_surface_beats <- function(record,
 		ext <- "qrs"
 	}
 
-	cmd <- find_wfdb_software(wfdb_path, detector)
+	detector <- find_wfdb_command(detector)
 
 	if (fs::dir_exists(record_dir)) {
 		wd <- fs::path(record_dir)
@@ -45,7 +45,7 @@ detect_surface_beats <- function(record,
 	withr::with_dir(new = wd,
 									code = {
 										# System call to beat detector/annotator
-										system2(command = cmd,
+										system2(command = detector,
 														args = c(rec, ann),
 														stdout = FALSE)
 

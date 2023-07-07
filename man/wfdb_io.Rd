@@ -8,14 +8,29 @@
 \alias{read_header}
 \title{I/O of WFDB-compatible signal & header files from EP recording systems}
 \usage{
-write_wfdb(data, type, record, record_dir = ".", wfdb_path, header, ...)
+write_wfdb(
+  data,
+  type,
+  header,
+  record,
+  record_dir = ".",
+  wfdb_path = getOption("wfdb_path"),
+  ...
+)
 
-rewrite_wfdb(file, type, record = file, record_dir = ".", wfdb_path, ...)
+rewrite_wfdb(
+  file,
+  type,
+  record = file,
+  record_dir = ".",
+  wfdb_path = getOption("wfdb_path"),
+  ...
+)
 
 read_wfdb(
   record,
   record_dir = ".",
-  wfdb_path,
+  wfdb_path = getOption("wfdb_path"),
   begin = 0,
   end = NA_integer_,
   interval = NA_integer_,
@@ -24,7 +39,7 @@ read_wfdb(
   ...
 )
 
-read_header(record, record_dir = ".", wfdb_path, ...)
+read_header(record, record_dir = ".", wfdb_path = getOption("wfdb_path"), ...)
 }
 \arguments{
 \item{data}{A \code{data.frame} (or similar) that has a column that represents a
@@ -37,13 +52,6 @@ Currently supports:
 \item \emph{muse} = GE MUSE
 }}
 
-\item{record}{String that will be used to name the WFDB record. Cannot
-include extensions, and is not a filepath. alphanumeric characters are
-acceptable, as well as hyphens (-) and underscores (_)}
-
-\item{record_dir}{File path of directory that should be used read and write
-files. Defaults to current directory.}
-
 \item{header}{A header file is a named list of parameters that will be used
 to organize and describe the signal input from the \code{data} argument. If the
 \code{type} is given, specific additional elements will be searched for, such as
@@ -54,6 +62,13 @@ minimum, the following elements are required (as cannot be calculated):
 \item label = vector of names for each channel \if{html}{\out{<character>}}
 \item start_time = date/time object \if{html}{\out{<date>}}
 }}
+
+\item{record}{String that will be used to name the WFDB record. Cannot
+include extensions, and is not a filepath. alphanumeric characters are
+acceptable, as well as hyphens (-) and underscores (_)}
+
+\item{record_dir}{File path of directory that should be used read and write
+files. Defaults to current directory.}
 
 \item{file}{Name of file. If it is a full path, then \code{read_location} is
 ignored}

@@ -18,7 +18,7 @@
 read_annotation <- function(record,
 														annotator,
 														record_dir = ".",
-														wfdb_path,
+														wfdb_path = getOption("wfdb_path"),
 														begin = 0,
 														end = NULL,
 														...) {
@@ -28,7 +28,7 @@ read_annotation <- function(record,
 	# 	Current or parent working directory
 	# 	Directory of the record/WFDB files
 	# 	Variable definitions
-	rdann <- find_wfdb_software(wfdb_path, "rdann")
+	rdann <- find_wfdb_command('rdann')
 
 	if (fs::dir_exists(record_dir)) {
 		wd <- fs::path(record_dir)
@@ -86,14 +86,15 @@ write_annotation <- function(data,
 														 record,
 														 annotator,
 														 record_dir = ".",
-														 wfdb_path,
+														 wfdb_path = getOption("wfdb_path"),
 														 ...) {
+
 
 	# Validate:
 	#		WFDB software command
 	# 	Current or parent working directory
 	# 	Variable definitions
-	wrann <- find_wfdb_software(wfdb_path, "wrann")
+	wrann <- find_wfdb_command('wrann')
 
 	if (fs::dir_exists(record_dir)) {
 		wd <- fs::path(record_dir)

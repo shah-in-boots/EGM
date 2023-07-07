@@ -1,6 +1,6 @@
 test_that("plots can be generated easily", {
 
-	data <- read_lspro(test_path('sample-egm.txt'))
+	data <- read_lspro(test_path('egm.txt'))
 	expect_s3_class(data, "egm")
 
 	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
@@ -19,7 +19,7 @@ test_that("plots can be generated easily", {
 
 test_that("simple intervals can be added to surface leads", {
 
-	object <- ggm(data = read_lspro(test_path('sample-egm.txt')),
+	object <- ggm(data = read_lspro(test_path('egm.txt')),
 								channels = c("I", "CS", "HIS D", "HIS M", "RV"))
 
 	obj1 <-
@@ -44,7 +44,7 @@ test_that("simple intervals can be added to surface leads", {
 
 test_that("colors can be applied to a light or dark theme", {
 
-	data <- read_lspro(test_path('sample-egm.txt'))
+	data <- read_lspro(test_path('egm.txt'))
 	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
 	time_frame <- c(.1, 3)
 

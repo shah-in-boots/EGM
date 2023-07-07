@@ -60,13 +60,6 @@ NULL
 #'
 #' * _muse_ = GE MUSE
 #'
-#' @param record String that will be used to name the WFDB record. Cannot
-#'   include extensions, and is not a filepath. alphanumeric characters are
-#'   acceptable, as well as hyphens (-) and underscores (_)
-#'
-#' @param record_dir File path of directory that should be used read and write
-#'   files. Defaults to current directory.
-#'
 #' @param header A header file is a named list of parameters that will be used
 #'   to organize and describe the signal input from the `data` argument. If the
 #'   `type` is given, specific additional elements will be searched for, such as
@@ -79,14 +72,21 @@ NULL
 #'
 #'   * start_time = date/time object <date>
 #'
+#' @param record String that will be used to name the WFDB record. Cannot
+#'   include extensions, and is not a filepath. alphanumeric characters are
+#'   acceptable, as well as hyphens (-) and underscores (_)
+#'
+#' @param record_dir File path of directory that should be used read and write
+#'   files. Defaults to current directory.
+#'
 #' @name wfdb_io
 #' @export
 write_wfdb <- function(data,
 											 type,
+											 header,
 											 record,
 											 record_dir = ".",
-											 wfdb_path,
-											 header,
+											 wfdb_path = getOption("wfdb_path"),
 											 ...) {
 
 	# TODO How do you write a R-object data file into a WFDB-format?
@@ -100,7 +100,7 @@ write_wfdb <- function(data,
 		#		-x <numeric>		Scaling factor if needed
 
 	# Validation of paths
-	cmd <- find_wfdb_software(wfdb_path, "wrsamp")
+	wrsamp <- find_wfdb_command('wrsamp')
 	if (fs::dir_exists(record_dir)) {
 		wd <- fs::path(record_dir)
 	} else {
@@ -157,7 +157,7 @@ write_wfdb <- function(data,
 		# 	Then reset to base directory
 		# 	Cleanup and remove temporary CSV file immediately
 		withr::local_dir(new = wd)
-		system2(command = cmd,
+		system2(command = wrsamp,
 						args = c(hz, adc, ip, op))
 
 		# Modify header file with more data
@@ -238,7 +238,7 @@ write_wfdb <- function(data,
 		# 	Then reset to base directory
 		# 	Cleanup and remove temporary CSV file immediately
 		withr::local_dir(new = wd)
-		system2(command = cmd,
+		system2(command = wrsamp,
 						args = c(hz, ip, op))
 
 		# Modify header file with more data
@@ -301,11 +301,11 @@ rewrite_wfdb <- function(file,
 												 type,
 												 record = file,
 												 record_dir = ".",
-												 wfdb_path,
+												 wfdb_path = getOption("wfdb_path"),
 												 ...) {
 
 	# Validate WFDB software
-	cmd <- find_wfdb_software(wfdb_path, "wrsamp")
+	wrsamp <- find_wfdb_command('wrsamp')
 
 	# Validate working directories and paths
 	# 	Current or parent working directory
@@ -373,7 +373,7 @@ rewrite_wfdb <- function(file,
 		# 	Then reset to base directory
 		# 	Cleanup and remove temporary CSV file immediately
 		withr::local_dir(new = wd)
-		system2(command = cmd,
+		system2(command = wrsamp,
 						args = c(hz, adc, ip, op))
 
 		# Modify header file with more data
@@ -449,7 +449,7 @@ rewrite_wfdb <- function(file,
 #' @export
 read_wfdb <- function(record,
 											record_dir = ".",
-											wfdb_path,
+											wfdb_path = getOption("wfdb_path"),
 											begin = 0,
 											end = NA_integer_,
 											interval = NA_integer_,
@@ -462,7 +462,7 @@ read_wfdb <- function(record,
 	# 	Current or parent working directory
 	# 	Directory of the record/WFDB files
 	# 	Variable definitions
-	rdsamp <- find_wfdb_software(wfdb_path, "rdsamp")
+	rdsamp <- find_wfdb_command("rdsamp")
 
 	if (fs::dir_exists(record_dir)) {
 		wd <- fs::path(record_dir)
@@ -555,7 +555,7 @@ read_wfdb <- function(record,
 #' @export
 read_header <- function(record,
 												record_dir = ".",
-												wfdb_path,
+												wfdb_path = getOption("wfdb_path"),
 												...) {
 
 

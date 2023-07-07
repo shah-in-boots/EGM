@@ -8,7 +8,7 @@ read_annotation(
   record,
   annotator,
   record_dir = ".",
-  wfdb_path,
+  wfdb_path = getOption("wfdb_path"),
   begin = 0,
   end = NULL,
   ...

@@ -1,6 +1,6 @@
 #' @keywords internal
 #' @noRd
-find_wfdb_software <- function(.path, .app) {
+find_wfdb_software <- function() {
 
 	# Confirm operating system structure for pulling
 	if (grepl("windows|Windows", sessionInfo()$running)) {
@@ -10,35 +10,54 @@ find_wfdb_software <- function(.path, .app) {
 	} else if (grepl("n*x", sessionInfo()$running)) {
 		os <- "nix"
 	} else {
-		stop("Operating system could not be identified or WFDB is not compatible")
+		os <- NA
+		packageStartupMessage("Operating system could not be identified. The WFDB will not be attempted to be found, and the path will default to $HOME.")
+		wfdbPath <- fs::path_home()
 	}
 
+	if (os %in% c("mac", "nix")) {
+		# Find possible binary folders
+		possibleBins <- c(
+			fs::path("/", "usr", "local", "bin"),
+			fs::path_expand(fs::path("~", "bin")),
+			fs::path("/", "usr", "bin")
+		)
 
-	if (os == "mac" | os == "nix") {
-		# Systematic checks to make sure the paths/files are correct and available
-		#		Check that the directory path is a absolute path
-		#		Check if directory exists
-		#		Check if the application file exists
-		if (fs::is_absolute_path(.path) &
-				fs::dir_exists(.path) &
-				fs::file_exists(fs::path(.path, .app))) {
+		# Find where WFDB could potentially exist using 'wfdbdesc' as standard
+		possibleWFDB <-
+			possibleBins[fs::dir_exists(possibleBins)] |>
+			fs::path("wfdbdesc")
 
-			wfdbPath <- fs::path(.path, .app)
-		} else {
-			stop(paste("Incorrect path or `", .app, "` could not be found"))
-		}
-	} else if (os == "win") {
-
-		# Cannot directly check if system path is available
-		# Would need to append the path appropriately
-		wfdbPath <- paste("wsl", fs::path(.path, .app))
-
+		# Obtain WFDB path
+		wfdbDesc <- possibleWFDB[min(which(fs::file_exists(possibleWFDB)))]
+		wfdbPath <- fs::path_dir(wfdbDesc)
 	}
 
+	# If the system is a Windows, the path may be on WSL, can add that as default
+	if (os == "win") {
+		packageStartupMessage("Operating system is Windows. Default installation location for WFDB will be on WSL at '/usr/local/bin'. This can be modified by changing the WFDB path options.")
+		wfdbPath <- paste("wsl", "/usr/local/bin")
+	}
+
+	# Return
 	wfdbPath
+
 
 }
 
+#' @keywords internal
+#' @noRd
+find_wfdb_command <- function(.app,
+															.path = getOption('wfdb_path')) {
+
+	cmd <- fs::path(.path, .app)
+	if (fs::file_exists(cmd)) {
+		return(cmd)
+	} else {
+		warning("Cannot find '", .app, "' in '", .path, "'")
+	}
+
+}
 
 #' @keywords internal
 #' @noRd
