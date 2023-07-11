@@ -103,14 +103,41 @@ read_muse <- function(file) {
 	# 	Demographic information
 	# 	MRN
 	# 	Age
-	demo <- xml2::xml_contents(xml2::xml_child(doc, "PatientDemographics"))
-	nms <- xml2::xml_name(demo)
-	demo <- xml2::xml_text(demo)
+	# 	Sex
+	# 	Race
+	demoNode <- xml2::xml_contents(xml2::xml_child(doc, "PatientDemographics"))
+	nms <- xml2::xml_name(demoNode)
+	demo <- xml2::xml_text(demoNode)
 	names(demo) <- nms
-	age <- demo[["PatientAge"]]
-	mrn <- demo[["PatientID"]]
-	sex <- demo[["Gender"]]
-	race <- demo[["Race"]]
+
+	# MRN
+	if ("PatientID" %in% nms) {
+		mrn <- demo[["PatientID"]]
+	} else {
+		mrn <- NA
+	}
+
+	# Age
+	if ("PatientAge" %in% nms) {
+		age <- demo[["PatientAge"]]
+	} else {
+		age <- NA
+	}
+
+
+	# Sex
+	if ("Gender" %in% nms) {
+		sex <- demo[["Gender"]]
+	} else {
+		sex <- NA
+	}
+
+	# Race
+	if ("Race" %in% nms) {
+		race <- demo[["Race"]]
+	} else {
+		race <- NA
+	}
 
 	# Diagnosis information
 	dx <-
