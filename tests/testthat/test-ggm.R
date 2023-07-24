@@ -1,5 +1,7 @@
 test_that("plots can be generated easily", {
 
+	# EPS data
+
 	data <- read_lspro(test_path('egm.txt'))
 	expect_s3_class(data, "egm")
 
@@ -15,6 +17,11 @@ test_that("plots can be generated easily", {
 
 	expect_s3_class(object, "ggm")
 	expect_s3_class(object, "ggplot")
+
+	# ECG data
+	data <- read_muse(test_path('ecg.xml'))
+	ggm(data, channels = c("I", "II", "III")) + theme_egm_dark()
+
 })
 
 test_that("simple intervals can be added to surface leads", {
