@@ -6,12 +6,11 @@ test_that("ecgpuwave creates annotation file", {
 		detect_surface_beats(
 			record = "300",
 			detector = "ecgpuwave",
-			record_dir = test_path(),
-			wfdb_path = "/usr/local/bin"
+			record_dir = test_path()
 		)
 	)
 
-	expect_true(file.exists(file.path(test_path(), "300.qrs")))
+	expect_true(file.exists(file.path(test_path(), "300.ecgpuwave")))
 	expect_equal(wd, getwd())
 
 })

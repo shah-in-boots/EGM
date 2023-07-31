@@ -21,12 +21,13 @@ detect_surface_beats <- function(record,
 	# 	WFDB software - must be an ECG detector software
 	#		WFDB must be on path
 	# 	Reading/writing directory must be on path
-	if (checkmate::check_subset(detector, c("gqrs",
-																					"sqrs",
-																					"sqrs125",
-																					"wqrs",
-																					"ecgpuwave"))) {
+	if (detector %in% c("gqrs",
+											"sqrs",
+											"sqrs125",
+											"wqrs")) {
 		ext <- "qrs"
+	} else if (detector %in% c("ecgpuwave")) {
+		ext <- "ecgpuwave"
 	}
 
 	detector <- find_wfdb_command(detector)
