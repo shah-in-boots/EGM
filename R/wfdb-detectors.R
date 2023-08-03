@@ -8,7 +8,7 @@
 #'   files
 #'
 #' @examples
-#' record <- "sample"
+#' record <- "300"
 #' detector <- "ecgpuwave"
 #' @export
 detect_surface_beats <- function(record,
@@ -42,18 +42,22 @@ detect_surface_beats <- function(record,
 	ann <- paste("-a", ext)
 
 	# Change working directory for writing purposes
-	# 	This should change back at end of writing process
+	# This should change back at end of writing process
 	withr::with_dir(new = wd,
 									code = {
 										# System call to beat detector/annotator
 										system2(command = detector,
 														args = c(rec, ann),
-														stdout = FALSE)
+														stdout = FALSE,
+														stderr = FALSE)
 
-										# Clean up extraneous files that were created
-										# 	`ecgpuwave` -> fortran files
-										fs::file_delete(c("fort.21", "fort.20"))
+										if (fs::file_exists('fort.20')) {
+											fs::file_delete('fort.20')
+										}
+										if (fs::file_exists('fort.21')) {
+											fs::file_delete('fort.21')
+										}
+
 									})
-
 
 }

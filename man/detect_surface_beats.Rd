@@ -30,6 +30,6 @@ Creates a WFDB-compatible annotation file
 ECG waveform detection
 }
 \examples{
-record <- "sample"
+record <- "300"
 detector <- "ecgpuwave"
 }
