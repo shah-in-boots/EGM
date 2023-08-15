@@ -9,8 +9,7 @@ test_that("can convert lspro to wfdb with wrsamp", {
 			file = "egm.txt",
 			type = "lspro",
 			record = "egm",
-			record_dir = test_path(),
-			wfdb_path = "/usr/local/bin"
+			record_dir = test_path()
 		)
 	)
 
@@ -31,7 +30,6 @@ test_that("R data objects can be converted or written to WFDB format", {
 		type = "lspro",
 		record = "egm",
 		record_dir = test_path(),
-		wfdb_path = "/usr/local/bin",
 		header = hea
 	)
 

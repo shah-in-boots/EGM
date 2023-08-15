@@ -70,12 +70,11 @@ read_annotation <- function(record,
 	withr::with_dir(new = wd, code = {
 		dat <-
 			data.table::fread(cmd = cmd, header = FALSE)
-
 	})
 
-	# Rename and return
-	names(dat) <- c("time", "sample", "type", "subtype", "channel", "number")
-	dat
+	# Rename and return as annotation table
+	names(dat) <- c("TIME", "SAMPLE", "TYPE", "SUBTYPE", "CHANNEL", "NUMBER")
+	new_annotation_table(df_list(dat))
 }
 
 #' Write an annotation into a WFDB-compatible file

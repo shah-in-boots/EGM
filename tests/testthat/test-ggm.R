@@ -1,14 +1,12 @@
 test_that("plots can be generated easily", {
 
 	# EPS data
-
 	data <- read_lspro(test_path('egm.txt'))
 	expect_s3_class(data, "egm")
 
 	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
 	time_frame <- c(.1, 3)
 
-	# Basic signal plot of egms
 	object <- ggm(
 		data = data,
 		channels = channels,

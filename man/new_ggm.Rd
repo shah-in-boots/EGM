@@ -4,7 +4,7 @@
 \alias{new_ggm}
 \title{Construct \code{ggm} class}
 \usage{
-new_ggm(object = ggplot(), header = list(), annotation = data.table())
+new_ggm(object = ggplot(), header = list(), annotation = annotation_table())
 }
 \description{
 Construct \code{ggm} class

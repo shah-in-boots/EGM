@@ -28,17 +28,17 @@ ggm <- function(data,
 	stopifnot(inherits(data, "egm"))
 
 	hea <- attr(data, "hea")
-	hea$label <- as.character(hea$label)
+	hea$LABEL <- as.character(hea$LABEL)
 	ann <- attr(data, "annotation")
 	signal <- data.table::as.data.table(data)
-	names(signal) <- hea$label
+	names(signal) <- hea$LABEL
 
 	# Should be all of the same frequency of data
-	hz <- hea$frequency
+	hz <- hea$FREQUENCY
 	signal$index <- 1:nrow(signal)
 	signal$time <- signal$index / hz
 
-	# Check if time frame exists within series, allowing for
+	# check if time frame exists within series, allowing for
 	# indexed rounding based on frequency
 	if (is.null(time_frame)) {
 		time_frame <- c(min(signal$time, na.rm = TRUE), max(signal$time, na.rm = TRUE))
@@ -64,9 +64,14 @@ ggm <- function(data,
 							length(selectedChannels) > 0)
 
 	# Get channel data from individual signals
+	# Need to make sure all that information is present from header
 	channelData <-
-		hea[c("number", "label", "source", "lead", "color")] |>
+		hea[c("NUMBER", "LABEL", "SOURCE", "LEAD", "COLOR")] |>
 		as.data.table()
+	names(channelData) <- tolower(names(channelData))
+	if (is.null(channelData$color)) {
+		channelData$color <- '#FFFFFF'
+	}
 
 	dt <-
 		data.table::melt(
@@ -82,7 +87,7 @@ ggm <- function(data,
 									][, mV := as.numeric(mV)]
 		}()
 
-	# Relevel because order is lost in the labels during transformation
+	# relevel because order is lost in the labels during transformation
 	dt$label <-
 		factor(dt$label,
 					 levels = intersect(.labels, selectedChannels),
@@ -110,7 +115,7 @@ ggm <- function(data,
 #' Construct `ggm` class
 new_ggm <- function(object = ggplot(),
 										header = list(),
-										annotation = data.table()) {
+										annotation = annotation_table()) {
 
 	stopifnot(is.ggplot(object))
 
@@ -250,10 +255,6 @@ add_colors <- function(object, palette, mode = "light") {
 
 
 }
-
-
-
-
 
 #' Custom theme for EGM data
 #' @keywords internal

@@ -50,8 +50,8 @@ read_muse <- function(file) {
 		ampPerByte <- as.numeric(lead$LeadAmplitudeUnitsPerBit[[1]])
 		waveform <- lead$WaveFormData[[1]]
 		bin <- base64enc::base64decode(waveform)
-		sig <- readBin(bin, integer(), sampleCount, size = 2) * ampPerByte
-		leadMatrix[, id] <- sig
+		sigData <- readBin(bin, integer(), sampleCount, size = 2) * ampPerByte
+		leadMatrix[, id] <- sigData
 	}
 
 	# The augmented/avergaed leads can be recreated post-hock
@@ -67,8 +67,8 @@ read_muse <- function(file) {
 	# Return lead matrix as a data.table
 	sig <-
 		leadMatrix |>
-		unname() |>
-		data.table::data.table()
+		as.data.table() |>
+		signal_table()
 
 	# Header ----
 
@@ -153,19 +153,19 @@ read_muse <- function(file) {
 		trimws()
 
 	hea <- list(
-		file_name = file_nm,
-		number_of_channels = leadCount,
-		samples = sampleCount,
-		start_time = timeStamp,
-		frequency = hz,
-		adc_gain = rep(1, leadCount),
-		number = leadNumber,
-		label = leadNames,
-		mrn = mrn,
-		age = age,
-		sex = sex,
-		race = race,
-		diagnosis = dx
+		FILE_NAME = file_nm,
+		NUMBER_OF_CHANNELS = leadCount,
+		SAMPLES = sampleCount,
+		START_TIME = timeStamp,
+		FREQUENCY = hz,
+		ADC_GAIN = rep(1, leadCount),
+		NUMBER = leadNumber,
+		LABEL = leadNames,
+		MRN = mrn,
+		AGE = age,
+		SEX = sex,
+		RACE = race,
+		DIAGNOSIS = dx
 	)
 
 	# Return EGM data

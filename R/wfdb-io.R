@@ -119,11 +119,11 @@ write_wfdb <- function(data,
 		# If header is available, check to see if key variables are present
 		if (!is.null(header)) {
 			checkmate::assert_names(names(header),
-															must.include = c("frequency", "adc_gain", "label", "start_time"))
+															must.include = c("FREQUENCY", "ADC_GAIN", "LABEL", "START_TIME"))
 
-			checkmate::assert_integerish(header$frequency)
-			checkmate::assert_character(as.character(header$label), len = ncol(data))
-			checkmate::assert_numeric(header$adc_gain, lower = 0, len = ncol(data))
+			checkmate::assert_integerish(header$FREQUENCY)
+			checkmate::assert_character(as.character(header$LABEL), len = ncol(data))
+			checkmate::assert_numeric(header$ADC_GAIN, lower = 0, len = ncol(data))
 		}
 
 		# Write out temporary CSV file for WFDB to use
@@ -141,10 +141,10 @@ write_wfdb <- function(data,
 		#		-x <numeric>		Scaling factor if needed
 
 		# Frequency
-		hz <- paste("-F", header$frequency)
+		hz <- paste("-F", header$FREQUENCY)
 
 		# ADC = -G "adc adc adc adc" format
-		adc <- paste('-G', paste0('"', paste(header$adc_gain, collapse = " "), '"'))
+		adc <- paste('-G', paste0('"', paste(header$ADC_GAIN, collapse = " "), '"'))
 
 		# Input (full file path)
 		ip <- paste("-i", tmpFile)
@@ -165,7 +165,7 @@ write_wfdb <- function(data,
 			# Then handle the signal specification files
 		headLine <-
 			readLines(con = paste0(record, ".hea"), n = 1) |>
-			paste(format(header$start_time, "%H:%M:%S %d/%m/%Y"))
+			paste(format(header$START_TIME, "%H:%M:%S %d/%m/%Y"))
 
 		# 10 columns:
 		# 	>= V9 and V10 are descriptive fields
@@ -179,7 +179,7 @@ write_wfdb <- function(data,
 								 skip = 1)
 		headerFile[[3]] <- paste0(headerFile[[3]], "(0)", "/mV", sep = "")
 		headerFile <- headerFile[1:9]
-		headerFile[9] <- header$label
+		headerFile[9] <- header$LABEL
 
 		# Write header back in place
 		writeLines(text = headLine,
@@ -196,10 +196,10 @@ write_wfdb <- function(data,
 		)
 
 		# Add additional information at end of header
-		info <- c(paste("# low_pass", paste(header$low_pass, collapse = " ")),
-							paste("# high_pass", paste(header$high_pass, collapse = " ")),
-							paste("# color", paste(header$color, collapse = " ")),
-							paste("# source", paste(header$source, collapse = " ")))
+		info <- c(paste("# low_pass", paste(header$LOW_PASS, collapse = " ")),
+							paste("# high_pass", paste(header$HIGH_PASS, collapse = " ")),
+							paste("# color", paste(header$COLOR, collapse = " ")),
+							paste("# source", paste(header$SOURCE, collapse = " ")))
 
 		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
 	}
@@ -222,7 +222,7 @@ write_wfdb <- function(data,
 		#		-x <numeric>		Scaling factor if needed
 
 		# Frequency
-		hz <- paste("-F", header$frequency)
+		hz <- paste("-F", header$FREQUENCY)
 
 		# ADC = -G "adc adc adc adc" format
 		# adc <- paste('-G', paste0('"', paste(header$adc_gain, collapse = " "), '"'))
@@ -246,7 +246,7 @@ write_wfdb <- function(data,
 			# Then handle the signal specification files
 		headLine <-
 			readLines(con = paste0(record, ".hea"), n = 1) |>
-			paste(format(header$start_time, "%H:%M:%S %d/%m/%Y"))
+			paste(format(header$START_TIME, "%H:%M:%S %d/%m/%Y"))
 
 		# 10 columns:
 		# 	>= V9 and V10 are descriptive fields
@@ -260,7 +260,7 @@ write_wfdb <- function(data,
 								 skip = 1)
 		headerFile[[3]] <- paste0(headerFile[[3]], "(0)", "/mV", sep = "")
 		headerFile <- headerFile[1:9]
-		headerFile[9] <- header$label
+		headerFile[9] <- header$LABEL
 
 		# Write header back in place
 		writeLines(text = headLine,
@@ -277,11 +277,11 @@ write_wfdb <- function(data,
 		)
 
 		# Add additional information at end of header for MUSE ecg data
-		info <- c(paste("# mrn", paste(header$mrn, collapse = " ")),
-							paste("# age", paste(header$age, collapse = " ")),
-							paste("# sex", paste(header$sex, collapse = " ")),
-							paste("# race", paste(header$race, collapse = " ")),
-							paste("# diagnosis", paste(header$diagnosis, collapse = " ")))
+		info <- c(paste("# mrn", paste(header$MRN, collapse = " ")),
+							paste("# age", paste(header$AGE, collapse = " ")),
+							paste("# sex", paste(header$SEX, collapse = " ")),
+							paste("# race", paste(header$RACE, collapse = " ")),
+							paste("# diagnosis", paste(header$DIAGNOSIS, collapse = " ")))
 
 		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
 
@@ -353,12 +353,12 @@ rewrite_wfdb <- function(file,
 		#		-x <numeric>		Scaling factor if needed
 
 		# Frequency
-		hz <- paste("-F", hea$frequency)
+		hz <- paste("-F", hea$FREQUENCY)
 
 		# ADC
 		adc <- paste("-G", paste0(
 			'"',
-			paste(hea$ADC_saturation / hea$gain, collapse = " "),
+			paste(hea$ADC_SATURATION / hea$GAIN, collapse = " "),
 			'"'
 		))
 
@@ -381,7 +381,7 @@ rewrite_wfdb <- function(file,
 			# Then handle the signal specification files
 		headLine <-
 			readLines(con = paste0(record, ".hea"), n = 1) |>
-			paste(format(hea$start_time, "%H:%M:%S %d/%m/%Y"))
+			paste(format(hea$START_TIME, "%H:%M:%S %d/%m/%Y"))
 
 		# 10 columns:
 		# 	>= V9 and V10 are descriptive fields
@@ -391,14 +391,11 @@ rewrite_wfdb <- function(file,
 		#			Can be appended with baseline value "(0)"
 		# 		Can be appended with "/mV" to specify units
 		header <-
-			read.table(file = paste0(record, ".hea"),
-								 skip = 1)
-		header <-
 			data.table::fread(file = paste0(record, ".hea"),
 												skip = 1)
 		header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
 		header <- header[, 1:9]
-		header[, 9] <- hea$channels$label
+		header[, 9] <- hea$LABEL
 
 		# Write header back in place
 		writeLines(text = headLine,
@@ -414,10 +411,10 @@ rewrite_wfdb <- function(file,
 		)
 
 		# Add additional information at end of header specific to LSPro data
-		info <- c(paste("# low_pass", paste(header$low_pass, collapse = " ")),
-							paste("# high_pass", paste(header$high_pass, collapse = " ")),
-							paste("# color", paste(header$color, collapse = " ")),
-							paste("# source", paste(header$source, collapse = " ")))
+		info <- c(paste("# low_pass", paste(hea$LOW_PASS, collapse = " ")),
+							paste("# high_pass", paste(hea$HIGH_PASS, collapse = " ")),
+							paste("# color", paste(hea$COLOR, collapse = " ")),
+							paste("# source", paste(hea$SOURCE, collapse = " ")))
 
 		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
 	}

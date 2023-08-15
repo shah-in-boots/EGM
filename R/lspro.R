@@ -108,9 +108,9 @@ read_lspro_header <- function(file) {
 		}() |>
 		{\(.y)
 			list(
-				file_name = file_nm,
-				number_of_channels = as.numeric(.y$value[.y$description == "Channels exported"]),
-				samples = {
+				FILE_NAME = file_nm,
+				NUMBER_OF_CHANNELS = as.numeric(.y$value[.y$description == "Channels exported"]),
+				SAMPLES = {
 					s <- .y$value[.y$description == "Samples per channel"]
 					if (grepl(":", s)) {
 						substr(s, start = 1, stop = nchar(s) - 8) |>
@@ -119,9 +119,9 @@ read_lspro_header <- function(file) {
 						as.numeric(s)
 					}
 				},
-				start_time = as.POSIXct(strptime(.y$value[.y$description == "Start time"], format = "%H:%M:%S")),
-				end_time = as.POSIXct(strptime(.y$value[.y$description == "End time"], format = "%H:%M:%S")),
-				frequency = {
+				START_TIME = as.POSIXct(strptime(.y$value[.y$description == "Start time"], format = "%H:%M:%S")),
+				END_TIME = as.POSIXct(strptime(.y$value[.y$description == "End time"], format = "%H:%M:%S")),
+				FREQUENCY = {
 					f <- .y$value[.y$description == "Sample Rate"]
 					if (grepl("Hz", f)) {
 						gsub("Hz", "", f) |>
@@ -136,12 +136,12 @@ read_lspro_header <- function(file) {
 	# Data is given in 16-bit integer format
 	# Convert to milivolts from ADC units
 	# [mV] = [ADC value] * [Range or gain in mV] / 32768
-	hea$ADC_saturation <- 32768
+	hea$ADC_SATURATION <- 32768
 
 	# Individual channel data, 8 elements each
 	# Written after header/channel info (13 + 8 * n + 2) ... Blank + [Data] Line
 	ch_list <- list()
-	for (i in 1:hea$number_of_channels) {
+	for (i in 1:hea$NUMBER_OF_CHANNELS) {
 		ch_list[[i]] <-
 			fread(
 				file,
@@ -214,18 +214,18 @@ read_lspro_header <- function(file) {
 		factor(channels$source, levels = intersect(.source, channels$source))
 
 	# Place back in header file as individual lists based on the characteristics
-	hea$number <- channels$number
-	hea$label <- channels$label
-	hea$source <- channels$source
-	hea$lead <- channels$lead
-	hea$gain <- channels$gain
-	hea$low_pass <- channels$low
-	hea$high_pass <- channels$high
-	hea$color <- channels$color
-	hea$scale <- channels$scale
+	hea$NUMBER <- channels$number
+	hea$LABEL <- channels$label
+	hea$SOURCE <- channels$source
+	hea$LEAD <- channels$lead
+	hea$GAIN <- channels$gain
+	hea$LOW_PASS <- channels$low
+	hea$HIGH_PASS <- channels$high
+	hea$COLOR <- channels$color
+	hea$SCALE <- channels$scale
 
 	# Update gain now that is present
-	hea$adc_gain <- hea$ADC_saturation / hea$gain
+	hea$ADC_GAIN <- hea$ADC_SATURATION / hea$GAIN
 
 	# Return
 	hea
@@ -244,5 +244,7 @@ read_lspro_signal <- function(file, n = Inf) {
 			header = FALSE,
 			nrows = n
 		)
+
+	signal_table(sig)
 
 }
