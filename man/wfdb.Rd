@@ -28,7 +28,7 @@ The records that the WFDB uses have three components...
 \enumerate{
 \item Signals: integer values that are at equal intervals at a certain sampling
 frequency
-\item Attributes: recording information such as sample number, gain,
+\item Header attributes: recording information such as sample number, gain,
 sampling frequency
 \item Annotations: information about the record such as abeat
 labels or alarm triggers

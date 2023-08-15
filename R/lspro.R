@@ -108,9 +108,9 @@ read_lspro_header <- function(file) {
 		}() |>
 		{\(.y)
 			list(
-				FILE_NAME = file_nm,
-				NUMBER_OF_CHANNELS = as.numeric(.y$value[.y$description == "Channels exported"]),
-				SAMPLES = {
+				file_name = file_nm,
+				number_of_channels = as.numeric(.y$value[.y$description == "Channels exported"]),
+				samples = {
 					s <- .y$value[.y$description == "Samples per channel"]
 					if (grepl(":", s)) {
 						substr(s, start = 1, stop = nchar(s) - 8) |>
@@ -119,9 +119,9 @@ read_lspro_header <- function(file) {
 						as.numeric(s)
 					}
 				},
-				START_TIME = as.POSIXct(strptime(.y$value[.y$description == "Start time"], format = "%H:%M:%S")),
-				END_TIME = as.POSIXct(strptime(.y$value[.y$description == "End time"], format = "%H:%M:%S")),
-				FREQUENCY = {
+				start_time = as.POSIXct(strptime(.y$value[.y$description == "Start time"], format = "%H:%M:%S")),
+				end_time = as.POSIXct(strptime(.y$value[.y$description == "End time"], format = "%H:%M:%S")),
+				frequency = {
 					f <- .y$value[.y$description == "Sample Rate"]
 					if (grepl("Hz", f)) {
 						gsub("Hz", "", f) |>
@@ -136,12 +136,12 @@ read_lspro_header <- function(file) {
 	# Data is given in 16-bit integer format
 	# Convert to milivolts from ADC units
 	# [mV] = [ADC value] * [Range or gain in mV] / 32768
-	hea$ADC_SATURATION <- 32768
+	hea$ADC_saturation <- 32768
 
 	# Individual channel data, 8 elements each
 	# Written after header/channel info (13 + 8 * n + 2) ... Blank + [Data] Line
 	ch_list <- list()
-	for (i in 1:hea$NUMBER_OF_CHANNELS) {
+	for (i in 1:hea$number_of_channels) {
 		ch_list[[i]] <-
 			fread(
 				file,
@@ -180,55 +180,58 @@ read_lspro_header <- function(file) {
 	# 	All are made upper character
 	channels <-
 		ch_list |>
-		rbindlist() |>
-		dplyr::mutate(label = toupper(label)) |>
-		tidyr::separate(
-			label,
-			into = c("source", "lead"),
-			sep = "(?<=[a-zA-Z])\\s*(?=[0-9])",
-			remove = FALSE,
-			fill = "right"
-		) |>
-		dplyr::mutate(lead = dplyr::case_when(
-			label %in% .leads$ECG ~ label,
-			TRUE ~ lead
-		)) |>
-		dplyr::mutate(source = dplyr::case_when(
-			label %in% .leads$ECG ~ "ECG",
-			TRUE ~ source
-		)) |>
-		tidyr::separate(
-			source,
-			into = c("source", "extra"),
-			sep = "\ ",
-			fill = "right"
-		) |>
-		dplyr::mutate(lead = dplyr::if_else(is.na(lead), extra, lead)) |>
-		dplyr::select(-extra) |>
-		dplyr::mutate(label = sub("ECG\ ", "", paste(source, lead)))
+		rbindlist()
+	# 	dplyr::mutate(label = toupper(label)) |>
+	# 	tidyr::separate(
+	# 		label,
+	# 		into = c("source", "lead"),
+	# 		sep = "(?<=[a-zA-Z])\\s*(?=[0-9])",
+	# 		remove = FALSE,
+	# 		fill = "right"
+	# 	) |>
+	# 	dplyr::mutate(lead = dplyr::case_when(
+	# 		label %in% .leads$ECG ~ label,
+	# 		TRUE ~ lead
+	# 	)) |>
+	# 	dplyr::mutate(source = dplyr::case_when(
+	# 		label %in% .leads$ECG ~ "ECG",
+	# 		TRUE ~ source
+	# 	)) |>
+	# 	tidyr::separate(
+	# 		source,
+	# 		into = c("source", "extra"),
+	# 		sep = "\ ",
+	# 		fill = "right"
+	# 	) |>
+	# 	dplyr::mutate(lead = dplyr::if_else(is.na(lead), extra, lead)) |>
+	# 	dplyr::select(-extra) |>
+	# 	dplyr::mutate(label = sub("ECG\ ", "", paste(source, lead)))
+	#
+	# # Now reorder the levels by factor
+	# channels$label <-
+	# 	factor(channels$label, levels = intersect(.labels, channels$label))
+	# channels$source <-
+	# 	factor(channels$source, levels = intersect(.source, channels$source))
 
-	# Now reorder the levels by factor
-	channels$label <-
-		factor(channels$label, levels = intersect(.labels, channels$label))
-	channels$source <-
-		factor(channels$source, levels = intersect(.source, channels$source))
-
-	# Place back in header file as individual lists based on the characteristics
-	hea$NUMBER <- channels$number
-	hea$LABEL <- channels$label
-	hea$SOURCE <- channels$source
-	hea$LEAD <- channels$lead
-	hea$GAIN <- channels$gain
-	hea$LOW_PASS <- channels$low
-	hea$HIGH_PASS <- channels$high
-	hea$COLOR <- channels$color
-	hea$SCALE <- channels$scale
 
 	# Update gain now that is present
-	hea$ADC_GAIN <- hea$ADC_SATURATION / hea$GAIN
+	#hea$ADC_GAIN <- hea$ADC_SATURATION / hea$GAIN
 
 	# Return
-	hea
+	header_table(
+		FILE_NAME = hea$file_name,
+		NUMBER_OF_CHANNELS = hea$number_of_channels,
+		SAMPLES = hea$samples,
+		START_TIME = hea$start_time,
+		END_TIME = hea$end_time,
+		FREQUENCY = hea$frequency,
+		ADC_SATURATION = hea$ADC_saturation,
+		LABEL = channels$label,
+		GAIN = channels$gain,
+		LOW_PASS = channels$low,
+		HIGH_PASS = channels$high,
+		COLOR = channels$color
+	)
 
 }
 

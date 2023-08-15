@@ -37,7 +37,7 @@
 #' 1. Signals: integer values that are at equal intervals at a certain sampling
 #' frequency
 #'
-#' 1. Attributes: recording information such as sample number, gain,
+#' 1. Header attributes: recording information such as sample number, gain,
 #' sampling frequency
 #'
 #' 1. Annotations: information about the record such as abeat
@@ -116,16 +116,6 @@ write_wfdb <- function(data,
 	# 	MUSE (ECG)
 	if (type == "lspro") {
 
-		# If header is available, check to see if key variables are present
-		if (!is.null(header)) {
-			checkmate::assert_names(names(header),
-															must.include = c("FREQUENCY", "ADC_GAIN", "LABEL", "START_TIME"))
-
-			checkmate::assert_integerish(header$FREQUENCY)
-			checkmate::assert_character(as.character(header$LABEL), len = ncol(data))
-			checkmate::assert_numeric(header$ADC_GAIN, lower = 0, len = ncol(data))
-		}
-
 		# Write out temporary CSV file for WFDB to use
 		tmpFile <- fs::file_temp("lspro", ext = "csv")
 		withr::defer(fs::file_delete(tmpFile))
@@ -141,7 +131,7 @@ write_wfdb <- function(data,
 		#		-x <numeric>		Scaling factor if needed
 
 		# Frequency
-		hz <- paste("-F", header$FREQUENCY)
+		hz <- paste("-F", attributes(header)$RECORD_LINE$FREQUENCY)
 
 		# ADC = -G "adc adc adc adc" format
 		adc <- paste('-G', paste0('"', paste(header$ADC_GAIN, collapse = " "), '"'))
@@ -165,7 +155,7 @@ write_wfdb <- function(data,
 			# Then handle the signal specification files
 		headLine <-
 			readLines(con = paste0(record, ".hea"), n = 1) |>
-			paste(format(header$START_TIME, "%H:%M:%S %d/%m/%Y"))
+			paste(format(attributes(header)$RECORD_LINE$START_TIME, "%H:%M:%S %d/%m/%Y"))
 
 		# 10 columns:
 		# 	>= V9 and V10 are descriptive fields
@@ -541,7 +531,7 @@ read_wfdb <- function(record,
 	})
 
 	# Return data after cleaning names
-	names(dat)[1] <- "sample"
+	names(dat)[1] <- "SAMPLE"
 	dat
 }
 
@@ -555,7 +545,44 @@ read_header <- function(record,
 												wfdb_path = getOption("wfdb_path"),
 												...) {
 
+	# Generate header file path
+	fp <- fs::path(record_dir, record, ext = 'hea')
+	if (!fs::file_exists(fp)) {
+		stop(record, " not found in ", record_dir)
+	}
 
-	# TODO read header files directly from text files *.hea
-	# TODO include the 'getinfo' at bottom, encased in '# name x x x' format
+	# Record line (first one)
+	# 10 columns:
+	# 	>= V9 and V10 are descriptive fields
+	# 		Should be a tab-delim field
+	#			Can contain spaces internal to it
+	# 	V3 is ADC units
+	#			Can be appended with baseline value "(0)"
+	# 		Can be appended with "/mV" to specify units
+	head_line <- readLines(con = fp, n = 1)
+	head_attr <- strsplit(headLine, ' ') |> unlist()
+	headText <-
+		data.table::fread(file = fp,
+											skip = 1, # Skip head line
+											nrows = as.numeric(head_attr[2])) # Read in channel data
+	header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
+	header <- header[, 1:9]
+	header[, 9] <- hea$LABEL
+
+	# Write header back in place
+	writeLines(text = headLine,
+						 con = paste0(record, ".hea"))
+	write.table(
+		header,
+		file = paste0(record, ".hea"),
+		sep = "\t",
+		quote = FALSE,
+		col.names = FALSE,
+		row.names = FALSE,
+		append = TRUE
+	)
+
+
+	# TODO Read header files directly from text files *.hea
+	# TODO Include the 'getinfo' at bottom, encased in '# name x x x' format
 }
