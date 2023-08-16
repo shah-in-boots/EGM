@@ -576,6 +576,8 @@ read_header <- function(record,
 											nrows = sig_num) # Read in channel data
 
 
+	# TODO need to add column for specific file names in case files are split
+	# Sometimes signals are in different files in segments
 
 	header_table(
 		file_name = file_name,
@@ -592,19 +594,6 @@ read_header <- function(record,
 	header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
 	header <- header[, 1:9]
 	header[, 9] <- hea$LABEL
-
-	# Write header back in place
-	writeLines(text = headLine,
-						 con = paste0(record, ".hea"))
-	write.table(
-		header,
-		file = paste0(record, ".hea"),
-		sep = "\t",
-		quote = FALSE,
-		col.names = FALSE,
-		row.names = FALSE,
-		append = TRUE
-	)
 
 
 	# TODO Read header files directly from text files *.hea
