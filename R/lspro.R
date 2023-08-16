@@ -171,66 +171,25 @@ read_lspro_header <- function(file) {
 			}()
 	}
 
-	# Channels should be organized appropriately
-	# 	Top to bottom should be from high to low, and then from left to right
-	# 	Catheters/leads are specifically included
-	# 	Retrieved from "data-raw" folder from leads.R file
-	# Table of channel information
-	# 	Clean up names if possible
-	# 	All are made upper character
-	channels <-
-		ch_list |>
-		rbindlist()
-	# 	dplyr::mutate(label = toupper(label)) |>
-	# 	tidyr::separate(
-	# 		label,
-	# 		into = c("source", "lead"),
-	# 		sep = "(?<=[a-zA-Z])\\s*(?=[0-9])",
-	# 		remove = FALSE,
-	# 		fill = "right"
-	# 	) |>
-	# 	dplyr::mutate(lead = dplyr::case_when(
-	# 		label %in% .leads$ECG ~ label,
-	# 		TRUE ~ lead
-	# 	)) |>
-	# 	dplyr::mutate(source = dplyr::case_when(
-	# 		label %in% .leads$ECG ~ "ECG",
-	# 		TRUE ~ source
-	# 	)) |>
-	# 	tidyr::separate(
-	# 		source,
-	# 		into = c("source", "extra"),
-	# 		sep = "\ ",
-	# 		fill = "right"
-	# 	) |>
-	# 	dplyr::mutate(lead = dplyr::if_else(is.na(lead), extra, lead)) |>
-	# 	dplyr::select(-extra) |>
-	# 	dplyr::mutate(label = sub("ECG\ ", "", paste(source, lead)))
-	#
-	# # Now reorder the levels by factor
-	# channels$label <-
-	# 	factor(channels$label, levels = intersect(.labels, channels$label))
-	# channels$source <-
-	# 	factor(channels$source, levels = intersect(.source, channels$source))
-
+	channels <- rbindlist(ch_list)
 
 	# Update gain now that is present
 	#hea$ADC_GAIN <- hea$ADC_SATURATION / hea$GAIN
 
 	# Return
 	header_table(
-		FILE_NAME = hea$file_name,
-		NUMBER_OF_CHANNELS = hea$number_of_channels,
-		SAMPLES = hea$samples,
-		START_TIME = hea$start_time,
-		END_TIME = hea$end_time,
-		FREQUENCY = hea$frequency,
-		ADC_SATURATION = hea$ADC_saturation,
-		LABEL = channels$label,
-		GAIN = channels$gain,
-		LOW_PASS = channels$low,
-		HIGH_PASS = channels$high,
-		COLOR = channels$color
+		file_name = hea$file_name,
+		number_of_channels = hea$number_of_channels,
+		samples = hea$samples,
+		start_time = hea$start_time,
+		end_time = hea$end_time,
+		frequency = hea$frequency,
+		ADC_saturation = hea$ADC_saturation,
+		label = channels$label,
+		gain = channels$gain,
+		low_pass = channels$low,
+		high_pass = channels$high,
+		color = channels$color
 	)
 
 }

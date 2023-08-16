@@ -82,7 +82,22 @@ test_that('rdsamp can read in WFDB formatted files', {
 
 test_that('headers can be read in', {
 
-	record <- 'ecg'
+	record <- 'ecgm'
 	record_dir <- test_path()
+
+	header_table(
+		file_name = hea$file_name,
+		number_of_channels = hea$number_of_channels,
+		samples = hea$samples,
+		start_time = hea$start_time,
+		end_time = hea$end_time,
+		frequency = hea$frequency,
+		ADC_saturation = hea$ADC_saturation,
+		label = channels$label,
+		gain = channels$gain,
+		low_pass = channels$low,
+		high_pass = channels$high,
+		color = channels$color
+	)
 
 })

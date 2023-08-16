@@ -33,7 +33,6 @@ signal_table <- function(...) {
 new_signal_table <- function(x = list()) {
 	checkmate::assert_list(x, types = 'numeric')
 	new_data_frame(x, class = c('signal_table', 'data.table'))
-
 }
 
 #' @export
@@ -117,12 +116,12 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' data.
 #'
 #' @export
-annotation_table <- function(TIME = numeric(),
-														 SAMPLE = integer(),
-														 TYPE = character(),
-														 SUBTYPE = character(),
-														 CHANNEL = integer(),
-														 NUMBER = integer()) {
+annotation_table <- function(time = numeric(),
+														 sample = integer(),
+														 type = character(),
+														 subtype = character(),
+														 channel = integer(),
+														 number = integer()) {
 
 
 	# Invariant rules:
@@ -139,12 +138,12 @@ annotation_table <- function(TIME = numeric(),
 	#		channel: <integer>
 	# 	number: <integer>
 
-	x <- df_list(TIME = TIME,
-							 SAMPLE = SAMPLE,
-							 TYPE = TYPE,
-							 SUBTYPE = SUBTYPE,
-							 CHANNEL = CHANNEL,
-							 NUMBER = NUMBER)
+	x <- df_list(time = time,
+							 sample = sample,
+							 type = type,
+							 subtype = subtype,
+							 channel = channel,
+							 number = number)
 
 	new_annotation_table(x = x)
 }
@@ -159,7 +158,7 @@ new_annotation_table <- function(x = list()) {
 
 	checkmate::assert_names(
 		names(x),
-		identical.to = c('TIME', 'SAMPLE', 'TYPE', 'SUBTYPE', 'CHANNEL', 'NUMBER')
+		identical.to = c('time', 'sample', 'type', 'subtype', 'channel', 'number')
 	)
 
 	new_data_frame(x, class = c('annotation_table', 'data.table'))
@@ -277,74 +276,80 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #'
 #' @param INFO List of characters that will be applied when writing out file
 #' @export
-header_table <- function(FILE_NAME = character(),
-												NUMBER_OF_CHANNELS = integer(),
-												SAMPLES = integer(),
-												START_TIME = Sys.time(),
-												END_TIME = Sys.time(),
-												FREQUENCY = integer(),
-												ADC_SATURATION = integer(),
-												LABEL = character(),
-												GAIN = integer(),
-												ADC_GAIN = numeric(),
-												LOW_PASS = integer(),
-												HIGH_PASS = integer(),
-												COLOR = character(),
-												SCALE = integer(),
-												INFO_STRINGS = list()) {
+header_table <- function(file_name = character(),
+												 number_of_channels = integer(),
+												 samples = integer(),
+												 start_time = sys.time(),
+												 end_time = sys.time(),
+												 frequency = integer(),
+												 ADC_saturation = integer(),
+												 label = character(),
+												 gain = integer(),
+												 ADC_gain = numeric(),
+												 low_pass = integer(),
+												 high_pass = integer(),
+												 color = character(),
+												 scale = integer(),
+												 info_strings = list()) {
 
-	# Three components to the header structure as described above
+	# three components to the header structure as described above
 	# 	Record line
 	# 	Signal line(s)
 	# 	Info strings
 
 	# First line of (*.hea) equivalent
-	RECORD_LINE <- list(
-		FILE_NAME = FILE_NAME,
-		NUMBER_OF_CHANNELS = NUMBER_OF_CHANNELS,
-		SAMPLES = SAMPLES,
-		START_TIME = START_TIME,
-		END_TIME = END_TIME,
-		FREQUENCY = FREQUENCY,
-		ADC_SATURATION = ADC_SATURATION
+	record_line <- list(
+		file_name = file_name,
+		number_of_channels = number_of_channels,
+		samples = samples,
+		start_time = start_time,
+		end_time = end_time,
+		frequency = frequency,
+		ADC_saturation = ADC_saturation
 	)
 
-	# Process labels
-	LABEL <- toupper(LABEL)
+	# Channels and specific signal should be organized appropriately
+	# 	Top to bottom should be from high to low, and then from left to right
+	# 	Catheters/leads are specifically included
+	# 	Retrieved from "data-raw" folder from leads.R file
+	# Table of channel information
+	# 	Clean up names if possible
+	# 	All are made upper character
+	label <- toupper(label)
 	lab_splits <-
-		stringr::str_split(LABEL,
+		stringr::str_split(label,
 											 pattern = "(?<=[a-zA-Z])\\s*(?=[0-9])",
 											 n = 2,
 											 simplify = TRUE) |>
 		gsub("^$", NA, x = _)
-	SOURCE <- lab_splits[,1]
-	LEAD <- lab_splits[,2]
-	LEAD <- ifelse(LABEL %in% .leads$ECG, LABEL, LEAD)
-	SOURCE <- ifelse(LABEL %in% .leads$ECG, "ECG", SOURCE)
+	source <- lab_splits[,1]
+	lead <- lab_splits[,2]
+	lead <- ifelse(label %in% .leads$ECG, label, lead)
+	source <- ifelse(label %in% .leads$ECG, "ECG", source)
 	src_splits <-
-		stringr::str_split(SOURCE,
+		stringr::str_split(source,
 											 pattern = "\ ",
 											 n = 2,
 											 simplify = TRUE) |>
 		gsub("^$", NA, x = _)
-	SOURCE <- src_splits[,1]
-	LEAD <- ifelse(is.na(LEAD), src_splits[,2], LEAD)
-	LABEL <- sub("ECG\ ", "", paste(SOURCE, LEAD))
-	SOURCE <- factor(SOURCE, levels = intersect(.source, SOURCE))
-	LABEL <- factor(LABEL, levels = intersect(.labels, LABEL))
+	source <- src_splits[,1]
+	lead <- ifelse(is.na(lead), src_splits[,2], lead)
+	label <- sub("ECG\ ", "", paste(source, lead))
+	source <- factor(source, levels = intersect(.source, source))
+	label <- factor(label, levels = intersect(.labels, label))
 
 	# Signal specifications
 	x <- df_list(
-		NUMBER = 1:NUMBER_OF_CHANNELS,
-		LABEL = LABEL,
-		LEAD = LEAD,
-		SOURCE = SOURCE,
-		GAIN = GAIN,
-		ADC_GAIN = ifelse(length(ADC_GAIN) == 0, ADC_SATURATION / GAIN, ADC_GAIN),
-		LOW_PASS = ifelse(length(LOW_PASS) == 0, NA, LOW_PASS),
-		HIGH_PASS = ifelse(length(HIGH_PASS) == 0, NA, HIGH_PASS),
-		COLOR = ifelse(length(COLOR) == 0, '#FFFFFF', COLOR),
-		SCALE = ifelse(length(SCALE) == 0, NA, SCALE)
+		number = 1:number_of_channels,
+		label = label,
+		lead = lead,
+		source = source,
+		gain = gain,
+		ADC_gain = ifelse(length(ADC_gain) == 0, ADC_saturation / gain, ADC_gain),
+		low_pass = ifelse(length(low_pass) == 0, NA, low_pass),
+		high_pass = ifelse(length(high_pass) == 0, NA, high_pass),
+		color = ifelse(length(color) == 0, '#ffffff', color),
+		scale = ifelse(length(scale) == 0, NA, scale)
 	)
 
 	# Info strings
@@ -352,21 +357,21 @@ header_table <- function(FILE_NAME = character(),
 	# Construct new table
 	new_header_table(
 		x = x,
-		RECORD_LINE = RECORD_LINE,
-		INFO_STRINGS = INFO_STRINGS
+		record_line = record_line,
+		info_strings = info_strings
 	)
 
 }
 
 #' @export
 new_header_table <- function(x = list(),
-														 RECORD_LINE = list(),
-														 INFO_STRINGS = list()) {
+														 record_line = list(),
+														 info_strings = list()) {
 
 	structure(
 		new_data_frame(x),
-		RECORD_LINE = RECORD_LINE,
-		INFO_STRINGS = INFO_STRINGS,
+		record_line = record_line,
+		info_strings = info_strings,
 		class = c('header_table', 'data.table', class(x))
 	)
 
@@ -384,9 +389,9 @@ print.header_table <- function(x, ...) {
 		sprintf(
 			'<%s: %s channels, %s samples @ %s Hz>\n',
 			class(x)[[1]],
-			attributes(x)$RECORD_LINE$NUMBER_OF_CHANNELS,
-			attributes(x)$RECORD_LINE$SAMPLES,
-			attributes(x)$RECORD_LINE$FREQUENCY
+			attributes(x)$record_line$number_of_channels,
+			attributes(x)$record_line$samples,
+			attributes(x)$record_line$frequency
 		)
 	)
 	if (lengths(x)[1] > 0) {

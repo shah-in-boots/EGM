@@ -20,7 +20,6 @@ test_that("can write annotation files", {
 	)
 	expect_s3_class(ann, "data.table")
 	expect_named(ann,
-							 expected = c("TIME", "SAMPLE", "TYPE", "SUBTYPE", "CHANNEL", "NUMBER"))
-
+							 expected = c("time", "sample", "type", "subtype", "channel", "number"))
 
 })

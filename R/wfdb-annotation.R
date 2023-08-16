@@ -73,7 +73,7 @@ read_annotation <- function(record,
 	})
 
 	# Rename and return as annotation table
-	names(dat) <- c("TIME", "SAMPLE", "TYPE", "SUBTYPE", "CHANNEL", "NUMBER")
+	names(dat) <- c("time", "sample", "type", "subtype", "channel", "number")
 	new_annotation_table(df_list(dat))
 }
 

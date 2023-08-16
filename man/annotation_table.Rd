@@ -6,12 +6,12 @@
 \title{Annotation Table}
 \usage{
 annotation_table(
-  TIME = numeric(),
-  SAMPLE = integer(),
-  TYPE = character(),
-  SUBTYPE = character(),
-  CHANNEL = integer(),
-  NUMBER = integer()
+  time = numeric(),
+  sample = integer(),
+  type = character(),
+  subtype = character(),
+  channel = integer(),
+  number = integer()
 )
 
 is_annotation_table(x)

@@ -131,10 +131,10 @@ write_wfdb <- function(data,
 		#		-x <numeric>		Scaling factor if needed
 
 		# Frequency
-		hz <- paste("-F", attributes(header)$RECORD_LINE$FREQUENCY)
+		hz <- paste("-F", attributes(header)$record_line$frequency)
 
 		# ADC = -G "adc adc adc adc" format
-		adc <- paste('-G', paste0('"', paste(header$ADC_GAIN, collapse = " "), '"'))
+		adc <- paste('-G', paste0('"', paste(header$ADC_gain, collapse = " "), '"'))
 
 		# Input (full file path)
 		ip <- paste("-i", tmpFile)
@@ -155,7 +155,7 @@ write_wfdb <- function(data,
 			# Then handle the signal specification files
 		headLine <-
 			readLines(con = paste0(record, ".hea"), n = 1) |>
-			paste(format(attributes(header)$RECORD_LINE$START_TIME, "%H:%M:%S %d/%m/%Y"))
+			paste(format(attributes(header)$record_line$start_time, "%H:%M:%S %d/%m/%Y"))
 
 		# 10 columns:
 		# 	>= V9 and V10 are descriptive fields
@@ -169,7 +169,7 @@ write_wfdb <- function(data,
 								 skip = 1)
 		headerFile[[3]] <- paste0(headerFile[[3]], "(0)", "/mV", sep = "")
 		headerFile <- headerFile[1:9]
-		headerFile[9] <- header$LABEL
+		headerFile[9] <- header$label
 
 		# Write header back in place
 		writeLines(text = headLine,
@@ -559,8 +559,32 @@ read_header <- function(record,
 	# 	V3 is ADC units
 	#			Can be appended with baseline value "(0)"
 	# 		Can be appended with "/mV" to specify units
-	head_line <- readLines(con = fp, n = 1)
-	head_attr <- strsplit(headLine, ' ') |> unlist()
+	record_line <-
+		readLines(con = fp, n = 1) |>
+		strsplit('\ ') |>
+		unlist()
+
+	file_name <- as.character(record_line[1])
+	number_of_channels <- as.integer(record_line[2])
+	frequency <- as.integer(record_line[3])
+	samples <- as.integer(record_line[4])
+
+
+	sig_data <-
+		data.table::fread(file = fp,
+											skip = 1, # Skip head line
+											nrows = sig_num) # Read in channel data
+
+
+
+	header_table(
+		file_name = file_name,
+		number_of_channels = number_of_channels,
+		frequency = frequency,
+		samples = samples
+	)
+
+
 	headText <-
 		data.table::fread(file = fp,
 											skip = 1, # Skip head line

@@ -6,21 +6,21 @@
 \title{Header Table}
 \usage{
 header_table(
-  FILE_NAME = character(),
-  NUMBER_OF_CHANNELS = integer(),
-  SAMPLES = integer(),
-  START_TIME = Sys.time(),
-  END_TIME = Sys.time(),
-  FREQUENCY = integer(),
-  ADC_SATURATION = integer(),
-  LABEL = character(),
-  GAIN = integer(),
-  ADC_GAIN = numeric(),
-  LOW_PASS = integer(),
-  HIGH_PASS = integer(),
-  COLOR = character(),
-  SCALE = integer(),
-  INFO_STRINGS = list()
+  file_name = character(),
+  number_of_channels = integer(),
+  samples = integer(),
+  start_time = sys.time(),
+  end_time = sys.time(),
+  frequency = integer(),
+  ADC_saturation = integer(),
+  label = character(),
+  gain = integer(),
+  ADC_gain = numeric(),
+  low_pass = integer(),
+  high_pass = integer(),
+  color = character(),
+  scale = integer(),
+  info_strings = list()
 )
 
 is_header_table(x)
