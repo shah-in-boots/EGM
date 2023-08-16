@@ -5,7 +5,7 @@
 #' @name egm
 #' @export
 egm <- function(signal = signal_table(),
-								header = list(),
+								header = header_table(),
 								annotation = annotation_table(),
 								...) {
 
@@ -19,7 +19,7 @@ egm <- function(signal = signal_table(),
 
 #' @export
 new_egm <- function(signal = signal_table(),
-										header = list(),
+										header = header_table(),
 										annotation = annotation_table(),
 										...) {
 
@@ -36,13 +36,14 @@ new_egm <- function(signal = signal_table(),
 #' @export
 format.egm <- function(x, ...) {
 	hea <- attr(x, "header")
+	rec <- attributes(hea)$record_line
 
-	cat("<Electrical Signal>\n")
+	cat("[Electrical Signal]\n")
 	cat("-------------------\n")
-	cat("Recording Duration: ", hea$SAMPLES/hea$FREQUENCY, "seconds\n")
-	cat("Recording frequency ", hea$FREQUENCY, " Hz\n")
-	cat("Number of channels: ", hea$NUMBER_OF_CHANNELS, "\n")
-	cat("Channel Names: ", paste(hea$LABEL))
+	cat( "Recording Duration: ", rec$samples / rec$frequency, "seconds\n" )
+	cat("Recording frequency ", rec$frequency, " hz\n")
+	cat("Number of channels: ", rec$number_of_channels, "\n")
+	cat("Channel Names: ", paste(hea$label))
 }
 
 #' @export

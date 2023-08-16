@@ -186,10 +186,10 @@ write_wfdb <- function(data,
 		)
 
 		# Add additional information at end of header
-		info <- c(paste("# low_pass", paste(header$LOW_PASS, collapse = " ")),
-							paste("# high_pass", paste(header$HIGH_PASS, collapse = " ")),
-							paste("# color", paste(header$COLOR, collapse = " ")),
-							paste("# source", paste(header$SOURCE, collapse = " ")))
+		info <- c(paste("# low_pass", paste(header$low_pass, collapse = " ")),
+							paste("# high_pass", paste(header$high_pass, collapse = " ")),
+							paste("# color", paste(header$color, collapse = " ")),
+							paste("# source", paste(header$source, collapse = " ")))
 
 		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
 	}
@@ -401,10 +401,10 @@ rewrite_wfdb <- function(file,
 		)
 
 		# Add additional information at end of header specific to LSPro data
-		info <- c(paste("# low_pass", paste(hea$LOW_PASS, collapse = " ")),
-							paste("# high_pass", paste(hea$HIGH_PASS, collapse = " ")),
-							paste("# color", paste(hea$COLOR, collapse = " ")),
-							paste("# source", paste(hea$SOURCE, collapse = " ")))
+		info <- c(paste("# low_pass", paste(hea$low_pass, collapse = " ")),
+							paste("# high_pass", paste(hea$high_pass, collapse = " ")),
+							paste("# color", paste(hea$color, collapse = " ")),
+							paste("# source", paste(hea$source, collapse = " ")))
 
 		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
 	}
@@ -556,34 +556,46 @@ read_header <- function(record,
 	# 	>= V9 and V10 are descriptive fields
 	# 		Should be a tab-delim field
 	#			Can contain spaces internal to it
+	#		V1 = File Name (*.dat)
+	# 	V2 = 8-bit or 16-bit
 	# 	V3 is ADC units
 	#			Can be appended with baseline value "(0)"
 	# 		Can be appended with "/mV" to specify units
-	record_line <-
-		readLines(con = fp, n = 1) |>
+	# 	V4 = ADC resolution in bits (8-bits, 16-bits, etc)
+	# 	V5 = ADC zero, is assumed to be zero if missing
+	# 	V6 = Initial value of sample[0], present only if ADC zero is present
+	# 	V7 = Checksum value (16-bit checksum of all samples)
+	# 	V8 = Block size, usually 0
+	# 	V9 = Description, usually ECG lead or EGM label
+	record_line <- readLines(con = fp, n = 1)
+	record_items <-
+		record_line |>
 		strsplit('\ ') |>
 		unlist()
 
-	file_name <- as.character(record_line[1])
-	number_of_channels <- as.integer(record_line[2])
-	frequency <- as.integer(record_line[3])
-	samples <- as.integer(record_line[4])
+	record_name <- as.character(record_items[1])
+	number_of_channels <- as.integer(record_items[2])
+	frequency <- as.integer(record_items[3])
+	samples <- as.integer(record_items[4])
+	start_time <- parse_date_and_time(record_line)
 
-
+	# Number of columns is important here
 	sig_data <-
 		data.table::fread(file = fp,
 											skip = 1, # Skip head line
-											nrows = sig_num) # Read in channel data
-
-
-	# TODO need to add column for specific file names in case files are split
-	# Sometimes signals are in different files in segments
+											nrows = number_of_channels) # Read in channel data
 
 	header_table(
+		record_name = record_name,
 		file_name = file_name,
 		number_of_channels = number_of_channels,
 		frequency = frequency,
-		samples = samples
+		samples = samples,
+		start_time = start_time,
+		label = sig_data[[9]],
+		ADC_gain = sig_data[[3]],
+
+
 	)
 
 

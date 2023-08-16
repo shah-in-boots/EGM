@@ -6,21 +6,29 @@
 \title{Header Table}
 \usage{
 header_table(
-  file_name = character(),
+  record_name = "",
   number_of_channels = integer(),
+  frequency = 250,
   samples = integer(),
-  start_time = sys.time(),
-  end_time = sys.time(),
-  frequency = integer(),
+  start_time = Sys.time(),
+  end_time = Sys.time(),
   ADC_saturation = integer(),
+  file_name = "",
+  storage_format = 16L,
+  ADC_gain = 200L,
+  ADC_baseline = ADC_zero,
+  ADC_resolution = 12L,
+  ADC_zero = 0L,
+  initial_value = ADC_zero,
+  checksum = 0L,
+  blocksize = 0L,
   label = character(),
-  gain = integer(),
-  ADC_gain = numeric(),
+  info_strings = list(),
+  digital_gain = 1,
   low_pass = integer(),
   high_pass = integer(),
   color = character(),
-  scale = integer(),
-  info_strings = list()
+  scale = integer()
 )
 
 is_header_table(x)
@@ -44,26 +52,28 @@ left to right...
 \itemize{
 \item Record name
 \item Number of signals: represents number of segments/channels
-\item Sampling frequency \link{optional}
-\item Number of samples \link{optional}
-\item Time: in HH:MM:SS format \link{optional}
-\item Date: in DD/MM/YYYY \link{optional}
+\item Sampling frequency (optional)
+\item Number of samples (optional)
+\item Time: in HH:MM:SS format (optional)
+\item Date: in DD/MM/YYYY (optional)
 }
 \item \strong{Signal specification lines} contains specifications for individual
 signals, and there must be as many signal lines as there are reported by the
 above record line. From left to right....
 \itemize{
-\item File name: (usually *.dat)
+\item File name: usually *.dat
 \item Format \if{html}{\out{<integer>}}: represents storage type, e.g. 8-bit or 16-bit
-\item ADC gain: (ADC units per physical unit) \link{optional}
-\item Baseline ADC: that corresponds to 0 physical units \link{optional}
-\item Units: follows ADC gain with '/' as a field separator e.g '300/mV'
-\item ADC resolution \if{html}{\out{<integer>}}: bits, usually 8 or 16 \link{optional}
-\item ADC zero: represents middle of ADC input range \link{optional}
-\item Initial value \link{optional}
-\item Checksum \link{optional}
-\item Block size \link{optional}
-\item Description: text or label information \link{optional}
+\item ADC gain: ADC units per physical unit (optional)
+\itemize{
+\item Baseline: corresponds to 0 physical units, sep = '*(0)" (optional)
+\item Units: with '/' as a field separator e.g '*/mV' (optional)
+}
+\item ADC resolution \if{html}{\out{<integer>}}: bits, usually 8 or 16 (optional)
+\item ADC zero: represents middle of ADC input range (optional)
+\item Initial value (optional)
+\item Checksum (optional)
+\item Block size (optional)
+\item Description: text or label information (optional)
 }
 \item \strong{Info strings} are unstructured lines that contains information about
 the record. Usually are descriptive. Starts with initial '#' without

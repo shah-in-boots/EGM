@@ -99,7 +99,9 @@ read_lspro <- function(file, n = Inf) {
 #' @export
 read_lspro_header <- function(file) {
 
-	file_nm <- deparse1(substitute(file))
+	record_name <- deparse1(substitute(file))
+	file_name <- paste0(deparse1(substitute(file)), '.dat')
+
 	hea <-
 		readLines(file, n = 13) |>
 		tstrsplit(split = ":\ ", fill = NA) |>
@@ -108,7 +110,6 @@ read_lspro_header <- function(file) {
 		}() |>
 		{\(.y)
 			list(
-				file_name = file_nm,
 				number_of_channels = as.numeric(.y$value[.y$description == "Channels exported"]),
 				samples = {
 					s <- .y$value[.y$description == "Samples per channel"]
@@ -173,12 +174,10 @@ read_lspro_header <- function(file) {
 
 	channels <- rbindlist(ch_list)
 
-	# Update gain now that is present
-	#hea$ADC_GAIN <- hea$ADC_SATURATION / hea$GAIN
-
 	# Return
 	header_table(
-		file_name = hea$file_name,
+		record_name = record_name,
+		file_name = file_name,
 		number_of_channels = hea$number_of_channels,
 		samples = hea$samples,
 		start_time = hea$start_time,
@@ -186,7 +185,7 @@ read_lspro_header <- function(file) {
 		frequency = hea$frequency,
 		ADC_saturation = hea$ADC_saturation,
 		label = channels$label,
-		gain = channels$gain,
+		digital_gain = channels$gain,
 		low_pass = channels$low,
 		high_pass = channels$high,
 		color = channels$color

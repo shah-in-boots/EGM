@@ -49,7 +49,7 @@ test_that("egm/signal class definition works", {
 	expect_equal(s1, s2)
 
 	# Basic output data
-	expect_output(print(s1), "<Electrical Signal>")
+	expect_output(print(s1), "[Electrical Signal]")
 
 })
 

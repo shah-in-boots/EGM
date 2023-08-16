@@ -7,7 +7,7 @@
 \usage{
 egm(
   signal = signal_table(),
-  header = list(),
+  header = header_table(),
   annotation = annotation_table(),
   ...
 )

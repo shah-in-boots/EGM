@@ -103,3 +103,25 @@ annotation_table_to_lines <- function(data) {
 	lines
 
 }
+
+#' Evaluates a character string and extracts first date and time objects
+#' Internally contains different matches for different WFDB formats
+#' Requires that string can be broken into components via a space
+#' @keywords internal
+#' @noRd
+parse_date_and_time <- function(x) {
+
+	stopifnot('Requires `x` to be a character string'=is.character(x))
+
+	# Time
+	# 	Assumes HH:MM:SS
+	tm <- stringr::str_extract(x, '\\d\\d:\\d\\d:\\d\\d')
+
+	# Dates are more varied
+	# 	DD/MM/YYYY
+	dt <- stringr::str_extract(x, '\\d+/\\d+/\\d+')
+
+	# Create date time
+	as.POSIXct(strptime(paste(tm[1], dt[1]), "%H:%M:%S %d/%m/%Y"))
+
+}

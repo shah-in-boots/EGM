@@ -4,13 +4,15 @@ test_that('can convert lspro to wfdb with wrsamp', {
 
 	# Convert a LSPRO text file into a WFDB compatible format
 	wd <- getwd()
-	expect_silent(
-		rewrite_wfdb(
-			file = 'egm.txt',
-			type = 'lspro',
-			record = 'egm',
-			record_dir = test_path()
-		)
+
+	file <- test_path('egm.txt')
+	lspro <- read_lspro(file)
+	write_wfdb(
+		data = lspro,
+		type = 'lspro',
+		header = attributes(lspro)$header,
+		record = 'egm',
+		record_dir = test_path()
 	)
 
 	expect_true(file.exists(file.path(test_path(), 'egm.hea')))
@@ -47,7 +49,6 @@ test_that('R data objects can be converted or written to WFDB format', {
 		type = 'muse',
 		record = 'ecg',
 		record_dir = test_path(),
-		wfdb_path = '/usr/local/bin',
 		header = hea
 	)
 
@@ -80,12 +81,25 @@ test_that('rdsamp can read in WFDB formatted files', {
 
 })
 
-test_that('headers can be read in', {
+test_that('can read in LSPro header', {
 
-	record <- 'ecgm'
-	record_dir <- test_path()
+	fp <- test_path("egm.hea")
 
-	header_table(
+	record_line <- readLines(con = fp, n = 1)
+	record_items <-
+		record_line |>
+		strsplit('\ ') |>
+		unlist()
+
+	record_name <- record_items[1]
+	number_of_channels <- record_items[2]
+	frequency <- record_items[3]
+	samples <- record_items[4]
+
+	start_time <- parse_date_and_time(record_line)
+
+
+	h <- header_table(
 		file_name = hea$file_name,
 		number_of_channels = hea$number_of_channels,
 		samples = hea$samples,
@@ -94,10 +108,14 @@ test_that('headers can be read in', {
 		frequency = hea$frequency,
 		ADC_saturation = hea$ADC_saturation,
 		label = channels$label,
-		gain = channels$gain,
+		digital_gain = channels$gain,
 		low_pass = channels$low,
 		high_pass = channels$high,
 		color = channels$color
 	)
+
+})
+
+test_that('can read in MUSE ECG header', {
 
 })

@@ -20,7 +20,8 @@ test_that('signal table class can be made', {
 test_that('header_table can be made using LSPro data', {
 
 	file <- test_path("egm.txt")
-	file_nm <- deparse1(substitute(file))
+	record_name <- deparse1(substitute(file))
+	file_name <- paste0(deparse1(substitute(file)), '.dat')
 	hea <-
 		readLines(file, n = 13) |>
 		tstrsplit(split = ":\ ", fill = NA) |>
@@ -29,7 +30,7 @@ test_that('header_table can be made using LSPro data', {
 		}() |>
 		{\(.y)
 			list(
-				file_name = file_nm,
+				record_name = record_name,
 				number_of_channels = as.numeric(.y$value[.y$description == "Channels exported"]),
 				samples = {
 					s <- .y$value[.y$description == "Samples per channel"]
@@ -90,25 +91,26 @@ test_that('header_table can be made using LSPro data', {
 	channels <- rbindlist(ch_list)
 
 	h <- header_table(
-		file_name = hea$file_name,
+		record_name = hea$record_name,
 		number_of_channels = hea$number_of_channels,
+		frequency = hea$frequency,
 		samples = hea$samples,
 		start_time = hea$start_time,
 		end_time = hea$end_time,
-		frequency = hea$frequency,
 		ADC_saturation = hea$ADC_saturation,
+		file_name = file_name,
 		label = channels$label,
-		gain = channels$gain,
+		digital_gain = channels$gain,
 		low_pass = channels$low,
 		high_pass = channels$high,
 		color = channels$color
 	)
 
-	expect_length(h, 10)
+	expect_length(h, 17)
 	rec <- attributes(h)$record_line
 	info <- attributes(h)$info_string
 	expect_type(rec, 'list')
 	expect_type(info, 'list')
-	expect_named(rec, c('file_name', 'number_of_channels', 'samples', 'start_time', 'end_time', 'frequency', 'ADC_saturation'), ignore.order = TRUE)
+	expect_named(rec, c('record_name', 'number_of_channels', 'samples', 'start_time', 'end_time', 'frequency', 'ADC_saturation'), ignore.order = TRUE)
 
 })
