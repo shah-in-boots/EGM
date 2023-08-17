@@ -52,7 +52,7 @@ test_that('R data objects can be converted or written to WFDB format', {
 
 test_that('rdsamp can read in WFDB formatted files', {
 
-	# Reads in egm data (which is an EP study)
+	# Reads in EGM data (which is an EP study)
 	x <- read_wfdb(
 		record = 'egm',
 		record_dir = test_path(),
@@ -62,7 +62,7 @@ test_that('rdsamp can read in WFDB formatted files', {
 
 	expect_s3_class(x, 'data.frame')
 
-	# Reads in egm data
+	# Reads in ECG data
 	y <- read_wfdb(
 		record = 'ecg',
 		record_dir = test_path(),
@@ -73,6 +73,13 @@ test_that('rdsamp can read in WFDB formatted files', {
 
 	expect_s3_class(y, 'data.frame')
 
+
+	# Read in a ECG file from PhysioNet
+	z <- read_wfdb(
+		record = '300',
+		record_dir = test_path(),
+		begin = 20
+	)
 })
 
 test_that('internals of `read_header()` can create `header_table` from LSPro data', {
