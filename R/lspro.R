@@ -99,8 +99,8 @@ read_lspro <- function(file, n = Inf) {
 #' @export
 read_lspro_header <- function(file) {
 
-	record_name <- deparse1(substitute(file))
-	file_name <- paste0(deparse1(substitute(file)), '.dat')
+	record_name <- fs::path_ext_remove(fs::path_file(file))
+	file_name <- paste0(record_name, '.dat')
 
 	hea <-
 		readLines(file, n = 13) |>
@@ -121,7 +121,6 @@ read_lspro_header <- function(file) {
 					}
 				},
 				start_time = as.POSIXct(strptime(.y$value[.y$description == "Start time"], format = "%H:%M:%S")),
-				end_time = as.POSIXct(strptime(.y$value[.y$description == "End time"], format = "%H:%M:%S")),
 				frequency = {
 					f <- .y$value[.y$description == "Sample Rate"]
 					if (grepl("Hz", f)) {
@@ -181,11 +180,10 @@ read_lspro_header <- function(file) {
 		number_of_channels = hea$number_of_channels,
 		samples = hea$samples,
 		start_time = hea$start_time,
-		end_time = hea$end_time,
 		frequency = hea$frequency,
 		ADC_saturation = hea$ADC_saturation,
 		label = channels$label,
-		digital_gain = channels$gain,
+		additional_gain = channels$gain,
 		low_pass = channels$low,
 		high_pass = channels$high,
 		color = channels$color

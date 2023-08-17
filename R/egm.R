@@ -25,20 +25,22 @@ new_egm <- function(signal = signal_table(),
 
 	# Signal will become a data frame (coerced into a data table)
 	structure(
-		signal,
-		header = header,
-		annotation = annotation,
-		class = c("egm", class(signal))
+		list(
+			signal = signal,
+			header = header,
+			annotation = annotation
+		),
+		class = c('egm', 'list')
 	)
 
 }
 
 #' @export
 format.egm <- function(x, ...) {
-	hea <- attr(x, "header")
+	hea <- x$header
 	rec <- attributes(hea)$record_line
 
-	cat("[Electrical Signal]\n")
+	cat("<Electrical Signal>\n")
 	cat("-------------------\n")
 	cat( "Recording Duration: ", rec$samples / rec$frequency, "seconds\n" )
 	cat("Recording frequency ", rec$frequency, " hz\n")

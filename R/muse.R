@@ -152,20 +152,20 @@ read_muse <- function(file) {
 		{\(.x) gsub("^, ", "", .x)}() |>
 		trimws()
 
-	hea <- list(
-		FILE_NAME = file_nm,
-		NUMBER_OF_CHANNELS = leadCount,
-		SAMPLES = sampleCount,
-		START_TIME = timeStamp,
-		FREQUENCY = hz,
-		ADC_GAIN = rep(1, leadCount),
-		NUMBER = leadNumber,
-		LABEL = leadNames,
-		MRN = mrn,
-		AGE = age,
-		SEX = sex,
-		RACE = race,
-		DIAGNOSIS = dx
+	hea <- header_table(
+		record_name = file_nm,
+		number_of_channels = leadCount,
+		samples = sampleCount,
+		frequency = hz,
+		start_time = timeStamp,
+		label = leadNames,
+		info_strings = list(
+			mrn = mrn,
+			age = age,
+			sex = sex,
+			race = race,
+			diagnosis = dx
+		)
 	)
 
 	# Return EGM data

@@ -11,7 +11,7 @@ test_that("plots can be generated easily", {
 		data = data,
 		channels = channels,
 		time_frame = time_frame
-	) + theme_egm_light()
+	)
 
 	expect_s3_class(object, "ggm")
 	expect_s3_class(object, "ggplot")
@@ -71,3 +71,4 @@ test_that("colors can be applied to a light or dark theme", {
 	expect_length(light$theme$panel.background, 0)
 
 })
+

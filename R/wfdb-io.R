@@ -53,13 +53,6 @@ NULL
 #' @param data A `data.frame` (or similar) that has a column that represents a
 #'   time point or index, and columns that represent signal values.
 #'
-#' @param type Type of signal data, as specified by the recording system.
-#'   Currently supports:
-#'
-#' * _lspro_ = Boston Scientific LabSystem Pro (Bard)
-#'
-#' * _muse_ = GE MUSE
-#'
 #' @param header A header file is a named list of parameters that will be used
 #'   to organize and describe the signal input from the `data` argument. If the
 #'   `type` is given, specific additional elements will be searched for, such as
@@ -72,6 +65,13 @@ NULL
 #'
 #'   * start_time = date/time object <date>
 #'
+#' @param type Type of signal data, as specified by the recording system.
+#'   Currently supports:
+#'
+#' * _lspro_ = Boston Scientific LabSystem Pro (Bard)
+#'
+#' * _muse_ = GE MUSE
+#'
 #' @param record String that will be used to name the WFDB record. Cannot
 #'   include extensions, and is not a filepath. alphanumeric characters are
 #'   acceptable, as well as hyphens (-) and underscores (_)
@@ -82,22 +82,163 @@ NULL
 #' @name wfdb_io
 #' @export
 write_wfdb <- function(data,
-											 type,
+											 header = list(frequency = 250,
+											 							gain = 200L,
+											 							label = character()),
+											 info_strings = list(),
+											 record,
+											 record_dir,
+											 wfdb_path = getOption('wfdb_path'),
+											 ...) {
+
+
+	# Options for `wrsamp`
+	# 	-F <numeric>		sampling frequency, default is 250
+	# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
+	#		-i <string>			input file (default standard input)
+	#		-o <string>			Write the signal file in current directory as 'record'
+	#												record.dat
+	#												record.hea
+	#		-x <numeric>		Scaling factor if needed
+
+	# Validation of paths
+	wrsamp <- find_wfdb_command('wrsamp')
+	if (fs::dir_exists(record_dir)) {
+		wd <- fs::path(record_dir)
+	} else {
+		wd <- getwd()
+	}
+
+	# Set up data, checking to see whether its using a `egm` set or not
+	if (inherits(data, 'egm')) {
+
+		signal <- data$signal
+		header <- data$header
+
+	} else if (inherits(data, 'data.frame')) {
+
+		signal <- signal_table(data)
+		if (length(header$label) == 0) {
+			header$label <- colnames(data)
+		}
+
+		header <- header_table(
+			record_name = record,
+			number_of_channels = length(signal),
+			frequency = header$frequency,
+			ADC_gain = header$gain,
+			label = header$label,
+			info_strings = info_strings
+		)
+	}
+
+	# Write out temporary CSV file for WFDB to use
+	tmpFile <- fs::file_temp("wfdb_", ext = "csv")
+	withr::defer(fs::file_delete(tmpFile))
+	data.table::fwrite(signal, file = tmpFile, col.names = FALSE)
+
+	# Options for `wrsamp`
+	# 	-F <numeric>		sampling frequency, default is 250
+	# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
+	#		-i <string>			input file (default standard input)
+	#		-o <string>			Write the signal file in current directory as 'record'
+	#												record.dat
+	#												record.hea
+	#		-x <numeric>		Scaling factor if needed
+
+	# Frequency
+	hz <- paste("-F", attributes(header)$record_line$frequency)
+
+	# ADC = -G "adc adc adc adc" format
+	adc <- paste('-G', paste0('"', paste(header$ADC_gain, collapse = " "), '"'))
+
+	# Input (full file path)
+	ip <- paste("-i", tmpFile)
+
+	# Output
+	op <- paste("-o", record)
+
+	# Write with `wrsamp`
+	# 	Change into correct folder/directory (the writing directory)
+	# 	Then reset to base directory
+	# 	Cleanup and remove temporary CSV file immediately
+	withr::local_dir(new = wd)
+	system2(command = wrsamp,
+					args = c(hz, adc, ip, op))
+
+	# Modify header file with more data
+		# Record line (first one) needs a date and time appended
+		# Then handle the signal specification files
+	headLine <-
+		readLines(con = paste0(record, ".hea"), n = 1) |>
+		paste(format(attributes(header)$record_line$start_time, "%H:%M:%S %d/%m/%Y"))
+
+	# 10 columns:
+	# 	>= V9 and V10 are descriptive fields
+	# 		Should be a tab-delim field
+	#			Can contain spaces internal to it
+	# 	V3 is ADC units
+	#			Can be appended with baseline value "(0)"
+	# 		Can be appended with "/mV" to specify units
+	headerFile <-
+		read.table(file = paste0(record, ".hea"),
+							 skip = 1)
+	headerFile[[3]] <- paste0(headerFile[[3]], "(0)", "/mV", sep = "")
+	headerFile <- headerFile[1:9]
+	headerFile[9] <- header$label
+
+	# Write header back in place
+	writeLines(text = headLine,
+						 con = paste0(record, ".hea"))
+
+	write.table(
+		headerFile,
+		file = paste0(record, ".hea"),
+		sep = "\t",
+		quote = FALSE,
+		col.names = FALSE,
+		row.names = FALSE,
+		append = TRUE
+	)
+
+	# Info strings are additional elements that may be available
+	# Are placed after a `#` at end of header file
+	# If there are additional lines in the header, can be placed in info section
+	# 	e.g. color, bandpass
+	# 	Otherwise uses named specific parameters like MRN or AGE
+
+	additional_info <-
+		header[, (ncol(header) - 5):ncol(header)] |>
+		{
+			\(.x) Filter(f = function(.y) !all(is.na(.y)), x = .x)
+		}() |>
+		as.list()
+
+	info <- append(info_strings, additional_info)
+	text <- lapply(info, function(.x) paste(.x, collapse = ' '))
+	lines <- paste('#', names(info), text)
+	write(lines, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
+
+}
+
+#' @export
+write_wfdb_old <- function(data,
 											 header,
+											 type,
 											 record,
 											 record_dir = ".",
 											 wfdb_path = getOption("wfdb_path"),
 											 ...) {
 
 	# TODO How do you write a R-object data file into a WFDB-format?
-		# Options for `wrsamp`
-		# 	-F <numeric>		sampling frequency, default is 250
-		# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
-		#		-i <string>			input file (default standard input)
-		#		-o <string>			Write the signal file in current directory as 'record'
-		#												record.dat
-		#												record.hea
-		#		-x <numeric>		Scaling factor if needed
+	# Options for `wrsamp`
+	# 	-F <numeric>		sampling frequency, default is 250
+	# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
+	#		-i <string>			input file (default standard input)
+	#		-o <string>			Write the signal file in current directory as 'record'
+	#												record.dat
+	#												record.hea
+	#		-x <numeric>		Scaling factor if needed
 
 	# Validation of paths
 	wrsamp <- find_wfdb_command('wrsamp')
@@ -212,7 +353,7 @@ write_wfdb <- function(data,
 		#		-x <numeric>		Scaling factor if needed
 
 		# Frequency
-		hz <- paste("-F", header$FREQUENCY)
+		hz <- paste("-F", attributes(header)$record_line$frequency)
 
 		# ADC = -G "adc adc adc adc" format
 		# adc <- paste('-G', paste0('"', paste(header$adc_gain, collapse = " "), '"'))
@@ -236,7 +377,7 @@ write_wfdb <- function(data,
 			# Then handle the signal specification files
 		headLine <-
 			readLines(con = paste0(record, ".hea"), n = 1) |>
-			paste(format(header$START_TIME, "%H:%M:%S %d/%m/%Y"))
+			paste(format(attributes(header)$record_line$start_time, "%H:%M:%S %d/%m/%Y"))
 
 		# 10 columns:
 		# 	>= V9 and V10 are descriptive fields
@@ -266,18 +407,19 @@ write_wfdb <- function(data,
 			append = TRUE
 		)
 
-		# Add additional information at end of header for MUSE ecg data
-		info <- c(paste("# mrn", paste(header$MRN, collapse = " ")),
-							paste("# age", paste(header$AGE, collapse = " ")),
-							paste("# sex", paste(header$SEX, collapse = " ")),
-							paste("# race", paste(header$RACE, collapse = " ")),
-							paste("# diagnosis", paste(header$DIAGNOSIS, collapse = " ")))
+		# add additional information at end of header for muse ecg data
+		info <- c(paste("# mrn", paste(header$mrn, collapse = " ")),
+							paste("# age", paste(header$age, collapse = " ")),
+							paste("# sex", paste(header$sex, collapse = " ")),
+							paste("# race", paste(header$race, collapse = " ")),
+							paste("# diagnosis", paste(header$diagnosis, collapse = " ")))
 
 		write(info, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
 
 	}
 
 }
+
 
 #' @rdname wfdb_io
 #'
@@ -531,7 +673,7 @@ read_wfdb <- function(record,
 	})
 
 	# Return data after cleaning names
-	names(dat)[1] <- "SAMPLE"
+	names(dat)[1] <- "sample"
 	dat
 }
 
@@ -558,7 +700,7 @@ read_header <- function(record,
 	#			Can contain spaces internal to it
 	#		V1 = File Name (*.dat)
 	# 	V2 = 8-bit or 16-bit
-	# 	V3 is ADC units
+	# 	V3 is ADC gain
 	#			Can be appended with baseline value "(0)"
 	# 		Can be appended with "/mV" to specify units
 	# 	V4 = ADC resolution in bits (8-bits, 16-bits, etc)
@@ -584,30 +726,44 @@ read_header <- function(record,
 		data.table::fread(file = fp,
 											skip = 1, # Skip head line
 											nrows = number_of_channels) # Read in channel data
+	# Number of columns is important here
+	sig_data <-
+		data.table::fread(file = fp,
+											skip = 1, # Skip head line
+											nrows = number_of_channels) # Read in channel data
+
+	# ADC gain is in multiple parts that need to be split
+	# Units will come after a forward slash `/`
+	# Baseline value will be within parenthesis
+	adc <- sig_data[[3]]
+	ADC_gain <- stringr::str_extract(adc, '\\d+([.]\\d+)?')
+	ADC_baseline <- stringr::str_extract(adc, "\\((\\d+)\\)", group = 1)
+	ADC_baseline <-
+		ifelse(is.na(ADC_baseline),
+					 formals(header_table)$ADC_zero,
+					 ADC_baseline)
+	ADC_units <- stringr::str_extract(adc, "/([:alpha:]+)", group = 1)
+	ADC_units <-
+		ifelse(is.na(ADC_units),
+					 formals(header_table)$ADC_units,
+					 ADC_units)
 
 	header_table(
 		record_name = record_name,
-		file_name = file_name,
 		number_of_channels = number_of_channels,
 		frequency = frequency,
 		samples = samples,
 		start_time = start_time,
-		label = sig_data[[9]],
-		ADC_gain = sig_data[[3]],
-
-
+		file_name = sig_data[[1]],
+		storage_format = sig_data[[2]],
+		ADC_gain = ADC_gain,
+		ADC_baseline = ADC_baseline,
+		ADC_units = ADC_units,
+		ADC_resolution = sig_data[[4]],
+		ADC_zero = sig_data[[5]],
+		initial_value = sig_data[[6]],
+		checksum = sig_data[[7]],
+		blocksize = sig_data[[8]],
+		label = sig_data[[9]]
 	)
-
-
-	headText <-
-		data.table::fread(file = fp,
-											skip = 1, # Skip head line
-											nrows = as.numeric(head_attr[2])) # Read in channel data
-	header[[3]] <- paste0(header[[3]], "(0)", "/mV", sep = "")
-	header <- header[, 1:9]
-	header[, 9] <- hea$LABEL
-
-
-	# TODO Read header files directly from text files *.hea
-	# TODO Include the 'getinfo' at bottom, encased in '# name x x x' format
 }

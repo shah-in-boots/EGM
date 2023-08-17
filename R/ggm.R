@@ -27,14 +27,14 @@ ggm <- function(data,
 
 	stopifnot(inherits(data, "egm"))
 
-	hea <- attr(data, "hea")
+	hea <- data$header
 	hea$label <- as.character(hea$label)
-	ann <- attr(data, "annotation")
-	signal <- data.table::as.data.table(data)
+	ann <- data$annotation
+	signal <- data.table::as.data.table(data$signal)
 	names(signal) <- hea$label
 
 	# Should be all of the same frequency of data
-	hz <- hea$frequency
+	hz <- attributes(hea)$record_line$frequency
 	signal$index <- 1:nrow(signal)
 	signal$time <- signal$index / hz
 
@@ -66,7 +66,7 @@ ggm <- function(data,
 	# Get channel data from individual signals
 	# Need to make sure all that information is present from header
 	channelData <-
-		hea[c("number", "label", "source", "lead", "color")] |>
+		hea[, c("number", "label", "source", "lead", "color")] |>
 		as.data.table()
 	names(channelData) <- tolower(names(channelData))
 	if (is.null(channelData$color)) {
@@ -87,7 +87,7 @@ ggm <- function(data,
 									][, mV := as.numeric(mV)]
 		}()
 
-	# relevel because order is lost in the labels during transformation
+	# Relevel because order is lost in the labels during transformation
 	dt$label <-
 		factor(dt$label,
 					 levels = intersect(.labels, selectedChannels),

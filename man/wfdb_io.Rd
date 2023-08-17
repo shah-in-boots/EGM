@@ -10,10 +10,10 @@
 \usage{
 write_wfdb(
   data,
-  type,
-  header,
+  header = list(frequency = 250, gain = 200L, label = character()),
+  info_strings = list(),
   record,
-  record_dir = ".",
+  record_dir,
   wfdb_path = getOption("wfdb_path"),
   ...
 )
@@ -45,13 +45,6 @@ read_header(record, record_dir = ".", wfdb_path = getOption("wfdb_path"), ...)
 \item{data}{A \code{data.frame} (or similar) that has a column that represents a
 time point or index, and columns that represent signal values.}
 
-\item{type}{Type of signal data, as specified by the recording system.
-Currently supports:
-\itemize{
-\item \emph{lspro} = Boston Scientific LabSystem Pro (Bard)
-\item \emph{muse} = GE MUSE
-}}
-
 \item{header}{A header file is a named list of parameters that will be used
 to organize and describe the signal input from the \code{data} argument. If the
 \code{type} is given, specific additional elements will be searched for, such as
@@ -72,6 +65,13 @@ files. Defaults to current directory.}
 
 \item{file}{Name of file. If it is a full path, then \code{read_location} is
 ignored}
+
+\item{type}{Type of signal data, as specified by the recording system.
+Currently supports:
+\itemize{
+\item \emph{lspro} = Boston Scientific LabSystem Pro (Bard)
+\item \emph{muse} = GE MUSE
+}}
 
 \item{begin, end, interval}{Timepoint in seconds, which is converted to an
 index position based on sampling frequency. The default is to start at the

@@ -8,9 +8,10 @@ test_that("egm class can be made", {
 
 	x <- new_egm(signal = sig, header = hea)
 	expect_s3_class(x, "egm")
-	expect_s3_class(x, "data.table")
-	expect_s3_class(x, "data.frame")
-	expect_s3_class(vec_data(x), "data.frame")
+	expect_s3_class(x$signal, 'signal_table')
+	expect_s3_class(x$signal, "data.table")
+	expect_s3_class(x$signal, "data.frame")
+	expect_s3_class(x$header, 'header_table')
 
 })
 
@@ -18,9 +19,9 @@ test_that("egm/signal class definition works", {
 
 	# Class definition
 	x <- new_egm()
-	expect_length(x, 0)
+	expect_length(x, 3)
 	expect_true(is_egm(x))
-	expect_equal(new_egm(), egm(), ignore_attr = TRUE)
+	expect_equal(new_egm(), egm())
 
 	# Random signal with peaks and troughs, cosine pattern
 	x <- cos(2 * pi * (1:1000) * (1:100)/1e+5)
@@ -38,10 +39,12 @@ test_that("egm/signal class definition works", {
 	frequency <- as.integer(1000)
 
 	sig <- signal_table(x)
-	hea <- list(LABEL = label,
-							COLOR = color,
-							VOLTAGE = voltage,
-							FREQUENCY = frequency)
+	hea <- header_table(
+		label = label,
+		color = color,
+		ADC_units = voltage,
+		frequency = frequency
+	)
 
 	s1 <- new_egm(signal = sig, header = hea)
 	expect_s3_class(s1, "egm")
