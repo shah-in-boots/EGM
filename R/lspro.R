@@ -91,6 +91,10 @@ read_lspro <- function(file, n = Inf) {
 	# This is to ensure class safety when plotting
 	sig <- read_lspro_signal(file = file, n = n)
 	hea <- read_lspro_header(file = file)
+
+	# Get the correct naems from the header file
+	names(sig) <- c('sample', as.character(hea$label))
+
 	egm(signal = sig, header = hea)
 
 }

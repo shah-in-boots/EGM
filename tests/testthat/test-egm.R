@@ -38,7 +38,7 @@ test_that("egm/signal class definition works", {
 	voltage <- "mV"
 	frequency <- as.integer(1000)
 
-	sig <- signal_table(x)
+	sig <- signal_table(V1 = x)
 	hea <- header_table(
 		label = label,
 		color = color,

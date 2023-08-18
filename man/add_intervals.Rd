@@ -2,7 +2,8 @@
 % Please edit documentation in R/ggm.R
 \name{add_intervals}
 \alias{add_intervals}
-\title{Add intervals}
+\title{Add annotations
+Add intervals}
 \usage{
 add_intervals(object, intervals = TRUE, channel, minimum_interval = 100)
 }
@@ -23,5 +24,6 @@ reference the 2nd interval in a 5 beat range.
 Returns an updated \code{ggm} object
 }
 \description{
+Add annotations
 Add intervals
 }

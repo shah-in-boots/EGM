@@ -13,4 +13,4 @@ ecg.dat	16	200(0)/mV	16	0	-29	-6177	0	V5
 ecg.dat	16	200(0)/mV	16	0	-44	-7504	0	V6
 # source ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG
 # additional_gain 1 1 1 1 1 1 1 1 1 1 1 1
-# color #ffffff #ffffff #ffffff #ffffff #ffffff #ffffff #ffffff #ffffff #ffffff #ffffff #ffffff #ffffff
+# color #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF

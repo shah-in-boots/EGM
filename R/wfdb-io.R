@@ -158,13 +158,16 @@ write_wfdb <- function(data,
 	# Output
 	op <- paste("-o", record)
 
+	# Additioanl specifications
+	col0 <- paste('-z') # Ignore 'sample' column (first column = 0)
+
 	# Write with `wrsamp`
 	# 	Change into correct folder/directory (the writing directory)
 	# 	Then reset to base directory
 	# 	Cleanup and remove temporary CSV file immediately
 	withr::local_dir(new = wd)
 	system2(command = wrsamp,
-					args = c(hz, adc, ip, op))
+					args = c(hz, adc, ip, op, col0))
 
 	# Modify header file with more data
 		# Record line (first one) needs a date and time appended
@@ -214,7 +217,7 @@ write_wfdb <- function(data,
 		}() |>
 		as.list()
 
-	info <- append(info_strings, additional_info)
+	info <- append(header$info_strings, additional_info)
 	text <- lapply(info, function(.x) paste(.x, collapse = ' '))
 	lines <- paste('#', names(info), text)
 	write(lines, file = paste0(record, ".hea"), append = TRUE, sep = "\n")
@@ -223,14 +226,14 @@ write_wfdb <- function(data,
 
 #' @export
 write_wfdb_old <- function(data,
-											 header,
-											 type,
-											 record,
-											 record_dir = ".",
-											 wfdb_path = getOption("wfdb_path"),
-											 ...) {
+													 header,
+													 type,
+													 record,
+													 record_dir = ".",
+													 wfdb_path = getOption("wfdb_path"),
+													 ...) {
 
-	# TODO How do you write a R-object data file into a WFDB-format?
+
 	# Options for `wrsamp`
 	# 	-F <numeric>		sampling frequency, default is 250
 	# 	-G <numeric>		gain in analog/digital units per milivolt, default is 200
@@ -674,7 +677,7 @@ read_wfdb <- function(record,
 
 	# Return data after cleaning names
 	names(dat)[1] <- "sample"
-	dat
+	signal_table(dat)
 }
 
 #' @rdname wfdb_io

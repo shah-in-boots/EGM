@@ -1,3 +1,5 @@
+# `ggplot` Class ---------------------------------------------------------------
+
 #' Visualization of EGMs using `ggplot`
 #'
 #' `r lifecycle::badge("experimental")`
@@ -27,16 +29,19 @@ ggm <- function(data,
 
 	stopifnot(inherits(data, "egm"))
 
+	# Clean channels
+	channels <- gsub("\ ", "_", x = channels)
+
+	# Process header and signal
 	hea <- data$header
-	hea$label <- as.character(hea$label)
 	ann <- data$annotation
 	signal <- data.table::as.data.table(data$signal)
-	names(signal) <- hea$label
+	hea$label <- as.character(hea$label)
+	names(signal) <- c('sample', hea$label)
 
 	# Should be all of the same frequency of data
 	hz <- attributes(hea)$record_line$frequency
-	signal$index <- 1:nrow(signal)
-	signal$time <- signal$index / hz
+	signal$time <- signal$sample / hz
 
 	# check if time frame exists within series, allowing for
 	# indexed rounding based on frequency
@@ -53,7 +58,7 @@ ggm <- function(data,
 	endTime <- time_frame[2]
 
 	# Make sure appropriate channels are selected
-	availableChannels <- names(signal)[1:(ncol(signal) - 2)] # Removes index/time cols
+	availableChannels <- hea$label
 	exactChannels <- channels[channels %in% .labels]
 	fuzzyChannels <- channels[!(channels %in% .labels)]
 	channelGrep <-
@@ -66,7 +71,7 @@ ggm <- function(data,
 	# Get channel data from individual signals
 	# Need to make sure all that information is present from header
 	channelData <-
-		hea[, c("number", "label", "source", "lead", "color")] |>
+		hea[, c("label", "source", "lead", "color")] |>
 		as.data.table()
 	names(channelData) <- tolower(names(channelData))
 	if (is.null(channelData$color)) {
@@ -75,8 +80,8 @@ ggm <- function(data,
 
 	dt <-
 		data.table::melt(
-			signal[, c(..selectedChannels, "index", "time")],
-			id.vars = c("index", "time"),
+			signal[, c('sample', 'time', ..selectedChannels)],
+			id.vars = c("sample", "time"),
 			variable.name = "label",
 			value.name = "mV"
 		) |>
@@ -127,6 +132,10 @@ new_ggm <- function(object = ggplot(),
 	)
 }
 
+# Annotations ------------------------------------------------------------------
+
+#' Add annotations
+
 #' Add intervals
 #'
 #' @param intervals The choice of whether interval data will be included. An
@@ -153,6 +162,7 @@ add_intervals <- function(object,
 							inherits(object, "ggm"))
 
 	# Get channels and check
+	channel <- gsub("\ ", "_", x = channel)
 	dt <- object$data
 	chs <- attributes(object)$header$label
 	stopifnot("The channel must be in the plot to annotate." = channel %in% chs)
@@ -227,6 +237,7 @@ add_intervals <- function(object,
 	object + gtxt
 }
 
+# Themes/colors ----------------------------------------------------------------
 
 #' Add color scheme to a `ggm` object
 #'

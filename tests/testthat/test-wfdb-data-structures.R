@@ -12,7 +12,7 @@ test_that('signal table class can be made', {
 	)
 
 	# ECG data should be 12 signal columns and 1 index column
-	x <- signal_table(dat[, -1])
+	x <- dat[, -1]
 	expect_equal(dim(x), c(5000, 12))
 
 })
@@ -149,3 +149,4 @@ test_that('minimal header_table can be made that can then be written to WFDB', {
 
 
 })
+
