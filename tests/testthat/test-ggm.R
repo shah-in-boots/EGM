@@ -78,24 +78,12 @@ test_that("colors can be applied to a light or dark theme", {
 
 test_that("annotations can be added to ggplot", {
 
-	sig <- read_wfdb(
-		record = '300',
-		record_dir = test_path()
-	)
-
-	hea <- read_header(
-		record = '300',
-		record_dir = test_path()
-	)
-
-	ann <- read_annotation(
-		record = '300',
-		record_dir = test_path(),
-		annotator = 'ecgpuwave'
-	)
-
+	record <- '300'
+	record_dir = test_path()
+	sig <- read_wfdb(record, record_dir)
+	hea <- read_header(record, record_dir)
+	ann <- read_annotation(record, record_dir, annotator = 'ecgpuwave')
 	data <- egm(sig, hea, ann)
-
 	channels <- 'ECG'
 
 	object <- ggm(
@@ -103,5 +91,7 @@ test_that("annotations can be added to ggplot", {
 		channels = 'ECG',
 		time_frame = c(3, 6)
 	)
+
+	expect_length(unique(object$data$label), 2)
 
 })

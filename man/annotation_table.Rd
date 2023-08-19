@@ -6,6 +6,7 @@
 \title{Annotation Table}
 \usage{
 annotation_table(
+  annotator = character(),
   time = numeric(),
   sample = integer(),
   type = character(),

@@ -53,9 +53,13 @@ ggm <- function(data,
 			max(time_frame) - 1 / hz <= max(sig$time)
 	))
 
-	# Filter time appropriately
-	startTime <- time_frame[1]
-	endTime <- time_frame[2]
+	# Filter time appropriately based on samples
+	sampleStart <- sig$sample[sig$time == time_frame[1]]
+	sampleEnd <- sig$sample[sig$time == time_frame[2]]
+
+	# Trim the signal and annotation files to match the time frame
+	sig <- sig[sample >= sampleStart & sample <= sampleEnd, ]
+	ann <- ann[sample >= sampleStart & sample <= sampleEnd, ]
 
 	# Make sure appropriate channels are selected
 	availableChannels <- hea$label
@@ -77,6 +81,7 @@ ggm <- function(data,
 		channelData$color <- '#FFFFFF'
 	}
 
+
 	dt <-
 		data.table::melt(
 			sig[, c('sample', 'time', ..selectedChannels)],
@@ -87,7 +92,6 @@ ggm <- function(data,
 		{
 			\(.x)
 			channelData[.x, on = .(label)
-									][time >= startTime & time <= endTime
 									][, mV := as.numeric(mV)]
 		}()
 
@@ -153,11 +157,21 @@ NULL
 
 #' @rdname annotations
 #' @export
-add_boundary_mask <- function(object) {
+draw_boundary_mask <- function(object) {
 
 	# Initial validation
 	stopifnot("`add_boundary_mask()` requires a `ggm` object" =
 							inherits(object, "ggm"))
+
+	# Annotations from object will already be subset to relevant sample space
+	ann <- attributes(object)$annotation
+	type <- attributes(ann)$annotator
+
+	# TODO Widen annotations based on wave type
+	if (type == 'ecgpuwave') {
+
+	}
+
 }
 
 #' Add intervals

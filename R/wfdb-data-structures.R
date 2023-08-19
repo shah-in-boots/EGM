@@ -130,7 +130,8 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' data.
 #'
 #' @export
-annotation_table <- function(time = numeric(),
+annotation_table <- function(annotator = character(),
+														 time = numeric(),
 														 sample = integer(),
 														 type = character(),
 														 subtype = character(),
@@ -159,11 +160,13 @@ annotation_table <- function(time = numeric(),
 							 channel = channel,
 							 number = number)
 
-	new_annotation_table(x = x)
+	new_annotation_table(x = x,
+											 annotator = annotator)
 }
 
 #' @export
-new_annotation_table <- function(x = list()) {
+new_annotation_table <- function(x = list(),
+																 annotator = character()) {
 
 	checkmate::assert_list(
 		x,
@@ -175,13 +178,18 @@ new_annotation_table <- function(x = list()) {
 		identical.to = c('time', 'sample', 'type', 'subtype', 'channel', 'number')
 	)
 
-	new_data_frame(x, class = c('annotation_table', 'data.table'))
+	new_data_frame(x, annotator = annotator, class = c('annotation_table', 'data.table'))
 
 }
 
 #' @export
 print.annotation_table <- function(x, ...) {
-	cat(sprintf('<%s: %s annotations>\n', class(x)[[1]], dim(x)[1]))
+	cat(sprintf(
+		'<%s: %s `%s` annotations>\n',
+		class(x)[[1]],
+		dim(x)[1],
+		attributes(x)$annotator
+	))
 	if (lengths(x)[1] > 0) {
 		NextMethod()
 	}
