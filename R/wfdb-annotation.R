@@ -16,8 +16,8 @@
 #' * ann = general annotator file
 #' @export
 read_annotation <- function(record,
-														annotator,
 														record_dir = ".",
+														annotator,
 														wfdb_path = getOption("wfdb_path"),
 														begin = 0,
 														end = NULL,

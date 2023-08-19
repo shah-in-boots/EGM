@@ -35,22 +35,22 @@ ggm <- function(data,
 	# Process header and signal
 	hea <- data$header
 	ann <- data$annotation
-	signal <- data.table::as.data.table(data$signal)
+	sig <- data.table::as.data.table(data$signal)
 	hea$label <- as.character(hea$label)
-	names(signal) <- c('sample', hea$label)
+	names(sig) <- c('sample', hea$label)
 
 	# Should be all of the same frequency of data
 	hz <- attributes(hea)$record_line$frequency
-	signal$time <- signal$sample / hz
+	sig$time <- sig$sample / hz
 
 	# check if time frame exists within series, allowing for
 	# indexed rounding based on frequency
 	if (is.null(time_frame)) {
-		time_frame <- c(min(signal$time, na.rm = TRUE), max(signal$time, na.rm = TRUE))
+		time_frame <- c(min(sig$time, na.rm = TRUE), max(sig$time, na.rm = TRUE))
 	}
 	stopifnot("`time_frame` must be within available data" = all(
-		min(time_frame) + 1 / hz >= min(signal$time) &
-			max(time_frame) - 1 / hz <= max(signal$time)
+		min(time_frame) + 1 / hz >= min(sig$time) &
+			max(time_frame) - 1 / hz <= max(sig$time)
 	))
 
 	# Filter time appropriately
@@ -73,14 +73,13 @@ ggm <- function(data,
 	channelData <-
 		hea[, c("label", "source", "lead", "color")] |>
 		as.data.table()
-	names(channelData) <- tolower(names(channelData))
 	if (is.null(channelData$color)) {
 		channelData$color <- '#FFFFFF'
 	}
 
 	dt <-
 		data.table::melt(
-			signal[, c('sample', 'time', ..selectedChannels)],
+			sig[, c('sample', 'time', ..selectedChannels)],
 			id.vars = c("sample", "time"),
 			variable.name = "label",
 			value.name = "mV"
@@ -93,10 +92,15 @@ ggm <- function(data,
 		}()
 
 	# Relevel because order is lost in the labels during transformation
-	dt$label <-
-		factor(dt$label,
-					 levels = intersect(.labels, selectedChannels),
-					 ordered = TRUE)
+	# But only do this if the labels are... "official" and not custom labels
+	if (all(selectedChannels %in% .labels)) {
+		dt$label <-
+			factor(dt$label,
+						 levels = intersect(.labels, selectedChannels),
+						 ordered = TRUE)
+	} else {
+		dt$label <- factor(dt$label)
+	}
 
 	g <-
 		ggplot(dt, aes(x = time, y = mV, color = color)) +
@@ -135,6 +139,26 @@ new_ggm <- function(object = ggplot(),
 # Annotations ------------------------------------------------------------------
 
 #' Add annotations
+#'
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' Annotations are labels for specific points or samples within a signal. They
+#' can be semantic, in that they may represent the boundary of a region of the
+#' signal, or just an individual peak. They are stored as a WFDB-compatible
+#' annotation file built into a `ggm` object.
+#' @name annotations
+NULL
+
+#' @rdname annotations
+#' @export
+add_boundary_mask <- function(object) {
+
+	# Initial validation
+	stopifnot("`add_boundary_mask()` requires a `ggm` object" =
+							inherits(object, "ggm"))
+}
 
 #' Add intervals
 #'

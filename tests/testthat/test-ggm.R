@@ -47,6 +47,8 @@ test_that("simple intervals can be added to surface leads", {
 
 })
 
+# Colors/theme ----
+
 test_that("colors can be applied to a light or dark theme", {
 
 	data <- read_lspro(test_path('egm.txt'))
@@ -71,6 +73,8 @@ test_that("colors can be applied to a light or dark theme", {
 	expect_length(light$theme$panel.background, 0)
 
 })
+
+# Annotations ----
 
 test_that("annotations can be added to ggplot", {
 
