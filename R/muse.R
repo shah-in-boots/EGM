@@ -38,10 +38,10 @@ read_muse <- function(file) {
 		xml2::xml_text()
 
 	if (leadCount == 12) {
-		leadNames <- as.character(.ecg) # Built in data on lead names
+		leadNames <- as.character(.leads$ECG) # Built in data on lead names
 	}
 
-	colnames(leadMatrix) <- .ecg
+	colnames(leadMatrix) <- leadNames
 
 	# Each lead must have data extracted
 	for (l in leadPositions) {
