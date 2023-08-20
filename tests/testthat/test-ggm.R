@@ -92,6 +92,14 @@ test_that("annotations can be added to ggplot", {
 		time_frame = c(3, 6)
 	)
 
+
 	expect_length(unique(object$data$label), 2)
+
+	masked <-
+		object |>
+		draw_boundary_mask()
+
+	expect_equal(attributes(masked)$annotation, attributes(object)$annotation)
+	expect_equal(attributes(masked)$header, attributes(object)$header)
 
 })

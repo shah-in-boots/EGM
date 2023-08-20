@@ -8,13 +8,11 @@
 #' Last updated: 04/28/23 \cr
 #'
 #' @description
-#'
 #' This implementation of WFDB is a back-end for the WFDB using a combination of
 #' _python_, _C++_, and _C_ language. The related functions are documented
 #' separately.
 #'
 #' @details
-#'
 #' # WFDB
 #'
 #' The WFDB (Waveform Database) Software Package has been developed over the
@@ -425,12 +423,9 @@ write_wfdb_old <- function(data,
 
 
 #' @rdname wfdb_io
-#'
+#' @inheritParams wfdb_io
 #' @param file Name of file. If it is a full path, then `read_location` is
 #'   ignored
-#'
-#' @inheritParams wfdb_io
-#'
 #' @export
 rewrite_wfdb <- function(file,
 												 type,

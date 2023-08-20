@@ -78,7 +78,7 @@ ggm <- function(data,
 		hea[, c("label", "source", "lead", "color")] |>
 		as.data.table()
 	if (is.null(channelData$color)) {
-		channelData$color <- '#FFFFFF'
+		channelData$color <- '#000000'
 	}
 
 
@@ -106,17 +106,17 @@ ggm <- function(data,
 		dt$label <- factor(dt$label)
 	}
 
+	# TODO need to tweak plotting parameter for hertz
 	g <-
-		ggplot(dt, aes(x = time, y = mV, color = color)) +
+		ggplot(dt, aes(x = sample, y = mV, color = color)) +
 		geom_line() +
 		facet_wrap( ~ label,
 								ncol = 1,
 								scales = "free_y",
 								strip.position = "left") +
 		scale_color_identity() +
-		theme_egm_dark() +
-		scale_x_continuous(breaks = seq(time_frame[1], time_frame[2], by = 0.2),
-											 label = NULL)
+		theme_egm() +
+		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz / 10), label = NULL)
 
 	# Return with updated class
 	new_ggm(g,
@@ -164,13 +164,65 @@ draw_boundary_mask <- function(object) {
 							inherits(object, "ggm"))
 
 	# Annotations from object will already be subset to relevant sample space
-	ann <- attributes(object)$annotation
+	data <- copy(object$data)
+	ann <- copy(attributes(object)$annotation)
 	type <- attributes(ann)$annotator
 
 	# TODO Widen annotations based on wave type
+	# Once wide, will be RANGE + Wave (e.g. 1-50 = P wave)
+	# If wide can label segments by changing line color
 	if (type == 'ecgpuwave') {
+		# Onset
+		# Offset
+		# Type
+		bounds <-
+			ann[, type := ifelse(type == '(', 'onset', type)
+			][, type := ifelse(type == ')', 'offset', type)
+			][, wave := number # Create new column for wave type
+			][, wave := ifelse(number == 0, 'p', wave)
+			][, wave := ifelse(number == 1, 'qrs', wave)
+			][, wave := ifelse(number == 2, 't', wave)
+			][type %in% c('onset', 'offset'), .(sample, type, wave)
+			][, beat := seq_len(.N), by = .(wave, type)
+			][, beat := paste0(wave, beat)] |> # Beats by group
+			dcast(beat + wave ~ type, value.var = 'sample', drop = TRUE) |> # Widen
+			setkey(beat)
+
+			# Create a overlap join to identify which region should be which value
+			data[bounds,
+					 on = .(sample >= onset, sample < offset),
+					 c('wave', 'beat') := list(wave, beat)
+			][is.na(wave), wave := NA_character_]
+
+			# Change colors to fit
+			data[wave == 'background', bounds := NA_character_,
+			][wave == 'p', bounds := 'darkgoldenrod1'
+			][wave == 'qrs', bounds := 'skyblue4'
+			][wave == 't', bounds := 'indianred3']
 
 	}
+
+	# Update object data
+	object$data <- data
+
+	g <-
+		object +
+		geom_line(
+			aes(
+				x = sample,
+				y = mV,
+				color = bounds,
+				group = beat
+			),
+			linewidth = 2,
+			alpha = 0.5
+		)
+
+	new_ggm(
+		object = g,
+		header = attributes(object)$header,
+		annotation = attributes(object)$annotation
+	)
 
 }
 
@@ -305,9 +357,50 @@ add_colors <- function(object, palette, mode = "light") {
 
 }
 
-#' Custom theme for EGM data
-#' @keywords internal
-#' @noRd
+#' Theming and color options for `ggm` objects
+#'
+#' @description
+#'
+#' The general purpose is to improve visualization of electrical signals. There
+#' is a pattern of colors that are generally given from different recording
+#' software, and they can be replicated to help improve visibility.
+#'
+#' @name colors
+NULL
+
+#' @rdname colors
+#' @export
+theme_egm <- function() {
+	font <- "Arial"
+	theme_minimal() %+replace%
+		theme(
+
+			# Panels
+			panel.grid.major.y = element_blank(),
+			panel.grid.minor.y = element_blank(),
+			panel.grid.major.x = element_blank(),
+			panel.grid.minor.x = element_blank(),
+
+			# Axes
+			axis.ticks.y = element_blank(),
+			axis.title.y = element_blank(),
+			axis.text.y = element_blank(),
+			axis.title.x = element_blank(),
+			axis.ticks.x = element_line(),
+
+			# Facets
+			panel.spacing = unit(0, units = "npc"),
+			panel.background = element_blank(),
+			strip.text.y.left = element_text(angle = 0, hjust = 1),
+
+			# Legend
+			legend.position = "none"
+		)
+}
+
+
+#' @rdname colors
+#' @export
 theme_egm_light <- function() {
 	font <- "Arial"
 	theme_minimal() %+replace%
@@ -336,9 +429,8 @@ theme_egm_light <- function() {
 		)
 }
 
-#' Custom theme for EGM data
-#' @keywords internal
-#' @noRd
+#' @rdname colors
+#' @export
 theme_egm_dark <- function() {
 	font <- "Arial"
 	theme_minimal() %+replace%

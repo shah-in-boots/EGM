@@ -404,7 +404,7 @@ header_table <- function(record_name = character(), # Record line information
 		'additional_gain' = additional_gain,
 		'low_pass' = ifelse(length(low_pass) == 0, NA, low_pass),
 		'high_pass' = ifelse(length(high_pass) == 0, NA, high_pass),
-		'color' = ifelse(length(color) == 0, '#FFFFFF', color),
+		'color' = ifelse(length(color) == 0, '#000000', color),
 		'scale' = ifelse(length(scale) == 0, NA, scale)
 	)
 

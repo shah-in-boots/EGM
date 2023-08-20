@@ -2,24 +2,26 @@
 
 #' Read WFDB-compatible annotation file
 #'
-#' @inheritParams write_wfdb
-#' @inheritParams read_wfdb
-#'
-#' @details
-#'
-#' # Annotation files
-#'
+#' @description
 #' The types of annotations that are supported are described below:
 #'
 #' * atr = manually reviewed and corrected reference annotation files
 #' * ann = general annotator file
 #' * ecgpuwave = `ecgpuwave` annotation types
 #'
+#' @inheritParams wfdb_io
+#'
+#' @details
+#'
+#' # Annotation files
+#'
+#' The following annotation file types are described below.
+#'
 #' ## ECGPUWAVE
 #'
-#' ecgpuwave analyses an ECG signal from the specified record, detecting the QRS
-#' complexes and locating the beginning, peak, and end of the P, QRS, and ST-T
-#' waveforms. The output of ecgpuwave is written as a standard WFDB-format
+#' `ecgpuwave` analyses an ECG signal from the specified record, detecting the
+#' QRS complexes and locating the beginning, peak, and end of the P, QRS, and
+#' ST-T waveforms. The output of ecgpuwave is written as a standard WFDB-format
 #' annotation file associated with the specified annotator. This file can be
 #' converted into text format using rdann or viewed using wave.
 #'
@@ -107,7 +109,6 @@ read_annotation <- function(record,
 	new_annotation_table(df_list(dat), annotator)
 }
 
-#' Write an annotation into a WFDB-compatible file
 #' @param data A table containing 6 columns
 #' @return Outputs a WFDB with the provided extension
 #' @rdname wfdb_annotations

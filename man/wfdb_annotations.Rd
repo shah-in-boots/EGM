@@ -39,22 +39,20 @@ files. Defaults to current directory.}
 Outputs a WFDB with the provided extension
 }
 \description{
-Read WFDB-compatible annotation file
-
-Write an annotation into a WFDB-compatible file
-}
-\section{Annotation files}{
 The types of annotations that are supported are described below:
 \itemize{
 \item atr = manually reviewed and corrected reference annotation files
 \item ann = general annotator file
 \item ecgpuwave = \code{ecgpuwave} annotation types
 }
+}
+\section{Annotation files}{
+The following annotation file types are described below.
 \subsection{ECGPUWAVE}{
 
-ecgpuwave analyses an ECG signal from the specified record, detecting the QRS
-complexes and locating the beginning, peak, and end of the P, QRS, and ST-T
-waveforms. The output of ecgpuwave is written as a standard WFDB-format
+\code{ecgpuwave} analyses an ECG signal from the specified record, detecting the
+QRS complexes and locating the beginning, peak, and end of the P, QRS, and
+ST-T waveforms. The output of ecgpuwave is written as a standard WFDB-format
 annotation file associated with the specified annotator. This file can be
 converted into text format using rdann or viewed using wave.
 
