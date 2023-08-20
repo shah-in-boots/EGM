@@ -22,6 +22,22 @@ test_that("plots can be generated easily", {
 
 })
 
+test_that('header and labels work fluidly when plotting', {
+
+	sig <- read_wfdb(record = 'ludb-ecg', record_dir = test_path())
+	hea <- read_header(record = 'ludb-ecg', record_dir = test_path())
+	ann <-
+		read_annotation(record = 'ludb-ecg',
+										record_dir = test_path(),
+										annotator = 'i')
+
+	data <- egm(sig, hea, ann)
+	object <- ggm(data, channels = hea$label)
+
+	object
+
+})
+
 test_that("simple intervals can be added to surface leads", {
 
 	object <- ggm(data = read_lspro(test_path('egm.txt')),

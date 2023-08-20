@@ -172,9 +172,9 @@ draw_boundary_mask <- function(object) {
 	# Once wide, will be RANGE + Wave (e.g. 1-50 = P wave)
 	# If wide can label segments by changing line color
 	if (type == 'ecgpuwave') {
-		# Onset
-		# Offset
-		# Type
+	 	# Rename onset and offset
+	 	# Collect waveform locations and name them
+	 	# Add groups of beats
 		bounds <-
 			ann[, type := ifelse(type == '(', 'onset', type)
 			][, type := ifelse(type == ')', 'offset', type)
@@ -185,28 +185,66 @@ draw_boundary_mask <- function(object) {
 			][type %in% c('onset', 'offset'), .(sample, type, wave)
 			][, beat := seq_len(.N), by = .(wave, type)
 			][, beat := paste0(wave, beat)] |> # Beats by group
-			dcast(beat + wave ~ type, value.var = 'sample', drop = TRUE) |> # Widen
+			dcast(beat + wave ~ type, value.var = 'sample', drop = TRUE) |>
 			setkey(beat)
 
-			# Create a overlap join to identify which region should be which value
-			data[bounds,
-					 on = .(sample >= onset, sample < offset),
-					 c('wave', 'beat') := list(wave, beat)
-			][is.na(wave), wave := NA_character_]
+		# Merge in region data
+		data[bounds,
+				 on = .(sample >= onset, sample < offset),
+				 c('wave', 'beat') := list(wave, beat)
+		][is.na(wave), wave := NA_character_]
 
-			# Change colors to fit
-			data[wave == 'background', bounds := NA_character_,
-			][wave == 'p', bounds := 'darkgoldenrod1'
-			][wave == 'qrs', bounds := 'skyblue4'
-			][wave == 't', bounds := 'indianred3']
+		# Change colors to fit
+		data[wave == 'background', bounds := NA_character_,
+		][wave == 'p', bounds := 'darkgoldenrod1'
+		][wave == 'qrs', bounds := 'skyblue4'
+		][wave == 't', bounds := 'indianred3']
 
 	}
 
-	# Update object data
-	object$data <- data
+	if (type %in% tolower(.leads$ECG)) {
 
-	g <-
-		object +
+		# Label..
+		leadLab <- toupper(type)
+
+	 	# Get data bounds
+		bounds <-
+			ann[, type := ifelse(type == '(', 'onset', type)
+			][, type := ifelse(type == ')', 'offset', type)
+			][, start := shift(type, type = 'lead')
+			][, end := shift(type, type = 'lag')
+			][type == 'onset', wave := start
+			][type == 'offset', wave := end
+			][, wave := ifelse(wave == 'p', 'p', wave)
+			][, wave := ifelse(wave == 'N', 'qrs', wave)
+			][, wave := ifelse(wave == 't', 't', wave)
+			][type %in% c('onset', 'offset'), .(sample, type, wave)
+			][, label := leadLab # Add labels for future merge
+			][, beat := seq_len(.N), by = .(wave, type)
+			][, beat := paste0(wave, beat)] |> # Beats by group
+			dcast(label + beat + wave ~ type, value.var = 'sample', drop = TRUE) |>
+			setkey(beat)
+
+		# Merge in region data
+		data[bounds,
+			on = .(label, sample >= onset, sample < offset),
+			c('wave', 'beat') := list(wave, beat)
+		][is.na(wave), wave := NA_character_]
+
+		# Change colors to fit
+		data[wave == 'background', bounds := NA_character_,
+		][wave == 'p', bounds := 'darkgoldenrod1'
+		][wave == 'qrs', bounds := 'skyblue4'
+		][wave == 't', bounds := 'indianred3']
+
+	 }
+
+	# Update object data
+	g <- object
+	g$data <- data
+
+	gg <-
+		g +
 		geom_line(
 			aes(
 				x = sample,
@@ -219,7 +257,7 @@ draw_boundary_mask <- function(object) {
 		)
 
 	new_ggm(
-		object = g,
+		object = gg,
 		header = attributes(object)$header,
 		annotation = attributes(object)$annotation
 	)
@@ -403,60 +441,67 @@ theme_egm <- function() {
 #' @export
 theme_egm_light <- function() {
 	font <- "Arial"
-	theme_minimal() %+replace%
-		theme(
+	list(
+		theme_minimal() %+replace%
+			theme(
 
-			# Panels
-			panel.grid.major.y = element_blank(),
-			panel.grid.minor.y = element_blank(),
-			panel.grid.major.x = element_blank(),
-			panel.grid.minor.x = element_blank(),
+				# Panels
+				panel.grid.major.y = element_blank(),
+				panel.grid.minor.y = element_blank(),
+				panel.grid.major.x = element_blank(),
+				panel.grid.minor.x = element_blank(),
 
-			# Axes
-			axis.ticks.y = element_blank(),
-			axis.title.y = element_blank(),
-			axis.text.y = element_blank(),
-			axis.title.x = element_blank(),
-			axis.ticks.x = element_line(),
+				# Axes
+				axis.ticks.y = element_blank(),
+				axis.title.y = element_blank(),
+				axis.text.y = element_blank(),
+				axis.title.x = element_blank(),
+				axis.ticks.x = element_line(),
 
-			# Facets
-			panel.spacing = unit(0, units = "npc"),
-			panel.background = element_blank(),
-			strip.text.y.left = element_text(angle = 0, hjust = 1),
+				# Facets
+				panel.spacing = unit(0, units = "npc"),
+				panel.background = element_blank(),
+				strip.text.y.left = element_text(angle = 0, hjust = 1),
 
-			# Legend
-			legend.position = "none"
-		)
+				# Legend
+				legend.position = "none"
+			),
+		scale_color_manual(values = 'black')
+	)
 }
 
 #' @rdname colors
 #' @export
 theme_egm_dark <- function() {
 	font <- "Arial"
-	theme_minimal() %+replace%
-		theme(
 
-			# Panels and background
-			panel.grid.major.y = element_blank(),
-			panel.grid.minor.y = element_blank(),
-			panel.grid.major.x = element_blank(),
-			panel.grid.minor.x = element_blank(),
-			panel.background = element_rect(fill = "black"),
-			plot.background = element_rect(fill = "black"),
+	list(
+		theme_minimal() %+replace%
+			theme(
 
-			# Axes
-			axis.ticks.y = element_blank(),
-			axis.title.y = element_blank(),
-			axis.text.y = element_blank(),
-			axis.title.x = element_blank(),
-			axis.text.x = element_text(color = "white"),
-			axis.ticks.x = element_line(color = "white"),
+				# Panels and background
+				panel.grid.major.y = element_blank(),
+				panel.grid.minor.y = element_blank(),
+				panel.grid.major.x = element_blank(),
+				panel.grid.minor.x = element_blank(),
+				panel.background = element_rect(fill = "black"),
+				plot.background = element_rect(fill = "black"),
 
-			# Facets
-			panel.spacing = unit(0, units = "npc"),
-			strip.text.y.left = element_text(angle = 0, hjust = 1, color = "white"),
+				# Axes
+				axis.ticks.y = element_blank(),
+				axis.title.y = element_blank(),
+				axis.text.y = element_blank(),
+				axis.title.x = element_blank(),
+				axis.text.x = element_text(color = "white"),
+				axis.ticks.x = element_line(color = "white"),
 
-			# Legend
-			legend.position = "none"
-		)
+				# Facets
+				panel.spacing = unit(0, units = "npc"),
+				strip.text.y.left = element_text(angle = 0, hjust = 1, color = "white"),
+
+				# Legend
+				legend.position = "none"
+			),
+		scale_color_manual(values = 'white')
+	)
 }
