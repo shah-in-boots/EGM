@@ -131,6 +131,9 @@ test_that('header_table can be made using LSPro data', {
 	)
 
 	expect_length(h, 19)
+	expect_true(length(unique(h$color)) > 1)
+	expect_true(length(unique(h$low_pass)) == 2)
+	expect_true(length(unique(h$high_pass)) == 2)
 	rec <- attributes(h)$record_line
 	info <- attributes(h)$info_string
 	expect_type(rec, 'list')

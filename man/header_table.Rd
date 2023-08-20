@@ -27,7 +27,7 @@ header_table(
   additional_gain = 1,
   low_pass = integer(),
   high_pass = integer(),
-  color = character(),
+  color = "#000000",
   scale = integer()
 )
 

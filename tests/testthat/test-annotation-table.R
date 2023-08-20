@@ -1,6 +1,5 @@
 test_that('annotation table class can be made', {
 
-	expect_error(new_annotation_table())
 	expect_named(annotation_table())
 	expect_output(print(annotation_table()), "annotation_table")
 

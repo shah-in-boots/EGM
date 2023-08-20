@@ -56,17 +56,17 @@ test_that("colors can be applied to a light or dark theme", {
 	time_frame <- c(.1, 3)
 
 	# Basic signal plot of egms
-	dark <- ggm(
+	basic <- ggm(
 		data = data,
 		channels = channels,
 		time_frame = time_frame
 	)
 
-	expect_true("#FFFFFF" %in% dark$data$color)
-	expect_equal(dark$theme$plot.background$fill, "black")
+	expect_true("#FFFFFF" %in% basic$data$color)
+	expect_equal(basic$theme$plot.background$fill, NULL)
 
 	light <-
-		dark |>
+		basic |>
 		add_colors(palette = "material", mode = "light")
 
 	expect_length(light$theme$plot.background, 0)
