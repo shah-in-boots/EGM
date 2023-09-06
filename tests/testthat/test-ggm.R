@@ -118,4 +118,6 @@ test_that("annotations can be added to ggplot", {
 	expect_equal(attributes(masked)$annotation, attributes(object)$annotation)
 	expect_equal(attributes(masked)$header, attributes(object)$header)
 
+	#
+
 })

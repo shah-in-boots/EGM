@@ -39,13 +39,16 @@ new_egm <- function(signal = signal_table(),
 format.egm <- function(x, ...) {
 	hea <- x$header
 	rec <- attributes(hea)$record_line
+	ann <- x$annotation # May be empty table
 
-	cat("<Electrical Signal>\n")
-	cat("-------------------\n")
-	cat( "Recording Duration: ", rec$samples / rec$frequency, "seconds\n" )
-	cat("Recording frequency ", rec$frequency, " hz\n")
-	cat("Number of channels: ", rec$number_of_channels, "\n")
-	cat("Channel Names: ", paste(hea$label))
+	cat('<Electrical Signal>\n')
+	cat('-------------------\n')
+	cat('Recording Duration: ', rec$samples / rec$frequency, 'seconds\n' )
+	cat('Recording frequency ', rec$frequency, ' hz\n')
+	cat('Number of channels: ', rec$number_of_channels, '\n')
+	cat('Channel Names: ', paste(hea$label), '\n')
+	cat('Annotation: ', attributes(ann)$annotator)
+
 }
 
 #' @export

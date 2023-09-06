@@ -3,7 +3,6 @@
 \name{wfdb_io}
 \alias{wfdb_io}
 \alias{write_wfdb}
-\alias{rewrite_wfdb}
 \alias{read_wfdb}
 \alias{read_header}
 \title{I/O of WFDB-compatible signal & header files from EP recording systems}
@@ -14,15 +13,6 @@ write_wfdb(
   info_strings = list(),
   record,
   record_dir,
-  wfdb_path = getOption("wfdb_path"),
-  ...
-)
-
-rewrite_wfdb(
-  file,
-  type,
-  record = file,
-  record_dir = ".",
   wfdb_path = getOption("wfdb_path"),
   ...
 )
@@ -63,16 +53,6 @@ acceptable, as well as hyphens (-) and underscores (_)}
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
 
-\item{file}{Name of file. If it is a full path, then \code{read_location} is
-ignored}
-
-\item{type}{Type of signal data, as specified by the recording system.
-Currently supports:
-\itemize{
-\item \emph{lspro} = Boston Scientific LabSystem Pro (Bard)
-\item \emph{muse} = GE MUSE
-}}
-
 \item{begin, end, interval}{Timepoint in seconds, which is converted to an
 index position based on sampling frequency. The default is to start at the
 beginning of the record. If \code{end} or \code{interval} are given, the earlier of
@@ -90,6 +70,13 @@ describes units
 
 \item{channels}{Either the signal/channel in a vector as a name or number.
 Allows for duplication of signal or to re-order signal if needed.}
+
+\item{type}{Type of signal data, as specified by the recording system.
+Currently supports:
+\itemize{
+\item \emph{lspro} = Boston Scientific LabSystem Pro (Bard)
+\item \emph{muse} = GE MUSE
+}}
 }
 \description{
 This function allows for WFDB files to be read from specific EP recording

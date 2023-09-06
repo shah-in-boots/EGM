@@ -202,6 +202,7 @@ draw_boundary_mask <- function(object) {
 
 	}
 
+	# Works for when individual leads are considered as the annotations
 	if (type %in% tolower(.leads$ECG)) {
 
 		# Label..

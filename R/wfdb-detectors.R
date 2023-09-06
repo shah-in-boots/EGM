@@ -2,7 +2,7 @@
 #'
 #' @return Creates a WFDB-compatible annotation file
 #'
-#' @inheritParams rewrite_wfdb
+#' @inheritParams wfdb_io
 #'
 #' @param detector Signal detector that can create WFDB-compatible annotation
 #'   files
