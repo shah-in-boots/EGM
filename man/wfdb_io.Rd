@@ -4,20 +4,34 @@
 \alias{wfdb_io}
 \alias{write_wfdb}
 \alias{read_wfdb}
+\alias{read_signal}
 \alias{read_header}
 \title{I/O of WFDB-compatible signal & header files from EP recording systems}
 \usage{
 write_wfdb(
   data,
-  header = list(frequency = 250, gain = 200L, label = character()),
-  info_strings = list(),
   record,
   record_dir,
   wfdb_path = getOption("wfdb_path"),
+  header = list(frequency = 250, gain = 200L, label = character()),
+  info_strings = list(),
   ...
 )
 
 read_wfdb(
+  record,
+  record_dir = ".",
+  annotator = NA_character_,
+  wfdb_path = getOption("wfdb_path"),
+  begin = 0,
+  end = NA_integer_,
+  interval = NA_integer_,
+  units = "digital",
+  channels = character(),
+  ...
+)
+
+read_signal(
   record,
   record_dir = ".",
   wfdb_path = getOption("wfdb_path"),
@@ -32,18 +46,12 @@ read_wfdb(
 read_header(record, record_dir = ".", wfdb_path = getOption("wfdb_path"), ...)
 }
 \arguments{
-\item{data}{A \code{data.frame} (or similar) that has a column that represents a
-time point or index, and columns that represent signal values.}
-
-\item{header}{A header file is a named list of parameters that will be used
-to organize and describe the signal input from the \code{data} argument. If the
-\code{type} is given, specific additional elements will be searched for, such as
-the low or high pass filters, colors, or other signal attributes. At
-minimum, the following elements are required (as cannot be calculated):
+\item{data}{Can either be an \code{egm} object, or a \code{data.frame} (or similar)
+object. The function will appropriately set defaults based on the type.
 \itemize{
-\item frequency = sample frequency in Hertz \if{html}{\out{<integer>}}
-\item label = vector of names for each channel \if{html}{\out{<character>}}
-\item start_time = date/time object \if{html}{\out{<date>}}
+\item \code{egm} = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format
+\item \code{signal_table} = This is a custom \code{data.table} class that has an invariant column containing sample information.
+\item \code{data.frame} or \code{data.table} = Must have a column that represents a time point or index, and columns that represent signal values (preferably integers)
 }}
 
 \item{record}{String that will be used to name the WFDB record. Cannot
@@ -52,6 +60,28 @@ acceptable, as well as hyphens (-) and underscores (_)}
 
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
+
+\item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
+device. Unless directly set, will attempt to find local installation.
+Obtained from the system options on loading of the package,
+\code{getOption('wfdb_path')}}
+
+\item{header}{A header file is an \strong{optional} named list of parameters that
+will be used to organize and describe the signal input from the \code{data}
+argument. If the \code{type} is given, specific additional elements will be
+searched for, such as the low or high pass filters, colors, or other signal
+attributes. At minimum, the following elements are required (as cannot be
+calculated):
+\itemize{
+\item frequency = sample frequency in Hertz \if{html}{\out{<integer>}}
+\item label = vector of names for each channel \if{html}{\out{<character>}}
+\item start_time = date/time object \if{html}{\out{<date>}}
+}}
+
+\item{annotator}{String that is the name of a WFDB-compatible annotation
+type, serving as the extension for the file that is written containing that
+annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
+further details.}
 
 \item{begin, end, interval}{Timepoint in seconds, which is converted to an
 index position based on sampling frequency. The default is to start at the
@@ -69,16 +99,39 @@ describes units
 }}
 
 \item{channels}{Either the signal/channel in a vector as a name or number.
-Allows for duplication of signal or to re-order signal if needed.}
-
-\item{type}{Type of signal data, as specified by the recording system.
-Currently supports:
-\itemize{
-\item \emph{lspro} = Boston Scientific LabSystem Pro (Bard)
-\item \emph{muse} = GE MUSE
-}}
+Allows for duplication of signal or to re-order signal if needed. If
+nothing is given, will default to all channels available.}
 }
 \description{
-This function allows for WFDB files to be read from specific EP recording
-systems, as indicated by the \strong{type} argument below.
+This function allows for WFDB files to be read from any WFDB-compatible
+system, and also allows writing out WFDB-compatible files from specific EP
+recording systems, as indicated in the details section. Writing WFDB leads to
+creation of both a \strong{dat} (signal) and \strong{hea} (header) file. These are both
+required for reading in files as well.
 }
+\section{Functions}{
+\itemize{
+\item \code{write_wfdb()}: Writes out signal and header data into a WFDB-compatible
+format from R.
+
+\item \code{read_wfdb()}: Reads a multicomponent WFDB-formatted set of files
+directly into an \code{egm} object.
+
+\item \code{read_signal()}: Specifically reads the signal data from the WFDB binary
+format, returning a \code{signal_table} object for evaluation in the R
+environment
+
+\item \code{read_header()}: Specifically reads the header data from the WFDB header
+text format, returning a \code{header_table} object for evaluation in the R
+environment
+
+}}
+\section{Recording systems}{
+Type of signal data, as specified by the recording system, that are currently
+supported.
+\itemize{
+\item \emph{lspro} = LabSystem Pro, e.g. \code{\link[=read_lspro]{read_lspro()}}
+\item \emph{muse} = GE MUSE, e.g. \code{\link[=read_muse]{read_muse()}}
+}
+}
+

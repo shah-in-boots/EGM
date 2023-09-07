@@ -65,7 +65,7 @@ annotation_table_to_lines <- function(data) {
 
 	# Each annotation file has a string length of 42 characters
 	# Each annotation `rdann -e` has 4 characters of spaces up front
-	# When using hte `-e` option for rdann, gives an elapsed time
+	# When using the `-e` option for rdann, gives an elapsed time
 	# That assumption leads to spaces before the time starts
 
 	# Columns are... n = 6
@@ -111,7 +111,7 @@ annotation_table_to_lines <- function(data) {
 #' @noRd
 parse_date_and_time <- function(x) {
 
-	stopifnot('Requires `x` to be a character string'=is.character(x))
+	stopifnot('Requires `x` to be a character string' = is.character(x))
 
 	# Time
 	# 	Assumes HH:MM:SS

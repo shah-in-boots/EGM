@@ -4,7 +4,7 @@ test_that('signal table class can be made', {
 	expect_output(print(signal_table()), 'signal_table')
 
 	# Reads in sample ECG data
-	dat <- read_wfdb(
+	dat <- read_signal(
 		record = 'ecg',
 		record_dir = test_path(),
 		begin = 0,

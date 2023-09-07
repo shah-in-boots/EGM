@@ -24,17 +24,13 @@ test_that("plots can be generated easily", {
 
 test_that('header and labels work fluidly when plotting', {
 
-	sig <- read_wfdb(record = 'ludb-ecg', record_dir = test_path())
-	hea <- read_header(record = 'ludb-ecg', record_dir = test_path())
-	ann <-
-		read_annotation(record = 'ludb-ecg',
+	data <- read_wfdb(record = 'ludb-ecg',
 										record_dir = test_path(),
 										annotator = 'i')
 
-	data <- egm(sig, hea, ann)
-	object <- ggm(data, channels = hea$label)
+	object <- ggm(data, channels = data$header$label)
 
-	object
+	expect_s3_class(object, 'ggm')
 
 })
 
@@ -96,10 +92,7 @@ test_that("annotations can be added to ggplot", {
 
 	record <- '300'
 	record_dir = test_path()
-	sig <- read_wfdb(record, record_dir)
-	hea <- read_header(record, record_dir)
-	ann <- read_annotation(record, record_dir, annotator = 'ecgpuwave')
-	data <- egm(sig, hea, ann)
+	data <- read_wfdb(record, record_dir, annotator = 'ecgpuwave')
 	channels <- 'ECG'
 
 	object <- ggm(
@@ -117,7 +110,5 @@ test_that("annotations can be added to ggplot", {
 
 	expect_equal(attributes(masked)$annotation, attributes(object)$annotation)
 	expect_equal(attributes(masked)$header, attributes(object)$header)
-
-	#
 
 })

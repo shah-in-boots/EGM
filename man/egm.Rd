@@ -15,5 +15,21 @@ egm(
 is_egm(x)
 }
 \description{
-Electrogram and electrocardiogram data class definition
+This serves as a combinatorial class to describe electrical signal data in R.
+It is based off of the formats available in WFDB, but has been digitized for
+ease of use within the R ecosystem. The \code{egm} object contains three
+components in a list:
+\itemize{
+\item signal data in multiple channels
+\item header information
+\item annotation labels at specified time points
+}
+
+These components help to navigate, and visualize data.
+}
+\details{
+The individual components of the class are further defined in their
+respective functions \code{\link[=signal_table]{signal_table()}}, \code{\link[=header_table]{header_table()}},
+\code{\link[=annotation_table]{annotation_table()}}. They are very simple classes that build upon the
+\code{data.table} class.
 }

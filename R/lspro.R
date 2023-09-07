@@ -1,5 +1,6 @@
 #' Read in ECG and EGM data from LabSystem Pro
 #'
+#' @description
 #' This function allows for reading in LS Pro data based on their text export of
 #' signals. Signals can be exported directly from the LS Pro system.
 #'
@@ -10,7 +11,8 @@
 #' They are a common electrophysiology signal processing device for
 #' visualization and measurement of intracardiac signals.
 #'
-#' ## Data Export
+#' @details
+#' # Data Export
 #'
 #' The steps to data export are as follows.
 #'
@@ -27,7 +29,7 @@
 #' 1. Select an Export option, either a default time range or the entire visible
 #' page (which depends on the sweep speed).
 #'
-#' ## Data Format
+#' # Data Format
 #'
 #' ```
 #' [Header] Recording info – contains (example):
@@ -84,6 +86,9 @@
 #'   `data.table`, with an attached __header__ attribute that contains
 #'   additional recording data.
 #' @name lspro
+NULL
+
+#' @rdname lspro
 #' @export
 read_lspro <- function(file, n = Inf) {
 

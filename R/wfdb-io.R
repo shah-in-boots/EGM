@@ -1,4 +1,4 @@
-# Writing WFDB format data -----------------------------------------------------
+# WFDB ------------------------------------------------------------------------
 
 #' Waveform Database (WFDB) Software Package
 #'
@@ -10,7 +10,9 @@
 #' @description
 #' This implementation of WFDB is a back-end for the WFDB using a combination of
 #' _python_, _C++_, and _C_ language. The related functions are documented
-#' separately.
+#' separately. This serves as an overview of the conversion of WFDB formats to R
+#' formats. In this documentation, the specific WFDB generated files will be
+#' described.
 #'
 #' @details
 #' # WFDB
@@ -40,35 +42,6 @@
 #'
 #' 1. Annotations: information about the record such as abeat
 #' labels or alarm triggers
-#' @name wfdb
-NULL
-
-#' I/O of WFDB-compatible signal & header files from EP recording systems
-#'
-#' This function allows for WFDB files to be read from specific EP recording
-#' systems, as indicated by the __type__ argument below.
-#'
-#' @param data A `data.frame` (or similar) that has a column that represents a
-#'   time point or index, and columns that represent signal values.
-#'
-#' @param header A header file is a named list of parameters that will be used
-#'   to organize and describe the signal input from the `data` argument. If the
-#'   `type` is given, specific additional elements will be searched for, such as
-#'   the low or high pass filters, colors, or other signal attributes. At
-#'   minimum, the following elements are required (as cannot be calculated):
-#'
-#'   * frequency = sample frequency in Hertz <integer>
-#'
-#'   * label = vector of names for each channel <character>
-#'
-#'   * start_time = date/time object <date>
-#'
-#' @param type Type of signal data, as specified by the recording system.
-#'   Currently supports:
-#'
-#' * _lspro_ = Boston Scientific LabSystem Pro (Bard)
-#'
-#' * _muse_ = GE MUSE
 #'
 #' @param record String that will be used to name the WFDB record. Cannot
 #'   include extensions, and is not a filepath. alphanumeric characters are
@@ -77,16 +50,98 @@ NULL
 #' @param record_dir File path of directory that should be used read and write
 #'   files. Defaults to current directory.
 #'
+#' @param annotator String that is the name of a WFDB-compatible annotation
+#'   type, serving as the extension for the file that is written containing that
+#'   annotation. Please see [read_annotation()] and [write_annotation()] for
+#'   further details.
+#'
+#' @param wfdb_path Path that leads to installed `wfdb` software package on
+#'   device. Unless directly set, will attempt to find local installation.
+#'   Obtained from the system options on loading of the package,
+#'   `getOption('wfdb_path')`
+#'
+#' @name wfdb
+NULL
+
+# Writing WFDB format data -----------------------------------------------------
+
+#' I/O of WFDB-compatible signal & header files from EP recording systems
+#'
+#' @description
+#' This function allows for WFDB files to be read from any WFDB-compatible
+#' system, and also allows writing out WFDB-compatible files from specific EP
+#' recording systems, as indicated in the details section. Writing WFDB leads to
+#' creation of both a __dat__ (signal) and __hea__ (header) file. These are both
+#' required for reading in files as well.
+#'
+#' @details
+#' # Recording systems
+#'
+#' Type of signal data, as specified by the recording system, that are currently
+#' supported.
+#'
+#' * _lspro_ = LabSystem Pro, e.g. [read_lspro()]
+#'
+#' * _muse_ = GE MUSE, e.g. [read_muse()]
+#'
+#' @inheritParams wfdb
+#'
+#' @param data Can either be an `egm` object, or a `data.frame` (or similar)
+#'   object. The function will appropriately set defaults based on the type.
+#'
+#'   * `egm` = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format
+#'
+#'   * `signal_table` = This is a custom `data.table` class that has an invariant column containing sample information.
+#'
+#'   * `data.frame` or `data.table` = Must have a column that represents a time point or index, and columns that represent signal values (preferably integers)
+#'
+#' @param header A header file is an **optional** named list of parameters that
+#'   will be used to organize and describe the signal input from the `data`
+#'   argument. If the `type` is given, specific additional elements will be
+#'   searched for, such as the low or high pass filters, colors, or other signal
+#'   attributes. At minimum, the following elements are required (as cannot be
+#'   calculated):
+#'
+#'   * frequency = sample frequency in Hertz <integer>
+#'
+#'   * label = vector of names for each channel <character>
+#'
+#'   * start_time = date/time object <date>
+#'
+#' @param begin,end,interval Timepoint in seconds, which is converted to an
+#'   index position based on sampling frequency. The default is to start at the
+#'   beginning of the record. If `end` or `interval` are given, the earlier of
+#'   the two will be returned. The `end` argument gives a time index to read
+#'   until. The `interval` argument is the length of time past the start point.
+#'
+#' @param units A string representing either `digital` (DEFAULT) or `physical`
+#'   units that should be used, if available.
+#'
+#'   * digital = Index in sample number, signal in integers (A/D units)
+#'
+#'   * physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
+#'   This will __include 1 additional row over the header/column names__ that
+#'   describes units
+#'
+#' @param channels Either the signal/channel in a vector as a name or number.
+#'   Allows for duplication of signal or to re-order signal if needed. If
+#'   nothing is given, will default to all channels available.
+#'
 #' @name wfdb_io
+NULL
+
+#' @describeIn wfdb_io Writes out signal and header data into a WFDB-compatible
+#'   format from R.
+#'
 #' @export
 write_wfdb <- function(data,
+											 record,
+											 record_dir,
+											 wfdb_path = getOption('wfdb_path'),
 											 header = list(frequency = 250,
 											 							gain = 200L,
 											 							label = character()),
 											 info_strings = list(),
-											 record,
-											 record_dir,
-											 wfdb_path = getOption('wfdb_path'),
 											 ...) {
 
 
@@ -224,29 +279,12 @@ write_wfdb <- function(data,
 
 # Reading WFDB format data -----------------------------------------------------
 
-#' @rdname wfdb_io
-#' @inheritParams wfdb_io
-#' @param begin,end,interval Timepoint in seconds, which is converted to an
-#'   index position based on sampling frequency. The default is to start at the
-#'   beginning of the record. If `end` or `interval` are given, the earlier of
-#'   the two will be returned. The `end` argument gives a time index to read
-#'   until. The `interval` argument is the length of time past the start point.
-#'
-#' @param units A string representing either `digital` (DEFAULT) or `physical`
-#'   units that should be used, if available.
-#'
-#'   * digital = Index in sample number, signal in integers (A/D units)
-#'
-#'   * physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
-#'   This will __include 1 additional row over the header/column names__ that
-#'   describes units
-#'
-#' @param channels Either the signal/channel in a vector as a name or number.
-#'   Allows for duplication of signal or to re-order signal if needed.
-#'
+#' @describeIn wfdb_io Reads a multicomponent WFDB-formatted set of files
+#'   directly into an `egm` object.
 #' @export
 read_wfdb <- function(record,
 											record_dir = ".",
+											annotator = NA_character_,
 											wfdb_path = getOption("wfdb_path"),
 											begin = 0,
 											end = NA_integer_,
@@ -254,6 +292,62 @@ read_wfdb <- function(record,
 											units = "digital",
 											channels = character(),
 											...) {
+
+	# Read signal
+	sig <- read_signal(
+		record = record,
+		record_dir = record_dir,
+		wfdb_path = wfdb_path,
+		begin = begin,
+		end = end,
+		interval = interval,
+		units = units,
+		channels = channels
+	)
+
+	# Read header
+	hea <- read_header(
+		record = record,
+		record_dir = record_dir,
+		wfdb_path = wfdb_path
+	)
+
+	# Read annotation
+	if (!is.na(annotator)) {
+		ann <- read_annotation(
+			record = record,
+			record_dir = record_dir,
+			annotator = annotator,
+			wfdb_path = wfdb_path
+		)
+	} else {
+		ann <- annotation_table()
+	}
+
+	# Resulting `egm` object
+	egm(
+		signal = sig,
+		header = hea,
+		annotation = ann
+	)
+
+}
+
+
+#' @describeIn wfdb_io Specifically reads the signal data from the WFDB binary
+#'   format, returning a `signal_table` object for evaluation in the R
+#'   environment
+#'
+#' @export
+read_signal <- function(record,
+												record_dir = ".",
+												wfdb_path = getOption("wfdb_path"),
+												begin = 0,
+												end = NA_integer_,
+												interval = NA_integer_,
+												units = "digital",
+												channels = character(),
+												...) {
 
 	# Validate:
 	#		WFDB software command
@@ -346,10 +440,9 @@ read_wfdb <- function(record,
 	signal_table(dat)
 }
 
-#' @rdname wfdb_io
-#'
-#' @inheritParams wfdb_io
-#'
+#' @describeIn wfdb_io Specifically reads the header data from the WFDB header
+#'   text format, returning a `header_table` object for evaluation in the R
+#'   environment
 #' @export
 read_header <- function(record,
 												record_dir = ".",

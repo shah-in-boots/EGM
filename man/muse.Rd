@@ -11,8 +11,16 @@ read_muse(file)
 \item{file}{An ECG file from MUSE in XML format}
 }
 \value{
-List of 2
+An \code{egm} class object that is a list of \code{eps} signals the format of a
+\code{data.table}, with an attached \strong{header} attribute that contains
+additional recording data.
 }
 \description{
-Read in ECG data from MUSE
+This function serves to read/convert XML based files from the MUSE system to
+digital signal. This can subsequently be written into other formats. The MUSE system is somewhat proprietary, and each version may or may not allow export options into XML.
+}
+\details{
+\href{https://www.gehealthcare.com/en-ph/products/diagnostic-ecg/cardio-data-management/muse-v9}{GE Healthcare MUSE v9}
+is currently the model that is being used. These functions have not been
+tested in older models.
 }

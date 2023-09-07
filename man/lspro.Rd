@@ -28,15 +28,14 @@ additional recording data.
 \description{
 This function allows for reading in LS Pro data based on their text export of
 signals. Signals can be exported directly from the LS Pro system.
-}
-\details{
+
 The \href{https://www.bostonscientific.com/en-US/products/capital-equipment--diagnotic/labsystem-pro.html}{LabSystem Pro}
 was acquired by Boston Scientific from the original company
 \href{https://news.bostonscientific.com/2013-06-28-Boston-Scientific-To-Acquire-C-R-Bard-Electrophysiology-Business}{Bard}.
 They are a common electrophysiology signal processing device for
 visualization and measurement of intracardiac signals.
-\subsection{Data Export}{
-
+}
+\section{Data Export}{
 The steps to data export are as follows.
 \enumerate{
 \item Start LabSystem PRO
@@ -49,8 +48,7 @@ page (which depends on the sweep speed).
 }
 }
 
-\subsection{Data Format}{
-
+\section{Data Format}{
 \if{html}{\out{<div class="sourceCode">}}\preformatted{[Header] Recording info – contains (example):
 
 [Header]<CR><LF>
@@ -93,6 +91,5 @@ Channel Data is interleaved in the example above (sample indexed at 1):\tabular{
    ... \tab ... \tab ... \tab ... \tab ... \cr
    Ch1:5000 \tab Ch2:5000 \tab Ch3:5000 \tab ... \tab Ch22:5000 \cr
 }
+}
 
-}
-}

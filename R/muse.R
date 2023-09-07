@@ -1,7 +1,25 @@
 #' Read in ECG data from MUSE
-#' @return List of 2
+#'
+#' @description
+#' This function serves to read/convert XML based files from the MUSE system to
+#' digital signal. This can subsequently be written into other formats. The MUSE system is somewhat proprietary, and each version may or may not allow export options into XML.
+#'
+#' @details
+#' [GE Healthcare MUSE
+#' v9](https://www.gehealthcare.com/en-ph/products/diagnostic-ecg/cardio-data-management/muse-v9)
+#' is currently the model that is being used. These functions have not been
+#' tested in older models.
+#'
+#' @return An `egm` class object that is a list of `eps` signals the format of a
+#'   `data.table`, with an attached __header__ attribute that contains
+#'   additional recording data.
+#'
 #' @param file An ECG file from MUSE in XML format
+#'
 #' @name muse
+NULL
+
+#' @rdname muse
 #' @export
 read_muse <- function(file) {
 

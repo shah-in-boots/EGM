@@ -53,7 +53,7 @@ test_that('R data objects can be converted or written to WFDB format', {
 test_that('rdsamp can read in WFDB formatted files', {
 
 	# Reads in EGM data (which is an EP study)
-	x <- read_wfdb(
+	x <- read_signal(
 		record = 'egm',
 		record_dir = test_path(),
 		begin = 0,
@@ -63,7 +63,7 @@ test_that('rdsamp can read in WFDB formatted files', {
 	expect_s3_class(x, 'data.frame')
 
 	# Reads in ECG data
-	y <- read_wfdb(
+	y <- read_signal(
 		record = 'ecg',
 		record_dir = test_path(),
 		wfdb_path = '/usr/local/bin',
@@ -75,11 +75,14 @@ test_that('rdsamp can read in WFDB formatted files', {
 
 
 	# Read in a ECG file from PhysioNet
-	z <- read_wfdb(
+	z <- read_signal(
 		record = '300',
 		record_dir = test_path(),
 		begin = 20
 	)
+
+	expect_s3_class(z, 'signal_table')
+
 })
 
 test_that('internals of `read_header()` can create `header_table` from LSPro data', {
@@ -144,6 +147,38 @@ test_that('internals of `read_header()` can create `header_table` from LSPro dat
 
 })
 
+test_that('can read in WFDB file into `egm` directly', {
+
+	# Basics
+	record = 'ecg'
+	record_dir = test_path()
+	annotator = 'ecgpuwave'
+	wfdb_path = getOption("wfdb_path")
+	begin = 0
+	end = NA_integer_
+	interval = NA_integer_
+	units = "digital"
+	channels = character()
+
+	x <- read_wfdb(
+		record = record,
+		record_dir = record_dir,
+		wfdb_path = wfdb_path,
+		annotator = annotator,
+		begin = begin,
+		end = end,
+		interval = interval,
+		units = units,
+		channels = channels
+	)
+
+	expect_s3_class(x, 'egm')
+
+})
+
 test_that('can read in MUSE ECG header', {
+
+	hea <- read_header('ecg', record_dir = test_path())
+	expect_equal(unique(hea$file_name), 'ecg.dat')
 
 })

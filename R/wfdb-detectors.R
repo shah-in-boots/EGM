@@ -2,10 +2,8 @@
 #'
 #' @return Creates a WFDB-compatible annotation file
 #'
+#' @inheritParams wfdb
 #' @inheritParams wfdb_io
-#'
-#' @param detector Signal detector that can create WFDB-compatible annotation
-#'   files
 #'
 #' @examples
 #' record <- "300"
@@ -21,14 +19,7 @@ detect_surface_beats <- function(record,
 	# 	WFDB software - must be an ECG detector software
 	#		WFDB must be on path
 	# 	Reading/writing directory must be on path
-	if (detector %in% c("gqrs",
-											"sqrs",
-											"sqrs125",
-											"wqrs")) {
-		ext <- "qrs"
-	} else if (detector %in% c("ecgpuwave")) {
-		ext <- "ecgpuwave"
-	}
+	ext <- detector
 
 	detector <- find_wfdb_command(detector)
 

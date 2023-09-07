@@ -20,8 +20,10 @@ acceptable, as well as hyphens (-) and underscores (_)}
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
 
-\item{detector}{Signal detector that can create WFDB-compatible annotation
-files}
+\item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
+device. Unless directly set, will attempt to find local installation.
+Obtained from the system options on loading of the package,
+\code{getOption('wfdb_path')}}
 }
 \value{
 Creates a WFDB-compatible annotation file

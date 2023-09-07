@@ -3,10 +3,30 @@
 \name{wfdb}
 \alias{wfdb}
 \title{Waveform Database (WFDB) Software Package}
+\arguments{
+\item{record}{String that will be used to name the WFDB record. Cannot
+include extensions, and is not a filepath. alphanumeric characters are
+acceptable, as well as hyphens (-) and underscores (_)}
+
+\item{record_dir}{File path of directory that should be used read and write
+files. Defaults to current directory.}
+
+\item{annotator}{String that is the name of a WFDB-compatible annotation
+type, serving as the extension for the file that is written containing that
+annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
+further details.}
+
+\item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
+device. Unless directly set, will attempt to find local installation.
+Obtained from the system options on loading of the package,
+\code{getOption('wfdb_path')}}
+}
 \description{
 This implementation of WFDB is a back-end for the WFDB using a combination of
 \emph{python}, \emph{C++}, and \emph{C} language. The related functions are documented
-separately.
+separately. This serves as an overview of the conversion of WFDB formats to R
+formats. In this documentation, the specific WFDB generated files will be
+described.
 }
 \section{WFDB}{
 The WFDB (Waveform Database) Software Package has been developed over the
