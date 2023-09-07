@@ -280,7 +280,8 @@ write_wfdb <- function(data,
 # Reading WFDB format data -----------------------------------------------------
 
 #' @describeIn wfdb_io Reads a multicomponent WFDB-formatted set of files
-#'   directly into an `egm` object.
+#'   directly into an `egm` object. This serves to pull together
+#'   [read_signal()], [read_header()], and [read_annotation()] for simplicity.
 #' @export
 read_wfdb <- function(record,
 											record_dir = ".",

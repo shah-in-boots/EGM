@@ -115,7 +115,8 @@ required for reading in files as well.
 format from R.
 
 \item \code{read_wfdb()}: Reads a multicomponent WFDB-formatted set of files
-directly into an \code{egm} object.
+directly into an \code{egm} object. This serves to pull together
+\code{\link[=read_signal]{read_signal()}}, \code{\link[=read_header]{read_header()}}, and \code{\link[=read_annotation]{read_annotation()}} for simplicity.
 
 \item \code{read_signal()}: Specifically reads the signal data from the WFDB binary
 format, returning a \code{signal_table} object for evaluation in the R
