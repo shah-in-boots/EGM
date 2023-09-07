@@ -4,7 +4,7 @@
 \alias{ggm}
 \title{Visualization of EGMs using \code{ggplot}}
 \usage{
-ggm(data, channels, time_frame = NULL, mode = "dark", ...)
+ggm(data, channels = character(), time_frame = NULL, mode = "dark", ...)
 }
 \arguments{
 \item{data}{Data of the \code{egm} class, which inclues header (meta) and signal
@@ -12,7 +12,7 @@ information together.}
 
 \item{channels}{Character vector of which channels to use. Can give either
 the channel label (e.g "CS 1-2") or the recording device/catheter type (e.g
-"His" or "ECG").}
+"His" or "ECG"). If no channels are selected, the default is all channels.}
 
 \item{time_frame}{A time range that should be displaced given in the format
 of a vector with a length of 2. The left value is the start, and right

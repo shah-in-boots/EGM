@@ -9,7 +9,7 @@
 #'
 #' @param channels Character vector of which channels to use. Can give either
 #'   the channel label (e.g "CS 1-2") or the recording device/catheter type (e.g
-#'   "His" or "ECG").
+#'   "His" or "ECG"). If no channels are selected, the default is all channels.
 #'
 #' @param time_frame A time range that should be displaced given in the format
 #'   of a vector with a length of 2. The left value is the start, and right
@@ -22,7 +22,7 @@
 #' @import ggplot2 data.table
 #' @export
 ggm <- function(data,
-								channels,
+								channels = character(),
 								time_frame = NULL,
 								mode = "dark",
 								...) {
@@ -69,7 +69,10 @@ ggm <- function(data,
 		paste0(c(paste0("^", exactChannels, "$", collapse = "|"), fuzzyChannels),
 					 collapse = "|")
 	selectedChannels <- grep(channelGrep, availableChannels, value = TRUE)
-	stopifnot("No requested channels existed within the signal data" =
+	if (length(channels) == 0) {
+		selectedChannels <- availableChannels
+	}
+	stopifnot("The requested channels do not exist within the signal data" =
 							length(selectedChannels) > 0)
 
 	# Get channel data from individual signals
@@ -160,7 +163,7 @@ NULL
 draw_boundary_mask <- function(object) {
 
 	# Initial validation
-	stopifnot("`add_boundary_mask()` requires a `ggm` object" =
+	stopifnot("`draw_boundary_mask()` requires a `ggm` object" =
 							inherits(object, "ggm"))
 
 	# Annotations from object will already be subset to relevant sample space

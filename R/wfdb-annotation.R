@@ -9,11 +9,13 @@
 #' `record` name to notate the type. Generally, the types of annotations that
 #' are supported are described below:
 #'
-#' * atr: manually reviewed and corrected reference annotation files
+#'   * atr = manually reviewed and corrected reference annotation files
 #'
-#' * ann: general annotator file
+#'   * ann = general annotator file
 #'
-#' * ecgpuwave: files contain surface ECG demarcation
+#'   * ecgpuwave = files contain surface ECG demarcation (P, QRS, and T waves)
+#'
+#'   * sqrs/wqrs/gqrs = standard WFDB peak detection for R waves
 #'
 #' A more detailed explanation is given below.
 #'
@@ -154,3 +156,82 @@ write_annotation <- function(data,
 	withr::with_dir(new = wd, code = system(cmd))
 
 }
+#' @rdname wfdb_annotations
+#' @inheritParams wfdb
+#' @inheritParams wfdb_io
+#' @export
+annotate_wfdb <- function(record,
+													record_dir,
+													annotator,
+													wfdb_path = getOption('wfdb_path'),
+													...) {
+
+	# Validate
+	# 	WFDB software - must be an ECG detector software
+	#		WFDB must be on path
+	# 	Reading/writing directory must be on path
+
+	if (fs::dir_exists(record_dir)) {
+		wd <- fs::path(record_dir)
+	} else {
+		wd <- getwd()
+	}
+
+	cmd <- find_wfdb_command(annotator)
+	rec <- paste("-r", record)
+	ann <- paste("-a", annotator)
+
+	# Switch based on annotator system
+ 	# Change working directory for writing purposes
+ 	# This should change back at end of writing process
+	switch(annotator,
+				 ecpugwave = {
+				 	withr::with_dir(new = wd,
+				 									code = {
+				 										# System call to beat detector/annotator
+				 										system2(
+				 											command = cmd,
+				 											args = c(rec, ann),
+				 											stdout = FALSE,
+				 											stderr = FALSE
+				 										)
+
+				 										if (fs::file_exists('fort.20')) {
+				 											fs::file_delete('fort.20')
+				 										}
+				 										if (fs::file_exists('fort.21')) {
+				 											fs::file_delete('fort.21')
+				 										}
+				 									})
+
+				 },
+				 wqrs = {
+				 	withr::with_dir(new = wd,
+				 									code = system2(
+				 										command = cmd,
+				 										args = c(rec, ann),
+				 										stdout = FALSE,
+				 										stderr = FALSE
+				 									))
+				 },
+				 gqrs = {
+				 	withr::with_dir(new = wd,
+				 									code = system2(
+				 										command = cmd,
+				 										args = c(rec, ann),
+				 										stdout = FALSE,
+				 										stderr = FALSE
+				 									))
+				 },
+				 sqrs = {
+				 	withr::with_dir(new = wd,
+				 									code = system2(
+				 										command = cmd,
+				 										args = c(rec, ann),
+				 										stdout = FALSE,
+				 										stderr = FALSE
+				 									))
+				 },
+	)
+}
+

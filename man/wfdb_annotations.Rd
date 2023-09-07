@@ -4,6 +4,7 @@
 \alias{wfdb_annotations}
 \alias{read_annotation}
 \alias{write_annotation}
+\alias{annotate_wfdb}
 \title{Read WFDB-compatible annotation file}
 \usage{
 read_annotation(
@@ -21,6 +22,14 @@ write_annotation(
   annotator,
   record,
   record_dir = ".",
+  wfdb_path = getOption("wfdb_path"),
+  ...
+)
+
+annotate_wfdb(
+  record,
+  record_dir,
+  annotator,
   wfdb_path = getOption("wfdb_path"),
   ...
 )
@@ -54,9 +63,10 @@ annotating WFDB-files, as well as the extension that is appended to the
 \code{record} name to notate the type. Generally, the types of annotations that
 are supported are described below:
 \itemize{
-\item atr: manually reviewed and corrected reference annotation files
-\item ann: general annotator file
-\item ecgpuwave: files contain surface ECG demarcation
+\item atr = manually reviewed and corrected reference annotation files
+\item ann = general annotator file
+\item ecgpuwave = files contain surface ECG demarcation (P, QRS, and T waves)
+\item sqrs/wqrs/gqrs = standard WFDB peak detection for R waves
 }
 
 A more detailed explanation is given below.
