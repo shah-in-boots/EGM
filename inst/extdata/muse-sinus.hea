@@ -1,0 +1,16 @@
+muse-sinus 12 500 5000 22:41:16 29/04/2023
+muse-sinus.dat	16	200(0)/mV	16	0	-10	-3015	0	I
+muse-sinus.dat	16	200(0)/mV	16	0	5	-6357	0	II
+muse-sinus.dat	16	200(0)/mV	16	0	15	-3468	0	III
+muse-sinus.dat	16	200(0)/mV	16	0	10	-4851	0	AVF
+muse-sinus.dat	16	200(0)/mV	16	0	-12	269	0	AVL
+muse-sinus.dat	16	200(0)/mV	16	0	2	4498	0	AVR
+muse-sinus.dat	16	200(0)/mV	16	0	29	-7912	0	V1
+muse-sinus.dat	16	200(0)/mV	16	0	44	-8609	0	V2
+muse-sinus.dat	16	200(0)/mV	16	0	59	-22098	0	V3
+muse-sinus.dat	16	200(0)/mV	16	0	34	-9591	0	V4
+muse-sinus.dat	16	200(0)/mV	16	0	-29	-6177	0	V5
+muse-sinus.dat	16	200(0)/mV	16	0	-44	-7504	0	V6
+# source ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG
+# additional_gain 1 1 1 1 1 1 1 1 1 1 1 1
+# color #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000
