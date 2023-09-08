@@ -90,6 +90,7 @@ segment_sinus_beats <- function(object) {
 
 	# We now have a series of beats that we can turn back into a list
 	# Must convert back to simple EGM
+	n
 
 
 }
