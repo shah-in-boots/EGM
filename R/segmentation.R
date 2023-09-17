@@ -19,10 +19,27 @@
 #'
 #'   * sinus = Will call [segment_sinus_beats()] on `egm` object
 #'
-#' @param pad Logical value for whether to pad the results if the segmented beats or not. This will add the baseline value (specified within the header of the signal) around each beat.
+#' @param pad Logical value for whether to pad the results if the segmented
+#'   beats or not. This will add the baseline value (specified within the header
+#'   of the signal) . Defaults to FALSE
 #'
 #' @name segmentation
-segment <- function(object, by, pad) {
+segment <- function(object, by, pad = FALSE) {
+
+	stopifnot('Requires object of `egm` class for evaluation'
+						= inherits(object, 'egm'))
+
+	# Choose based on waveform segmentation request
+	switch(by,
+				 sinus = {
+				 	beats <- segment_sinus_beats(object)
+				 })
+
+	# If padding...
+	if (pad) {
+
+	}
+
 
 }
 
