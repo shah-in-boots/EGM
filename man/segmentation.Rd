@@ -2,14 +2,23 @@
 % Please edit documentation in R/segmentation.R
 \name{segmentation}
 \alias{segmentation}
+\alias{segment}
 \alias{segment_sinus_beats}
-\title{Segmentation of electrical signal by beat specifications}
+\title{Segmentation of electrical signal by wave specifications}
 \usage{
+segment(object, by, pad)
+
 segment_sinus_beats(object)
 }
 \arguments{
-\item{object}{Object of the \code{egm} class, which includes header (meta), signal
+\item{object}{Object of the \code{egm} class, which includes header, signal
 information, and annotation information.}
+
+\item{by}{Character vector naming waveform type to segment by. Options
+include the following types:
+\itemize{
+\item sinus = Will call \code{\link[=segment_sinus_beats]{segment_sinus_beats()}} on \code{egm} object
+}}
 }
 \value{
 Returns a \code{list} of \code{egm} objects. Each item is a segmentation of an \code{egm}
@@ -18,7 +27,7 @@ optimize and pick the best annotations to help create consistencies between
 the signal channels as possible.
 }
 \description{
-Segmentation of electrical signal by beat specifications
+Segmentation of electrical signal by wave specifications
 }
 \details{
 Requires a 12-lead ECG that has been digitized, and input as an \code{egm} object.

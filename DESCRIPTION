@@ -28,6 +28,6 @@ Imports:
     gsignal,
     lifecycle
 Config/testthat/edition: 3
-URL: https://github.com/asshah4/shiva
+URL: https://github.com/asshah4/shiva, https://asshah4.github.io/shiva/
 BugReports: https://github.com/asshah4/shiva/issues
 VignetteBuilder: knitr

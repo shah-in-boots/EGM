@@ -1,4 +1,4 @@
-#' Segmentation of electrical signal by beat specifications
+#' Segmentation of electrical signal by wave specifications
 #'
 #' @details
 #' Requires a 12-lead ECG that has been digitized, and input as an `egm` object.
@@ -11,11 +11,20 @@
 #' optimize and pick the best annotations to help create consistencies between
 #' the signal channels as possible.
 #'
-#' @param object Object of the `egm` class, which includes header (meta), signal
+#' @param object Object of the `egm` class, which includes header, signal
 #'   information, and annotation information.
 #'
+#' @param by Character vector naming waveform type to segment by. Options
+#'   include the following types:
+#'
+#'   * sinus = Will call [segment_sinus_beats()] on `egm` object
+#'
+#' @param pad Logical value for whether to pad the results if the segmented beats or not. This will add the baseline value (specified within the header of the signal) around each beat.
+#'
 #' @name segmentation
-NULL
+segment <- function(object, by, pad) {
+
+}
 
 #' @describeIn segmentation Identify individual sinus beats on surface ECG and
 #'   extract as individual beats, returning a list of sinus beats in the form of
@@ -89,9 +98,44 @@ segment_sinus_beats <- function(object) {
 	}
 
 	# We now have a series of beats that we can turn back into a list
-	# Must convert back to simple EGM
-	n
+	# Must convert back to simple EGM using original object data
+	# The sample numbers should be pulled from the original signal table
+	beats <- unique(n[beat > 0, beat])
+	beatList <- list()
 
+	for (i in beats) {
+
+		# Get range
+		start <- min(n[beat == i, sample], na.rm = TRUE)
+		stop <- max(n[beat == i, sample], na.rm = TRUE)
+
+		# Signal data filtered down
+		beatSignal <- sig[sample >= start & sample <= stop, ]
+
+		# Header data simplified
+		beatHeader <- header_table(
+			record_name = attributes(hea)$record_line$record_name,
+			number_of_channels = attributes(hea)$record_line$number_of_channels,
+			frequency = attributes(hea)$record_line$frequency,
+			samples = nrow(beatSignal),
+			ADC_gain = hea$gain,
+			label = hea$label,
+			info_strings = attributes(hea)$info_strings
+		)
+
+		# Annotation data to just this beat
+		beatAnnotation <- ann[sample >= start & sample <= stop, ]
+
+		# New beat!
+		beatList[[i]] <-
+			egm(signal = beatSignal,
+					header = beatHeader,
+					annotation = beatAnnotation)
+
+	}
+
+	# Return a list of beats
+	beatList
 
 }
 
