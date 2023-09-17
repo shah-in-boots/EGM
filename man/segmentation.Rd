@@ -2,11 +2,10 @@
 % Please edit documentation in R/segmentation.R
 \name{segmentation}
 \alias{segmentation}
-\alias{segment}
 \alias{segment_sinus_beats}
 \title{Segmentation of electrical signal by wave specifications}
 \usage{
-segment(object, by, pad)
+segmentation(object, by, pad = FALSE)
 
 segment_sinus_beats(object)
 }
@@ -19,6 +18,12 @@ include the following types:
 \itemize{
 \item sinus = Will call \code{\link[=segment_sinus_beats]{segment_sinus_beats()}} on \code{egm} object
 }}
+
+\item{pad}{Logical value for whether to pad the results if the segmented
+beats or not. This will add the baseline value (specified within the header
+of the signal) to pad both sides of the signal. It takes the longest signal
+in the group, adds 5\% to each side, and then lengthens each other
+signal to that size. Defaults to FALSE}
 }
 \value{
 Returns a \code{list} of \code{egm} objects. Each item is a segmentation of an \code{egm}

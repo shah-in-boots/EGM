@@ -21,10 +21,12 @@
 #'
 #' @param pad Logical value for whether to pad the results if the segmented
 #'   beats or not. This will add the baseline value (specified within the header
-#'   of the signal) . Defaults to FALSE
+#'   of the signal) to pad both sides of the signal. It takes the longest signal
+#'   in the group, adds 5% to each side, and then lengthens each other
+#'   signal to that size. Defaults to FALSE
 #'
 #' @name segmentation
-segment <- function(object, by, pad = FALSE) {
+segmentation <- function(object, by, pad = FALSE) {
 
 	stopifnot('Requires object of `egm` class for evaluation'
 						= inherits(object, 'egm'))
@@ -38,8 +40,65 @@ segment <- function(object, by, pad = FALSE) {
 	# If padding...
 	if (pad) {
 
+		# Get max samples
+		beatLengths <- sapply(beats, function(.x) {
+			.h <- .x$header
+			attributes(.h)$record_line$samples
+		})
+		maxLength <- ceiling(max(beatLengths) * 1.05)
+
+		paddedBeats <- lapply(beats, function(.x) {
+
+			.h <- .x$header
+			.s <- .x$signal
+			.a <- .x$annotation
+
+			delta <- maxLength - attributes(.h)$record_line$samples
+			left <- ceiling(delta / 2)
+			right <- floor(delta / 2)
+
+			# Need to create a before and after data table to eventually merge
+			nm <- names(.s)
+
+			before <- setNames(data.table(matrix(nrow = left, ncol = length(nm))), nm)
+			before[is.na(before), ] <- 0
+			before$sample <- (min(.s$sample) - left):(min(.s$sample) - 1)
+
+			after <- setNames(data.table(matrix(nrow = right, ncol = length(nm))), nm)
+			after[is.na(after), ] <- 0
+			after$sample <- (max(.s$sample) + 1):(max(.s$sample) + right)
+
+			# Average out the term to help be less sharp..
+			before[left,
+						 names(before[, -1]) :=
+						 	ceiling(.s[sample == min(sample), .SD, .SDcols = nm[-1]] / 2)]
+			after[1,
+						names(after[, -1]) :=
+							floor(.s[sample == max(sample), .SD, .SDcols = nm[-1]] / 2)]
+
+			# Remake signal now after padding
+			padSignal <- rbindlist(list(before, .s, after))
+
+			# Update header with new data count
+			padHeader <- header_table(
+				record_name = attributes(.h)$record_line$record_name,
+				number_of_channels = attributes(.h)$record_line$number_of_channels,
+				frequency = attributes(.h)$record_line$frequency,
+				samples = nrow(padSignal),
+				ADC_gain = .h$gain,
+				label = .h$label,
+				info_strings = attributes(.h)$info_strings
+			)
+
+			egm(signal = padSignal, header = padHeader, annotation = .a)
+
+		})
+
+		beats <- paddedBeats
 	}
 
+	# Return
+	beats
 
 }
 

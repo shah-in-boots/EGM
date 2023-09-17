@@ -15,3 +15,15 @@ test_that("ECG segmentation works", {
 	expect_equal(nrow(beats[[1]]$signal), 263) # Checked the size of the 1st beat
 
 })
+
+
+test_that('Padding works', {
+
+	rec <- 'ecg'
+	dir <- test_path()
+	object <- read_wfdb(rec, dir, 'ecgpuwave')
+	beats <- segmentation(object, by = 'sinus', pad = TRUE)
+
+	expect_equal(nrow(beats[[1]]$signal), nrow(beats[[2]]$signal))
+
+})

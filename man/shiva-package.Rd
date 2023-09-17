@@ -12,6 +12,7 @@ Importing rhythm and signal data and their analysis in R
 Useful links:
 \itemize{
   \item \url{https://github.com/asshah4/shiva}
+  \item \url{https://asshah4.github.io/shiva/}
   \item Report bugs at \url{https://github.com/asshah4/shiva/issues}
 }
 
