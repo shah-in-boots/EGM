@@ -3,11 +3,11 @@
 find_wfdb_software <- function() {
 
 	# Confirm operating system structure for pulling
-	if (grepl("windows|Windows", sessionInfo()$running)) {
+	if (grepl("windows|Windows", utils::sessionInfo()$running)) {
 		os <- "win"
-	} else if (grepl("mac", sessionInfo()$running)) {
+	} else if (grepl("mac", utils::sessionInfo()$running)) {
 		os <- "mac"
-	} else if (grepl("n*x", sessionInfo()$running)) {
+	} else if (grepl("n*x", utils::sessionInfo()$running)) {
 		os <- "nix"
 	} else {
 		os <- NA
