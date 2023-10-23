@@ -45,7 +45,7 @@ This signal now comes from the LSPro data.
 # Read in data
 fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'shiva')
 lspro <- readLines(fp)
-head(lspro, n = 10)
+head(lspro, n = 20)
 
 # Instead, read this as signal, breaking apart header and signal data
 # Presented as an `egm` class object
@@ -56,6 +56,5 @@ egm
 ggm(egm, channels = c('HIS', 'CS', 'RV')) +
 	theme_egm()
 ```
-
 
 

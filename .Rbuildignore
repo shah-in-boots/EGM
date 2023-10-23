@@ -10,3 +10,4 @@
 ^sandbox\.R
 ^data-raw$
 ^sandbox\.R$
+^vignettes/articles$
