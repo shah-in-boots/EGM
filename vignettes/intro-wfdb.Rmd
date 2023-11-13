@@ -17,3 +17,19 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(shiva)
 ```
+
+How do you read in a *.dat* file from WFDB?
+
+```{r}
+# This is hte XML file
+# Can read it in from MUSE easily
+xml <- 
+  system.file('extdata', 'muse-sinus.xml', package = 'shiva') |>
+  read_muse()
+
+class(xml)
+xml
+
+```
+
+
