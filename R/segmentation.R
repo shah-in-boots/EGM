@@ -26,6 +26,7 @@
 #'   signal to that size. Defaults to FALSE
 #'
 #' @name segmentation
+#' @export
 segmentation <- function(object, by, pad = FALSE) {
 
 	stopifnot('Requires object of `egm` class for evaluation'

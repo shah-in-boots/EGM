@@ -50,7 +50,7 @@ test_that('R data objects can be converted or written to WFDB format', {
 
 # Reading WFDB records ----
 
-test_that('rdsamp can read in WFDB formatted files', {
+test_that('rdsamp can read in WFDB formatted files for signal data', {
 
 	# Reads in EGM data (which is an EP study)
 	x <- read_signal(
@@ -174,11 +174,31 @@ test_that('can read in WFDB file into `egm` directly', {
 
 	expect_s3_class(x, 'egm')
 
+	# From the stored package data
+
+	rec <- 'muse-sinus'
+	dir <- system.file('extdata', 'muse-sinus.dat', package = 'shiva')
+	ecg <- read_wfdb(rec, fs::path_dir(dir))
+
+
 })
 
 test_that('can read in MUSE ECG header', {
 
+	# Simple header
 	hea <- read_header('ecg', record_dir = test_path())
 	expect_equal(unique(hea$file_name), 'ecg.dat')
+
+	# Complex header
+	fp <- system.file('extdata', 'muse-sinus.hea', package = 'shiva')
+	hea <- read_header(
+		record =
+			fs::path_file(fp) |>
+			fs::path_ext_remove(),
+		record_dir = fs::path_dir(fp)
+	)
+
+	header <- readLines(fp)
+	expect_equal(hea$color, unlist(strsplit(header[16], ' '))[-c(1:2)])
 
 })
