@@ -56,3 +56,14 @@ test_that("egm/signal class definition works", {
 
 })
 
+
+test_that('signal can be removed from egm object', {
+
+	object <- read_wfdb('ecg', test_path())
+	expect_s3_class(object, 'egm')
+
+	raw <- extract_signal(object)
+	expect_type(raw, 'integer')
+	expect_equal(class(raw)[1], 'matrix')
+
+})

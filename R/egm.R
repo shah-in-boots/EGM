@@ -80,4 +80,61 @@ is_egm <- function(x) {
 	inherits(x, "egm")
 }
 
+# Helper functions -------------------------------------------------------------
 
+#' Extract raw signal data from an `egm` object
+#'
+#' @description
+#' Raw signal data may be all that is required, particularly when storing or
+#' manipulating data, or for example, feeding it into an analytical pipeline.
+#' This means the extraneous elements, such as the *meta* information, may be
+#' unnecessary. This function helps to strip away and extract just the signal
+#' data itself and channel names.
+#'
+#' @details
+#' The options to return the data vary based on need. The data can be extracted
+#' as follows:
+#'
+#' * `matrix` containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from
+#'
+#' * `data.frame` containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from
+#'
+#' * `array` containing individual vectors of signal, each named after the channel they were derived from
+#'
+#' @param format A `<character>` choice of either `matrix` (default),
+#'   `data.frame`, or `array` that tells how the data should be structured.
+#'   Further explanation in the details.
+#'
+#' @return An object as described by the __format__ option
+#'
+#' @export
+extract_signal <- function(object,
+													 data_format = c('matrix', 'data.frame', 'array'),
+													 ...) {
+
+	stopifnot('Requires object of `egm` class for evaluation'
+						= inherits(object, 'egm'))
+
+	# Get string, defaults to `matrix`
+	data_format <- data_format[1]
+
+	# Raw signal
+	sig <- data.frame(object$signal[, -1])
+
+	switch(data_format,
+				 array = {
+				 	out <- array(sig, dimnames = list(names(sig)))
+
+				 },
+				 matrix = {
+				 	out <- as.matrix(sig)
+
+				 },
+				 data.frame = {
+				 	out <- as.data.frame(sig)
+				 })
+
+	# Return
+	out
+
+}
