@@ -4,6 +4,15 @@ template:
   bootstrap: 5
   bootswatch: flatly
   theme: solarized-light
+  bslib:
+    primary: "#0a3d72"
+    secondary: "#008083"
+    success: "#faab36"
+    info: "#249ea0"
+    warnings: "#9b2226"
+    danger: "#f78104"
+    light: "#e9d8a6"
+    dark: "#001219"
 
 destination: docs
 
