@@ -1,5 +1,8 @@
 url: https://asshah4.github.io/shiva/
 
+development:
+  mode: auto
+
 template:
   bootstrap: 5
   bootswatch: flatly
