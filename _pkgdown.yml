@@ -1,4 +1,29 @@
-url: ~
+url: https://asshah4.github.io/shiva/
+
 template:
   bootstrap: 5
+  bootswatch: flatly
+  theme: solarized-light
 
+destination: docs
+
+home:
+  title: Evaluating cardiac electrophysiological signals
+  description: Electrophysiological signal and waveform tools
+  sidebar:
+    structure: [links, license, community, citation, authors, dev]
+
+navbar:
+  structure:
+    left:  [home, reference, articles, tutorials, news]
+    right: [github]
+  components:
+    home:
+      icon: fas fa-home fa-lg
+      href: https://asshah4.github.io/
+    reference:
+      text: Reference
+      href: reference/index.html
+    github:
+      icon: fab fa-github fa-lg
+      href: https://github.com/asshah4/shiva/
