@@ -4,7 +4,7 @@
 \name{shiva-package}
 \alias{shiva}
 \alias{shiva-package}
-\title{shiva: Cardiac electrophysiology signal analysis}
+\title{shiva: Evaluating cardiac electrophysiology signals}
 \description{
 Importing rhythm and signal data and their analysis in R
 }
@@ -18,7 +18,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Anish Shah \email{ashah282@uic.edu} (\href{https://orcid.org/0000-0002-9729-1558}{ORCID})
+\strong{Maintainer}: Anish S. Shah \email{ashah282@uic.edu} (\href{https://orcid.org/0000-0002-9729-1558}{ORCID})
 
 }
 \keyword{internal}

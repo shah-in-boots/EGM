@@ -27,3 +27,12 @@ test_that('Padding works', {
 	expect_equal(nrow(beats[[1]]$signal), nrow(beats[[2]]$signal))
 
 })
+
+test_that('Sinus segmentation will not work, appropriately', {
+
+	rec <- 'muse-af'
+	rec_dir <- system.file('extdata', package = 'shiva')
+	ecg <- read_wfdb(rec, rec_dir, 'ecgpuwave')
+
+
+})

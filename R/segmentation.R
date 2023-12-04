@@ -123,6 +123,7 @@ segment_sinus_beats <- function(object) {
 	stopifnot('Currently only supports `ecgpuwave` as the annotator' =
 							type == 'ecgpuwave')
 
+
 	# Find all RR intervals for the normal beats
 	n <- as.data.table(sig[, .(sample)])
 	rp <- ann[type == 'N', ]$sample
@@ -147,7 +148,6 @@ segment_sinus_beats <- function(object) {
 	tp <- ann[type == ')' & number == 2, ]$sample
 	tp <- tp[tp %in% n$sample]
 
-
 	# For each interval, do the rules apply?
 	for (i in 1:(max(n$rr) - 1)) {
 
@@ -156,20 +156,27 @@ segment_sinus_beats <- function(object) {
 		s1 <- n[rr == i, ]$sample
 		if (any(pp %in% s1)) {
 			p <- max(pp[pp %in% s1], na.rm = TRUE)
+		} else {
+			p <- -1
 		}
 
 		# T wave must exist subsequently to the QRS complex
 		s2 <- n[rr == i + 1, ]$sample
 		if (any(tp %in% s2)) {
 			t <- min(tp[tp %in% s2], na.rm = TRUE)
+		} else {
+			t <- -1
 		}
 
 		# Find R that exists appropriately within this window
 		# If it does exist, and this is a valid window, as we would expect
 		# Then we can make this as a beat
-		s3 <- p:t
-		if (any(rp %in% s3)) {
-			n[, beat := fifelse(sample %in% s3, i, beat)]
+		# But first, have to have an appropriate window
+		if (p != -1 & t != -1) {
+			s3 <- p:t
+			if (any(rp %in% s3)) {
+				n[, beat := fifelse(sample %in% s3, i, beat)]
+			}
 		}
 
 	}
