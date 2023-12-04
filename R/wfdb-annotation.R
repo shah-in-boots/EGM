@@ -19,6 +19,11 @@
 #'
 #' A more detailed explanation is given below.
 #'
+#' Additionally, files when being read in are converted from a binary format to
+#' a textual format. The raw data however may be inadequate, as the original
+#' annotation may be erroneous. In these cases, an empty `annotation_table`
+#' object will be returned.
+#'
 #' @details
 #' # Annotation files
 #'
@@ -61,8 +66,24 @@ read_annotation <- function(record,
 	# 	Current or parent working directory
 	# 	Directory of the record/WFDB files
 	# 	Variable definitions
-	rdann <- find_wfdb_command('rdann')
+	rdann <- find_wfdb_command('rdann', wfdb_path)
 
+	# If the annotation is inadequate, need to check here before going further
+	# Example would be a file that is very small
+	annPath <- fs::path(record_dir, record, ext = annotator)
+	fileSize <- fs::file_size(annPath) # returns in bytes
+
+	if (fileSize < 8) {
+		# Unlikely to be readable?
+		# If its only a few bytes then annotation is unlikely
+		message('The annotation for ',
+						record,
+						' is unlikely to be legible. ',
+						'An empty annotation table was returned instead.')
+		return(annotation_table())
+	}
+
+	# Ensure appropriate working directory
 	if (fs::dir_exists(record_dir)) {
 		wd <- fs::path(record_dir)
 	} else {
@@ -98,6 +119,7 @@ read_annotation <- function(record,
 			}
 		}() |>
 		paste('-e')
+
 
 	# Temporary local/working directory, to reset at end of function
 	withr::with_dir(new = wd, code = {

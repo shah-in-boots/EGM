@@ -355,7 +355,7 @@ read_signal <- function(record,
 	# 	Current or parent working directory
 	# 	Directory of the record/WFDB files
 	# 	Variable definitions
-	rdsamp <- find_wfdb_command("rdsamp")
+	rdsamp <- find_wfdb_command("rdsamp", wfdb_path)
 
 	if (fs::dir_exists(record_dir)) {
 		wd <- fs::path(record_dir)

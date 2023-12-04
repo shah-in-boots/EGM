@@ -1,0 +1,18 @@
+bad-ecg 12 500 5000 20:50:33 06/12/2016
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	I
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	II
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	III
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	AVF
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	AVL
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	AVR
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	V1
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	V2
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	V3
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	V4
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	V5
+bad-ecg.dat	16	200(0)/mV	16	0	0	0	0	V6
+# mrn 074441452
+# age 40
+# sex FEMALE
+# race BLACK
+# diagnosis *** No QRS complexes found, no ECG analysis possible, USERINSERT[please delete], When compared with ECG of, 23-JUL-2016 21:46, Current undetermined rhythm precludes rhythm comparison, needs review

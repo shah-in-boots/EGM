@@ -70,6 +70,11 @@ are supported are described below:
 }
 
 A more detailed explanation is given below.
+
+Additionally, files when being read in are converted from a binary format to
+a textual format. The raw data however may be inadequate, as the original
+annotation may be erroneous. In these cases, an empty \code{annotation_table}
+object will be returned.
 }
 \section{Annotation files}{
 The following annotation file types are described below.

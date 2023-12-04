@@ -202,3 +202,4 @@ test_that('can read in MUSE ECG header', {
 	expect_equal(hea$color, unlist(strsplit(header[16], ' '))[-c(1:2)])
 
 })
+
