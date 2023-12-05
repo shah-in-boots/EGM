@@ -66,7 +66,6 @@ test_that('rdsamp can read in WFDB formatted files for signal data', {
 	y <- read_signal(
 		record = 'ecg',
 		record_dir = test_path(),
-		wfdb_path = '/usr/local/bin',
 		begin = 0,
 		units = 'digital'
 	)

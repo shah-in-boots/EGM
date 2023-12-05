@@ -51,11 +51,26 @@ find_wfdb_command <- function(.app,
 															.path = getOption('wfdb_path')) {
 
 	cmd <- fs::path(.path, .app)
-	if (fs::file_exists(cmd)) {
-		return(cmd)
+
+	# The command on windows will run differently
+	# If using WSL as the command, then must use a different path system
+	# Otherwise, *nix based systems should be more straightforward
+
+	if (grepl('wsl\ ', cmd)) {
+		windowsCommand <- gsub('wsl\ ', '//wsl.localhost/Ubuntu/', cmd)
+		if (fs::file_exists(windowsCommand)) {
+			return(cmd)
+		} else {
+			warning("Cannot find '", .app, "' in '", .path, "'")
+		}
 	} else {
-		warning("Cannot find '", .app, "' in '", .path, "'")
+		if (fs::file_exists(cmd)) {
+			return(cmd)
+		} else {
+			warning("Cannot find '", .app, "' in '", .path, "'")
+		}
 	}
+
 
 }
 
