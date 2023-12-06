@@ -57,12 +57,24 @@ find_wfdb_command <- function(.app,
 	# Otherwise, *nix based systems should be more straightforward
 
 	if (grepl('wsl\ ', cmd)) {
-		windowsCommand <- gsub('wsl\ ', '//wsl.localhost/Ubuntu/', cmd)
+
+		possibleWSL <- c(
+			gsub('wsl\ ', '//wsl.localhost/Ubuntu/', .path),
+			gsub('wsl\ ', '//wsl$/Ubuntu/', .path)
+		)
+
+		possibleWFDB <-
+			possibleWSL[fs::dir_exists(possibleWSL)] |>
+			fs::path(.app)
+
+		windowsCommand <- possibleWFDB[min(which(fs::file_exists(possibleWFDB)))]
+
 		if (fs::file_exists(windowsCommand)) {
 			return(cmd)
 		} else {
 			warning("Cannot find '", .app, "' in '", .path, "'")
 		}
+
 	} else {
 		if (fs::file_exists(cmd)) {
 			return(cmd)
