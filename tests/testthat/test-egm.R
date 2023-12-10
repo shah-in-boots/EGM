@@ -62,8 +62,16 @@ test_that('signal can be removed from egm object', {
 	object <- read_wfdb('ecg', test_path())
 	expect_s3_class(object, 'egm')
 
+	# Default = data.frame
 	raw <- extract_signal(object)
+	expect_s3_class(raw, 'data.frame')
+	expect_length(raw, 13)
+
+	# Matrix
+	raw <- extract_signal(object, data_format = 'matrix')
 	expect_type(raw, 'integer')
 	expect_equal(class(raw)[1], 'matrix')
+	expect_equal(dim(raw)[1], 5000)
+	expect_equal(dim(raw)[2], 12)
 
 })

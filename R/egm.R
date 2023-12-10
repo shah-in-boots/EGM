@@ -95,21 +95,21 @@ is_egm <- function(x) {
 #' The options to return the data vary based on need. The data can be extracted
 #' as follows:
 #'
-#' * `matrix` containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from
+#' * `data.frame` containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from. Data frames, as they are columnar by nature, will also include the sample index position.
 #'
-#' * `data.frame` containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from
+#' * `matrix` containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from
 #'
 #' * `array` containing individual vectors of signal, each named after the channel they were derived from
 #'
-#' @param format A `<character>` choice of either `matrix` (default),
-#'   `data.frame`, or `array` that tells how the data should be structured.
+#' @param format A `<character>` choice of either `data.frame` (default),
+#'   `matrix`, or `array` that tells how the data should be structured.
 #'   Further explanation in the details.
 #'
 #' @return An object as described by the __format__ option
 #'
 #' @export
 extract_signal <- function(object,
-													 data_format = c('matrix', 'data.frame', 'array'),
+													 data_format = c('data.frame', 'matrix', 'array'),
 													 ...) {
 
 	stopifnot('Requires object of `egm` class for evaluation'
@@ -120,17 +120,21 @@ extract_signal <- function(object,
 
 	# Raw signal
 	sig <- data.frame(object$signal[, -1])
+	sig <- data.frame(object$signal)
 
 	switch(data_format,
 				 array = {
-				 	out <- array(sig, dimnames = list(names(sig)))
+				 	# Drop sample names
+				 	out <- array(sig[, -1], dimnames = list(names(sig[, -1])))
 
 				 },
 				 matrix = {
-				 	out <- as.matrix(sig)
+				 	# Drop sample names
+				 	out <- as.matrix(sig[, -1])
 
 				 },
 				 data.frame = {
+				 	# Keep samples
 				 	out <- as.data.frame(sig)
 				 })
 

@@ -4,11 +4,11 @@
 \alias{extract_signal}
 \title{Extract raw signal data from an \code{egm} object}
 \usage{
-extract_signal(object, data_format = c("matrix", "data.frame", "array"), ...)
+extract_signal(object, data_format = c("data.frame", "matrix", "array"), ...)
 }
 \arguments{
-\item{format}{A \verb{<character>} choice of either \code{matrix} (default),
-\code{data.frame}, or \code{array} that tells how the data should be structured.
+\item{format}{A \verb{<character>} choice of either \code{data.frame} (default),
+\code{matrix}, or \code{array} that tells how the data should be structured.
 Further explanation in the details.}
 }
 \value{
@@ -25,8 +25,8 @@ data itself and channel names.
 The options to return the data vary based on need. The data can be extracted
 as follows:
 \itemize{
+\item \code{data.frame} containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from. Data frames, as they are columnar by nature, will also include the sample index position.
 \item \code{matrix} containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from
-\item \code{data.frame} containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from
 \item \code{array} containing individual vectors of signal, each named after the channel they were derived from
 }
 }
