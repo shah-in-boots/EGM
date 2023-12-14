@@ -17,7 +17,9 @@ additional recording data.
 }
 \description{
 This function serves to read/convert XML based files from the MUSE system to
-digital signal. This can subsequently be written into other formats. The MUSE system is somewhat proprietary, and each version may or may not allow export options into XML.
+digital signal. This can subsequently be written into other formats. The MUSE
+system is somewhat proprietary, and each version may or may not allow export
+options into XML.
 }
 \details{
 \href{https://www.gehealthcare.com/en-ph/products/diagnostic-ecg/cardio-data-management/muse-v9}{GE Healthcare MUSE v9}
