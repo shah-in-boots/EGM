@@ -2,7 +2,9 @@
 #'
 #' @description
 #' This function serves to read/convert XML based files from the MUSE system to
-#' digital signal. This can subsequently be written into other formats. The MUSE system is somewhat proprietary, and each version may or may not allow export options into XML.
+#' digital signal. This can subsequently be written into other formats. The MUSE
+#' system is somewhat proprietary, and each version may or may not allow export
+#' options into XML.
 #'
 #' @details
 #' [GE Healthcare MUSE
