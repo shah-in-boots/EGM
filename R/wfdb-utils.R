@@ -32,7 +32,7 @@ find_wfdb_software <- function() {
 	}
 
 	# Return path if exists already
-	op
+	invisible(op)
 
 }
 
