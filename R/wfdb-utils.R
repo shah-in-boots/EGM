@@ -2,60 +2,44 @@
 #' @noRd
 find_wfdb_software <- function() {
 
-	# Confirm operating system structure for pulling
-	if (grepl("windows|Windows", utils::sessionInfo()$running)) {
-		os <- "win"
-		packageStartupMessage("Operating system is Windows. Default installation location for WFDB will be on WSL and Cygwin. This can be modified by changing the WFDB path options found in `getOption('wfdb_path')`.")
-	} else if (grepl("mac", utils::sessionInfo()$running)) {
-		os <- "mac"
-		packageStartupMessage("Operating system is Apple. Will look for WFDB paths in standard root paths. This can be modified by changing the WFDB path options found in `getOption('wfdb_path')`.")
-	} else if (grepl("n*x", utils::sessionInfo()$running)) {
-		os <- "nix"
-		packageStartupMessage("Operating system is Unix-like. Will look for WFDB paths in standard root paths. This can be modified by changing the WFDB path options found in `getOption('wfdb_path')`.")
-	} else {
-		os <- NA
-		packageStartupMessage("Operating system could not be identified. The WFDB will not be attempted to be found, and the path will default to $HOME.")
-		wfdbPath <- fs::path_home()
+	# Check to see if WFDB software path is already set
+	op <- getOption('wfdb_path')
+
+	# If NULL then needs to be set
+	if (is.null(op)) {
+		# Confirm operating system structure
+		if (grepl("windows|Windows", utils::sessionInfo()$running)) {
+			os <- "win"
+			packageStartupMessage(
+				"Operating system is Windows. Default installation location for WFDB will be on WSL or Cygwin. Before using any `wfdb`-based functions, please set the location of the binary directory using `set_wfdb_path()`, which modifies `options('wfdb_path')`."
+			)
+		} else if (grepl("mac", utils::sessionInfo()$running)) {
+			os <- "mac"
+			packageStartupMessage(
+				"Operating system detected is Apple. Default installation location for WFDB will be on root. Before using any `wfdb`-based functions, please set the location of the binary directory using `set_wfdb_path()`, which modifies `options('wfdb_path')`."
+			)
+		} else if (grepl("n*x", utils::sessionInfo()$running)) {
+			os <- "nix"
+			packageStartupMessage(
+				"Operating system detected is Unix-like. Default installation location for WFDB will be on root. Before using any `wfdb`-based functions, please set the location of the binary directory using `set_wfdb_path()`, which modifies `options('wfdb_path')`."
+			)
+		} else {
+			os <- NA
+			packageStartupMessage(
+				"Operating system could not be determined. Before using any `wfdb`-based functions, please set the location of the binary directory using `set_wfdb_path()`, which modifies `options('wfdb_path')`."
+			)
+		}
 	}
 
-	if (os %in% c("mac", "nix")) {
-		# Find possible binary folders
-		possibleBins <- c(
-			fs::path("/", "usr", "local", "bin"),
-			fs::path_expand(fs::path("~", "bin")),
-			fs::path("/", "usr", "bin")
-		)
+	# Return path if exists already
+	op
 
-		# Find where WFDB could potentially exist using 'wfdbdesc' as standard
-		possibleWFDB <-
-			possibleBins[fs::dir_exists(possibleBins)] |>
-			fs::path("wfdbdesc")
+}
 
-		# Obtain WFDB path
-		wfdbDesc <- possibleWFDB[min(which(fs::file_exists(possibleWFDB)))]
-		wfdbPath <- fs::path_dir(wfdbDesc)
-	}
-
-	# If the system is a Windows, the path may be on WSL, can add that as default
-	if (os == "win") {
-		possibleBins <- c(
-			paste("wsl", "/usr/local/bin"),
-			fs::path("C:\\cygwin64\\usr\\local"),
-			fs::path("C:\\cygwin64\\usr\\local\\bin"),
-			fs::path("C:\\cygwin64\\bin")
-		)
-		possibleWFDB <-
-			possibleBins[fs::dir_exists(possibleBins)] |>
-			fs::path("wfdbdesc")
-
-		# Obtain WFDB path
-		wfdbDesc <- possibleWFDB[min(which(fs::file_exists(possibleWFDB)))]
-		wfdbPath <- fs::path_dir(wfdbDesc)
-	}
-
-	# Return
-	wfdbPath
-
+#' @keywords internal
+#' @noRd
+set_wfdb_path <- function(.path) {
+	options(wfdb_path = .path)
 }
 
 #' @keywords internal
@@ -64,38 +48,6 @@ find_wfdb_command <- function(.app,
 															.path = getOption('wfdb_path')) {
 
 	cmd <- fs::path(.path, .app)
-
-	# The command on windows will run differently
-	# If using WSL as the command, then must use a different path system
-	# Otherwise, *nix based systems should be more straightforward
-
-	if (grepl('wsl\ ', cmd)) {
-
-		possibleWSL <- c(
-			gsub('wsl\ ', '//wsl.localhost/Ubuntu/', .path),
-			gsub('wsl\ ', '//wsl$/Ubuntu/', .path)
-		)
-
-		possibleWFDB <-
-			possibleWSL[fs::dir_exists(possibleWSL)] |>
-			fs::path(.app)
-
-		windowsCommand <- possibleWFDB[min(which(fs::file_exists(possibleWFDB)))]
-
-		if (fs::file_exists(windowsCommand)) {
-			return(cmd)
-		} else {
-			warning("Cannot find '", .app, "' in '", .path, "'")
-		}
-
-	} else {
-		if (fs::file_exists(cmd)) {
-			return(cmd)
-		} else {
-			warning("Cannot find '", .app, "' in '", .path, "'")
-		}
-	}
-
 
 }
 
