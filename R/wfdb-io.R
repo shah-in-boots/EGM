@@ -56,9 +56,8 @@
 #'   further details.
 #'
 #' @param wfdb_path Path that leads to installed `wfdb` software package on
-#'   device. Unless directly set, will attempt to find local installation.
-#'   Obtained from the system options on loading of the package,
-#'   `getOption('wfdb_path')`
+#'   device. Needs to be directly set using `set_wfdb_path()`. Obtained from the
+#'   system options on loading of the package, `getOption('wfdb_path')`
 #'
 #' @name wfdb
 NULL
@@ -143,7 +142,6 @@ write_wfdb <- function(data,
 											 							label = character()),
 											 info_strings = list(),
 											 ...) {
-
 
 	# Options for `wrsamp`
 	# 	-F <numeric>		sampling frequency, default is 250
