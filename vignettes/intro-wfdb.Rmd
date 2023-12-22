@@ -15,6 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
+options(wfdb_path = "/usr/local/bin")
 library(shiva)
 ```
 

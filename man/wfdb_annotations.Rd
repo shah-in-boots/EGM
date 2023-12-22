@@ -48,9 +48,8 @@ annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \co
 further details.}
 
 \item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
-device. Unless directly set, will attempt to find local installation.
-Obtained from the system options on loading of the package,
-\code{getOption('wfdb_path')}}
+device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
+system options on loading of the package, \code{getOption('wfdb_path')}}
 
 \item{data}{A table containing 6 columns}
 }

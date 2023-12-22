@@ -21,9 +21,8 @@ acceptable, as well as hyphens (-) and underscores (_)}
 files. Defaults to current directory.}
 
 \item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
-device. Unless directly set, will attempt to find local installation.
-Obtained from the system options on loading of the package,
-\code{getOption('wfdb_path')}}
+device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
+system options on loading of the package, \code{getOption('wfdb_path')}}
 }
 \value{
 Creates a WFDB-compatible annotation file

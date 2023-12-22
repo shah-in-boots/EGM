@@ -62,9 +62,8 @@ acceptable, as well as hyphens (-) and underscores (_)}
 files. Defaults to current directory.}
 
 \item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
-device. Unless directly set, will attempt to find local installation.
-Obtained from the system options on loading of the package,
-\code{getOption('wfdb_path')}}
+device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
+system options on loading of the package, \code{getOption('wfdb_path')}}
 
 \item{header}{A header file is an \strong{optional} named list of parameters that
 will be used to organize and describe the signal input from the \code{data}
