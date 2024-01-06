@@ -1,4 +1,5 @@
 test_that("ECG segmentation works", {
+	skip_on_cran()
 
 	rec <- 'ecg'
 	dir <- test_path()
@@ -18,6 +19,7 @@ test_that("ECG segmentation works", {
 
 
 test_that('Padding works', {
+	skip_on_cran()
 
 	rec <- 'ecg'
 	dir <- test_path()
@@ -29,10 +31,13 @@ test_that('Padding works', {
 })
 
 test_that('Sinus segmentation will not work, appropriately', {
+	skip_on_cran()
 
 	rec <- 'muse-af'
 	rec_dir <- system.file('extdata', package = 'shiva')
 	ecg <- read_wfdb(rec, rec_dir, 'ecgpuwave')
+
+	expect_length(ecg$signal, 13)
 
 
 })
