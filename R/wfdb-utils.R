@@ -36,8 +36,7 @@ find_wfdb_software <- function() {
 
 }
 
-#' @keywords internal
-#' @noRd
+#' @export
 set_wfdb_path <- function(.path) {
 	options(wfdb_path = .path)
 }
