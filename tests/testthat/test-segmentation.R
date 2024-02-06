@@ -1,4 +1,5 @@
-test_that("ECG segmentation works", {
+test_that("ECG can be segmented", {
+
 	skip_on_cran()
 
 	rec <- 'ecg'
@@ -18,7 +19,7 @@ test_that("ECG segmentation works", {
 })
 
 
-test_that('Padding works', {
+test_that('segmented beats can be padded', {
 	skip_on_cran()
 
 	rec <- 'ecg'

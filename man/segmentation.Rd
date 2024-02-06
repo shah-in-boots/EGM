@@ -5,31 +5,35 @@
 \alias{segment_sinus_beats}
 \title{Segmentation of electrical signal by wave specifications}
 \usage{
-segmentation(object, by, pad = FALSE)
+segmentation(object, by = "sinus", pad = 0L, center = NULL)
 
 segment_sinus_beats(object)
 }
 \arguments{
-\item{object}{Object of the \code{egm} class, which includes header, signal
+\item{object}{Object of the \verb{<egm>} class, which includes header, signal
 information, and annotation information.}
 
-\item{by}{Character vector naming waveform type to segment by. Options
-include the following types:
+\item{by}{\if{html}{\out{<character>}} string naming waveform type to segment by. Options
+include the following:
 \itemize{
 \item sinus = Will call \code{\link[=segment_sinus_beats]{segment_sinus_beats()}} on \code{egm} object
 }}
 
-\item{pad}{Logical value for whether to pad the results if the segmented
-beats or not. This will add the baseline value (specified within the header
-of the signal) to pad both sides of the signal. It takes the longest signal
-in the group, adds 5\% to each side, and then lengthens each other
-signal to that size. Defaults to FALSE}
+\item{pad}{\if{html}{\out{<integer>}} value to offer padding of the segmented beats. The
+default is \code{0L}, which means no padding will be applied. If \code{pad > 0} then
+will add the baseline value (specified within the header of the signal) to
+a \strong{side} of the beat. You can also choose to \strong{center} the sequence,
+which will also only occur if \code{pad > 0}.}
+
+\item{side}{\if{html}{\out{<character>}} string to specify which side of sequence to pad (or
+both). Options include \code{c("left", "right", "both")}. Will only apply if
+\strong{pad} is set to \verb{>0L} value. Default is \code{"right"}.}
 }
 \value{
-Returns a \code{list} of \code{egm} objects. Each item is a segmentation of an \code{egm}
-object, using the selected channels (if available). It will attempt to
-optimize and pick the best annotations to help create consistencies between
-the signal channels as possible.
+Returns a list of \verb{<egm>} objects. Each item is a segmentation of an \verb{<egm>},
+using the selected channels (if available). It will attempt to optimize and
+pick the best annotations to help create consistencies between the signal
+channels as possible.
 }
 \description{
 Segmentation of electrical signal by wave specifications

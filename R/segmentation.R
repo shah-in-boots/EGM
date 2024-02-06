@@ -6,28 +6,43 @@
 #' demarcation of **P** waves, **R** waves, and **T** waves.
 #'
 #' @return
-#' Returns a `list` of `egm` objects. Each item is a segmentation of an `egm`
-#' object, using the selected channels (if available). It will attempt to
-#' optimize and pick the best annotations to help create consistencies between
-#' the signal channels as possible.
+#' Returns a list of `<egm>` objects. Each item is a segmentation of an `<egm>`,
+#' using the selected channels (if available). It will attempt to optimize and
+#' pick the best annotations to help create consistencies between the signal
+#' channels as possible.
 #'
-#' @param object Object of the `egm` class, which includes header, signal
+#' @param object Object of the `<egm>` class, which includes header, signal
 #'   information, and annotation information.
 #'
-#' @param by Character vector naming waveform type to segment by. Options
-#'   include the following types:
+#' @param by <character> string naming waveform type to segment by. Options
+#'   include the following:
 #'
 #'   * sinus = Will call [segment_sinus_beats()] on `egm` object
 #'
-#' @param pad Logical value for whether to pad the results if the segmented
-#'   beats or not. This will add the baseline value (specified within the header
-#'   of the signal) to pad both sides of the signal. It takes the longest signal
-#'   in the group, adds 5% to each side, and then lengthens each other
-#'   signal to that size. Defaults to FALSE
+#' @param pad <integer> Offer padding of the segmented beats to a maximum
+#'   length. The default is `0L`, which means no padding will be applied. If
+#'   `pad > 0` then will add the baseline value (specified within the header of
+#'   the signal) to a `side` of the beat. You can also choose to `center` the
+#'   sequence, which will also only occur if `pad > 0`. For example, if `pad =
+#'   500`, then each segmented object will be of `500` length, even if it
+#'   requires truncation (a warning message will be given).
+#'
+#' @param side <character> String to specify which side of sequence to pad (or
+#'   both). Options include `c("right", "left", "both")`. Will only apply if
+#'   `pad` is greater than `0L`.
+#'
+#'   Default is `right`. If `center` is being used, then the this argument is
+#'   ignored.
+#'
+#' @param center <character> String that utilizes the annotations given in the
+#'   `<egm>` object to center the sequence. This is found under the **type**
+#'   variable in the annotation table. For example, if sinus waveforms were
+#'   annotated as `c("P", "R", "T")` at their peak, then could center around
+#'   `"R"`. This will only occur if `pad > 0L`. This is case-insensitive.
 #'
 #' @name segmentation
 #' @export
-segmentation <- function(object, by, pad = FALSE) {
+segmentation <- function(object, by = "sinus", pad = 0L, side = "right", center = NULL) {
 
 	stopifnot('Requires object of `egm` class for evaluation'
 						= inherits(object, 'egm'))
@@ -35,14 +50,50 @@ segmentation <- function(object, by, pad = FALSE) {
 	# Choose based on waveform segmentation request
 	switch(by,
 				 sinus = {
-				 	beats <- segment_sinus_beats(object)
+				 	segments <- segment_sinus_beats(object)
 				 })
+
+	# Padding and centering
+	if (pad > 0) {
+		# Needs correct side argument
+		stopifnot(
+			"The `side` argument is not valid"
+			= side %in% c("right", "left", "both")
+		)
+
+		# Get max samples
+		segLengths <- sapply(segments, function(.x) {
+			.h <- .x$header
+			attributes(.h)$record_line$samples
+		})
+		maxLength <- ceiling(max(segLengths))
+
+		# Check if truncation will occur
+		if (maxLength > pad) {
+			warning("Truncation will occur with padding. Consider increasing `pad`.")
+		}
+
+		if (!is.null(center)) {
+			# If centering, waveform type of segmentation is needed
+			annTypes <- unique(object$annotation$type)
+			waveTypes <- annTypes[toupper(annTypes) %in% LETTERS]
+			stopifnot(
+				"The `center` variable was not available in the annotation set."
+				= (toupper(center) %in% toupper(waveTypes)
+				)
+			centerWave <- toupper(center)[toupper(center) %in% toupper(waveTypes)]
+
+
+		}
+
+
+	}
 
 	# If padding...
 	if (pad) {
 
 		# Get max samples
-		beatLengths <- sapply(beats, function(.x) {
+		beatLengths <- sapply(segments, function(.x) {
 			.h <- .x$header
 			attributes(.h)$record_line$samples
 		})

@@ -3,8 +3,18 @@
 	# Handle WFDB options
 	op <- options()
 
+
 	# Find WFDB
-	wp <- find_wfdb_software()
+	# If it can detect the software, then set the path for the user
+	if (grepl("wfdbdesc", Sys.which("wfdbdesc"))) {
+		wp <-
+			Sys.which("wfdbdesc") |>
+			fs::path() |>
+			fs::path_dir()
+
+		# Send message confirming
+		message("WFDB software detected and set as `options(wfdb_path = '", wp, "')`")
+	}
 
 	# Add path to options as default
 	op.shiva <- list(

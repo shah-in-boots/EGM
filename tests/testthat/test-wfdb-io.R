@@ -2,6 +2,8 @@
 
 test_that('can convert lspro to wfdb with wrsamp', {
 
+	skip_on_cran()
+
 	# Convert a LSPRO text file into a WFDB compatible format
 	wd <- getwd()
 
@@ -20,6 +22,8 @@ test_that('can convert lspro to wfdb with wrsamp', {
 })
 
 test_that('R data objects can be converted or written to WFDB format', {
+
+	skip_on_cran()
 
 	file <- test_path('egm.txt')
 	sig <- read_lspro_signal(file)
@@ -51,6 +55,8 @@ test_that('R data objects can be converted or written to WFDB format', {
 # Reading WFDB records ----
 
 test_that('rdsamp can read in WFDB formatted files for signal data', {
+
+	skip_on_cran()
 
 	# Reads in EGM data (which is an EP study)
 	x <- read_signal(
@@ -148,6 +154,8 @@ test_that('internals of `read_header()` can create `header_table` from LSPro dat
 
 test_that('can read in WFDB file into `egm` directly', {
 
+	skip_on_cran()
+
 	# Basics
 	record = 'ecg'
 	record_dir = test_path()
@@ -183,6 +191,8 @@ test_that('can read in WFDB file into `egm` directly', {
 })
 
 test_that('can read in MUSE ECG header', {
+
+	skip_on_cran()
 
 	# Simple header
 	hea <- read_header('ecg', record_dir = test_path())
