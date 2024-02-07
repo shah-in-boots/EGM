@@ -27,6 +27,9 @@ ggm <- function(data,
 								mode = "dark",
 								...) {
 
+	# Global variables (used in data.table)
+	color <- mV <- label <- NULL
+
 	stopifnot(inherits(data, "egm"))
 
 	# Clean channels
@@ -119,7 +122,7 @@ ggm <- function(data,
 								strip.position = "left") +
 		scale_color_identity() +
 		theme_egm() +
-		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz / 10), label = NULL)
+		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz / 10), labels = NULL)
 
 	# Return with updated class
 	new_ggm(g,
@@ -161,6 +164,9 @@ NULL
 #' @rdname annotations
 #' @export
 draw_boundary_mask <- function(object) {
+
+	# Null variables
+	. <- beat <- onset <- offset <- start <- end <- label <- mV <- wave <- number <- NULL
 
 	# Initial validation
 	stopifnot("`draw_boundary_mask()` requires a `ggm` object" =
@@ -306,7 +312,7 @@ add_intervals <- function(object,
 	peaks <-
 		gsignal::findpeaks(
 			ann$mV,
-			MinPeakHeight = quantile(ann$mV, probs = 0.99),
+			MinPeakHeight = stats::quantile(ann$mV, probs = 0.99),
 			MinPeakDistance = minimum_interval,
 			DoubleSided = TRUE
 		)

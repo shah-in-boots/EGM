@@ -1,14 +1,13 @@
 # Signal Table -----------------------------------------------------------------
 
-#' Signal Table
+#' Signal tables
 #'
 #' @description
-#'
-#' `r lifecycle::badge('experimental')`
 #'
 #' `signal_table()` modifies the `data.table` class to work with electrical
 #' signal data. The input should be a data set of equal number of rows. It will
 #' add a column of index positions called `sample` if it does not already exist.
+#' @import data.table
 #' @export
 signal_table <- function(...) {
 
@@ -44,6 +43,7 @@ signal_table <- function(...) {
 	new_signal_table(data = y)
 }
 
+#' @keywords internal
 #' @export
 new_signal_table <- function(data = list()) {
 	new_data_frame(data, class = c('signal_table', 'data.table'))
@@ -164,6 +164,7 @@ annotation_table <- function(annotator = character(),
 											 annotator = annotator)
 }
 
+#' @keywords internal
 #' @export
 new_annotation_table <- function(x = list(),
 																 annotator = character()) {
@@ -436,6 +437,7 @@ header_table <- function(record_name = character(), # Record line information
 
 }
 
+#' @keywords internal
 #' @export
 new_header_table <- function(x = list(),
 														 record_line = list(),

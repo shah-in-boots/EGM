@@ -1,3 +1,4 @@
+# nocov start
 .onLoad <- function(libname, pkgname) {
 
 	# Handle WFDB options
@@ -13,7 +14,7 @@
 			fs::path_dir()
 
 		# Send message confirming
-		message("WFDB software detected and set as `options(wfdb_path = '", wp, "')`")
+		packageStartupMessage("WFDB software detected and set as `options(wfdb_path = '", wp, "')`")
 	}
 
 	# Add path to options as default
@@ -25,3 +26,5 @@
 	if (any(toset)) options(op.shiva[toset])
 
 }
+
+# nocov end

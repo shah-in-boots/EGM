@@ -2,12 +2,24 @@
 % Please edit documentation in R/segmentation.R
 \name{segmentation}
 \alias{segmentation}
-\alias{segment_sinus_beats}
+\alias{segment_by_sinus}
+\alias{pad_sequence}
+\alias{center_sequence}
 \title{Segmentation of electrical signal by wave specifications}
 \usage{
-segmentation(object, by = "sinus", pad = 0L, center = NULL)
+segmentation(
+  object,
+  by = "sinus",
+  pad = "before",
+  pad_length = 0L,
+  center = NULL
+)
 
-segment_sinus_beats(object)
+segment_by_sinus(object)
+
+pad_sequence(object, pad, pad_length)
+
+center_sequence(object, center, pad_length)
 }
 \arguments{
 \item{object}{Object of the \verb{<egm>} class, which includes header, signal
@@ -19,36 +31,54 @@ include the following:
 \item sinus = Will call \code{\link[=segment_sinus_beats]{segment_sinus_beats()}} on \code{egm} object
 }}
 
-\item{pad}{\if{html}{\out{<integer>}} value to offer padding of the segmented beats. The
-default is \code{0L}, which means no padding will be applied. If \code{pad > 0} then
-will add the baseline value (specified within the header of the signal) to
-a \strong{side} of the beat. You can also choose to \strong{center} the sequence,
-which will also only occur if \code{pad > 0}.}
+\item{pad}{\if{html}{\out{<character>}} String to specify which side of sequence to pad (or
+both). Options include \code{c("before", "after", "both")}.
 
-\item{side}{\if{html}{\out{<character>}} string to specify which side of sequence to pad (or
-both). Options include \code{c("left", "right", "both")}. Will only apply if
-\strong{pad} is set to \verb{>0L} value. Default is \code{"right"}.}
+Default is \code{"before"}. If \code{center} is being used, then the this argument is
+ignored.}
+
+\item{pad_length}{\if{html}{\out{<integer>}} Offer padding of the segmented beats to a maximum
+length. The default is \code{0L}, which means no padding will be applied. If
+\code{pad > 0} then will add the baseline value (specified within the header of
+the signal) to either before or after the signal. You can also choose to \code{center} the
+sequence, which will also only occur if \code{pad > 0}. I.e., if \code{pad = 500}
+then each segmented object will be increased TO a max length of \code{500}. If
+the maximum size is larger than the padding size, then a warning will be
+issued and the sequence will be truncated.}
+
+\item{center}{\if{html}{\out{<character>}} A single Roman alphabetic letter, that utilizes the
+annotations given in the \verb{<egm>} object to center the sequence. This is
+found under the \strong{type} variable in the annotation table. For example, if
+sinus waveforms were annotated as \code{c("P", "R", "T")} at their peak, then
+could center around \code{"R"}. This will only occur if \code{pad > 0L}. This is
+case-insensitive. The amount of padding will be determined by the
+\code{pad_length} argument}
 }
 \value{
-Returns a list of \verb{<egm>} objects. Each item is a segmentation of an \verb{<egm>},
-using the selected channels (if available). It will attempt to optimize and
-pick the best annotations to help create consistencies between the signal
-channels as possible.
+Returns a list of \verb{<egm>} objects. Each item is a segmentation of an
+\verb{<egm>}, using the selected channels (if available). It will attempt to
+optimize and pick the best annotations to help create consistencies between
+the signal channels as possible.
 }
 \description{
 Segmentation of electrical signal by wave specifications
 }
 \details{
-Requires a 12-lead ECG that has been digitized, and input as an \code{egm} object.
-This object must have an annotation file associated with it that contains
-demarcation of \strong{P} waves, \strong{R} waves, and \strong{T} waves.
-}
-\section{Functions}{
+Requires a 12-lead ECG that has been digitized, and input as an
+\verb{<egm>} object. This object must have an annotation file associated with it
+that contains demarcation annotations. Please see below for approaches based
+on the annotation type. Current, the following are supported:
 \itemize{
-\item \code{segment_sinus_beats()}: Identify individual sinus beats on surface ECG and
-extract as individual beats, returning a list of sinus beats in the form of
-the \code{egm} class. a consistent \strong{P}, \strong{R}, and \strong{T} wave amongst all
-channels. If a channel does not have, for example, a visible \strong{T} wave, it
-will still label it as information gained from other channels.
+\item sinus = supports using \emph{ecgpuwave} as the annotator
+}
+}
+\section{Sinus beat segmentation}{
+Identify individual sinus beats on surface ECG and extract as individual
+beats, returning a list of sinus beats in the form of the \verb{<egm>} class. a
+consistent \strong{P}, \strong{R}, and \strong{T} wave amongst all channels. If a channel
+does not have, for example, a visible \strong{T} wave, it will still label it as
+information gained from other channels. This is based off of the algorithm
+from the annotation tool named \code{ecgpuwave}. Please see \code{\link[=read_annotation]{read_annotation()}}
+for further details.
+}
 
-}}

@@ -90,7 +90,7 @@ read_annotation <- function(record,
 		wd <- getwd()
 	}
 
-	checkmate::assert_number(begin)
+	stopifnot("Expected <numeric>" = is.numeric(begin))
 
 	# Create all the necessary parameters for rdann
 	#		-f			Start time
@@ -156,7 +156,7 @@ write_annotation <- function(data,
 		wd <- getwd()
 	}
 
-	checkmate::assert_data_frame(data)
+	stopifnot("Expected <data.frame>" = inherits(data, "data.frame"))
 
 	# Take annotation data and write to temporary file
 	# 	This later is sent to `wrann` through `cat` with a pipe

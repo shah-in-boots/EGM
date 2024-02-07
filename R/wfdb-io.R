@@ -235,7 +235,7 @@ write_wfdb <- function(data,
 	#			Can be appended with baseline value "(0)"
 	# 		Can be appended with "/mV" to specify units
 	headerFile <-
-		read.table(file = paste0(record, ".hea"),
+		utils::read.table(file = paste0(record, ".hea"),
 							 skip = 1)
 	headerFile[[3]] <- paste0(headerFile[[3]], "(0)", "/mV", sep = "")
 	headerFile <- headerFile[1:9]
@@ -245,7 +245,7 @@ write_wfdb <- function(data,
 	writeLines(text = headLine,
 						 con = paste0(record, ".hea"))
 
-	write.table(
+	utils::write.table(
 		headerFile,
 		file = paste0(record, ".hea"),
 		sep = "\t",
