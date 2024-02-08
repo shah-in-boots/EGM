@@ -6,7 +6,7 @@
 \alias{shiva-package}
 \title{shiva: Evaluating cardiac electrophysiology signals}
 \description{
-Importing rhythm and signal data and their analysis in R
+A system for importing electrophysiological signal into R, based on the Waveform Database(WFDB) software package. This package provides a wrapper for utilizing WFDB functions for reading and writing signal data in R, as well as functions for visualization and analysis. This package introduces a stable and compatible class for working with signal data, and supports reading in of specific, electrophysiogical file formats, including intracardiac electrograms.
 }
 \seealso{
 Useful links:

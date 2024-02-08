@@ -17,9 +17,24 @@ annotation_table(
 
 is_annotation_table(x)
 }
-\description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+\arguments{
+\item{annotator}{String that is the name of a WFDB-compatible annotation
+type, serving as the extension for the file that is written containing that
+annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
+further details.}
 
-\code{annotation_table()} modifies the \code{data.table} class to work with annotation
-data.
+\item{time}{\if{html}{\out{<double>}} A vector of}
+}
+\value{
+A \verb{<data.table>} that has invariant columns that is compatible with
+the WFDB library
+}
+\description{
+\code{annotation_table()} modifies the \verb{<data.table>} class to work with
+annotation data. The columns are of all equal length, and each row describes
+a single annotation (although there may be duplicate time points).
+}
+\details{
+The \code{annotation_table()} function creates a compatible table that can be used
+with \code{\link[=write_annotation]{write_annotation()}} and \code{\link[=read_annotation]{read_annotation()}} functions.
 }

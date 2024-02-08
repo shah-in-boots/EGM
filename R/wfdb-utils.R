@@ -5,7 +5,11 @@
 #' and specific WFDB commands. They are primarily internal helper functions, but
 #' are documented for troubleshooting purposes.
 #'
-#' @param .path <character> argument that describes the path to the WFDB binary directory
+#' @param .app <character> Name of WFDB software command or application
+#'
+#' @param .path <character> String that describes the path to the WFDB binary
+#'   directory
+#'
 #' @name wfdb_paths
 #' @export
 find_wfdb_software <- function() {

@@ -5,7 +5,7 @@
 #' @description
 #' This serves as a combinatorial class to describe electrical signal data in R.
 #' It is based off of the formats available in WFDB, but has been digitized for
-#' ease of use within the R ecosystem. The `egm` object contains three
+#' ease of use within the R ecosystem. An `<egm>` object contains three
 #' components in a list:
 #'
 #' * signal data in multiple channels
@@ -18,7 +18,7 @@
 #' The individual components of the class are further defined in their
 #' respective functions [signal_table()], [header_table()],
 #' [annotation_table()]. They are very simple classes that build upon the
-#' `data.table` class.
+#' `<data.table>` class.
 #'
 #' @name egm
 #' @export

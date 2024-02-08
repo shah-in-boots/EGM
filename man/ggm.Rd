@@ -23,5 +23,5 @@ black" scheme, similar to that of \emph{LabSystem Pro} format (and most other
 high-contrast visualizations), for minimizing eye strain.}
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+Visualization of EGMs using \code{ggplot}
 }

@@ -1,5 +1,5 @@
 # nocov start
-.onLoad <- function(libname, pkgname) {
+.onAttach <- function(libname, pkgname) {
 
 	# Handle WFDB options
 	op <- options()

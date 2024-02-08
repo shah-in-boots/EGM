@@ -7,7 +7,13 @@ Authors@R:
            role = c("aut", "cre"),
            email = "ashah282@uic.edu",
            comment = c(ORCID = "0000-0002-9729-1558"))
-Description: Importing rhythm and signal data and their analysis in R
+Description: A system for importing electrophysiological signal into R, based on
+    the Waveform Database(WFDB) software package. This package provides a wrapper 
+    for utilizing WFDB functions for reading and writing signal data in R, as 
+    well as functions for visualization and analysis. This package introduces a
+    stable and compatible class for working with signal data, and supports 
+    reading in of specific, electrophysiogical file formats, including 
+    intracardiac electrograms.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -15,21 +21,25 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 Depends: 
     R (>= 2.10),
-    vctrs
+    vctrs,
+    data.table,
+Imports: 
+    stats,
+    fs,
+    ggplot2,
+    lifecycle,
+    rlang,
+    utils,
+    xml2,
+    base64enc,
+    checkmate,
+    stringr,
 Suggests: 
     covr,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),
     withr,
-Imports: 
-    stats,
-    fs,
-    ggplot2,
-    gsignal,
-    lifecycle,
-    data.table,
-    rlang
 Config/testthat/edition: 3
 URL: https://github.com/asshah4/shiva, https://asshah4.github.io/shiva/
 BugReports: https://github.com/asshah4/shiva/issues

@@ -9,6 +9,11 @@ signal_table(...)
 
 is_signal_table(x)
 }
+\arguments{
+\item{...}{\if{html}{\out{<list>}} A list or equal lengths}
+
+\item{x}{<data.frame> A data frame}
+}
 \description{
 \code{signal_table()} modifies the \code{data.table} class to work with electrical
 signal data. The input should be a data set of equal number of rows. It will

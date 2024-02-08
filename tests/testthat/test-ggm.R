@@ -36,6 +36,8 @@ test_that('header and labels work fluidly when plotting', {
 
 test_that("simple intervals can be added to surface leads", {
 
+	skip_on_cran()
+
 	object <- ggm(data = read_lspro(test_path('egm.txt')),
 								channels = c("I", "CS", "HIS D", "HIS M", "RV"))
 
@@ -89,6 +91,8 @@ test_that("colors can be applied to a light or dark theme", {
 # Annotations ----
 
 test_that("annotations can be added to ggplot", {
+
+	skip_on_cran()
 
 	record <- '300'
 	record_dir = test_path()

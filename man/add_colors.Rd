@@ -19,5 +19,16 @@ add_colors(object, palette, mode = "light")
 Returns an updated \code{ggm} object
 }
 \description{
-Add color scheme to a \code{ggm} object
+Using \code{add_colors()} is part of the theming process for a \verb{<ggm>} object,
+which in turn is a visual representation of an \verb{<egm>} object. Often, the
+\verb{<egm>} dataset will contain default colors based on where the signal data
+was brought in from. \code{add_colors()} can allow customization of those features
+to some degree based on \emph{opinionated} color palettes.
+}
+\details{
+Currently, the color choices are individual decided based on the channel
+source (e.g. lead) and are inspired by some modern palettes. The eventual
+goal for this function is to accept a multitude of palette options using
+heuristics similar to what is found in \code{{ggplot2}} or other graphing
+packages.
 }

@@ -28,7 +28,7 @@
 #' @param by <character> string naming waveform type to segment by. Options
 #'   include the following:
 #'
-#'   * sinus = Will call [segment_sinus_beats()] on `egm` object
+#'   * sinus = Will call [segment_by_sinus()] on `egm` object
 #'
 #' @param pad <character> String to specify which side of sequence to pad (or
 #'   both). Options include `c("before", "after", "both")`.
@@ -95,6 +95,8 @@ segmentation <- function(object,
 #' @rdname segmentation
 #' @export
 segment_by_sinus <- function(object) {
+
+	lifecycle::signal_stage("experimental", "segment_by_sinus()")
 
 	# Global variables to be nulled
 	. <- number <- beat <- NULL
@@ -307,6 +309,8 @@ pad_sequence <- function(object, pad, pad_length) {
 #' @export
 #' @rdname segmentation
 center_sequence <- function(object, center, pad_length) {
+
+	type <- NULL
 
 	stopifnot('Requires object of `<egm>` class for evaluation'
 						= inherits(object, 'egm'))

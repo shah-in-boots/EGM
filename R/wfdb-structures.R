@@ -7,6 +7,11 @@
 #' `signal_table()` modifies the `data.table` class to work with electrical
 #' signal data. The input should be a data set of equal number of rows. It will
 #' add a column of index positions called `sample` if it does not already exist.
+#'
+#' @param x <data.frame> A data frame
+#'
+#' @param ... <list> A list or equal lengths
+#'
 #' @import data.table
 #' @export
 signal_table <- function(...) {
@@ -44,7 +49,6 @@ signal_table <- function(...) {
 }
 
 #' @keywords internal
-#' @export
 new_signal_table <- function(data = list()) {
 	new_data_frame(data, class = c('signal_table', 'data.table'))
 }
@@ -63,8 +67,8 @@ vec_ptype_abbr.signal_table <- function(x, ...) "sig_tbl"
 #' @export
 vec_ptype_full.signal_table <- function(x, ...) "signal_table"
 
-#' @export
 #' @rdname signal_table
+#' @export
 is_signal_table <- function(x) {
 	inherits(x, "signal_table")
 }
@@ -72,17 +76,17 @@ is_signal_table <- function(x) {
 #' @importFrom vctrs vec_ptype2 vec_cast
 NULL
 
-#' @export
+#' @keywords internal
 signal_table_ptype2 <- function(x, y, ...) {
 	as.data.table(df_ptype2(x, y, ...))
 }
 
-#' @export
+#' @keywords internal
 signal_table_cast <- function(x, to, ...) {
 	as.data.table(df_cast(x, to, ...))
 }
 
-## signal_table ----
+## signal_table
 
 #' @export
 vec_ptype2.signal_table.signal_table <- function(x, y, ...) {
@@ -94,7 +98,7 @@ vec_cast.signal_table.signal_table <- function(x, to, ...) {
 	x
 }
 
-## data.table ----
+## data.table
 
 #' @export
 vec_ptype2.signal_table.data.table <- function(x, y, ...) {
@@ -106,7 +110,7 @@ vec_cast.signal_table.data.table <- function(x, to, ...) {
 	signal_table_cast(x, to, ...)
 }
 
-## data.frame ----
+## data.frame
 
 #' @export
 vec_ptype2.signal_table.data.frame <- function(x, y, ...) {
@@ -123,11 +127,21 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' Annotation Table
 #'
 #' @description
+#' `annotation_table()` modifies the `<data.table>` class to work with
+#' annotation data. The columns are of all equal length, and each row describes
+#' a single annotation (although there may be duplicate time points).
 #'
-#' `r lifecycle::badge('experimental')`
+#' @details
+#' The `annotation_table()` function creates a compatible table that can be used
+#' with [write_annotation()] and [read_annotation()] functions.
 #'
-#' `annotation_table()` modifies the `data.table` class to work with annotation
-#' data.
+#' @returns A `<data.table>` that has invariant columns that is compatible with
+#'   the WFDB library
+#'
+#' @inheritParams wfdb
+#' @inheritParams wfdb_io
+#'
+#' @param time <double> A vector of
 #'
 #' @export
 annotation_table <- function(annotator = character(),
@@ -165,7 +179,6 @@ annotation_table <- function(annotator = character(),
 }
 
 #' @keywords internal
-#' @export
 new_annotation_table <- function(x = list(),
 																 annotator = character()) {
 
@@ -216,12 +229,12 @@ is_annotation_table <- function(x) {
 	inherits(x, "annotation_table")
 }
 
-#' @export
+#' @keywords internal
 annotation_table_ptype2 <- function(x, y, ...) {
 	as.data.table(df_ptype2(x, y, ...))
 }
 
-#' @export
+#' @keywords internal
 annotation_table_cast <- function(x, to, ...) {
 	as.data.table(df_cast(x, to, ...))
 }
@@ -261,12 +274,12 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #' Header Table
 #'
 #' @description
-#'
-#' `r lifecycle::badge('experimental')`
-#'
 #' `header_table()` modifies the `data.table` class to work with header data.
 #' The header data is read in from a similar format as to that of WFDB files and
-#' should be compatible/interchangeable when writing out to disk.
+#' should be compatible/interchangeable when writing out to disk. The details
+#' extensively cover the type of data that is input. Generally, this function is
+#' called by `read_*_header()` functions and will generally not be called by the
+#' end-user.
 #'
 #' @details
 #'
@@ -305,7 +318,30 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #' the record. Usually are descriptive. Starts with initial '#' without
 #' preceding white space at beginning of line.
 #'
-#' @param INFO List of characters that will be applied when writing out file
+#' @param record_name <character> Record line information
+#' @param number_of_channels <integer> Number of signals
+#' @param frequency <numeric> Sampling frequency, 250 Hz default
+#' @param samples <integer> Number of samples
+#' @param start_time <POSIXct> Time of recording
+#' @param ADC_saturation <integer> ADC saturation
+#' @param file_name <character> Signal specific information
+#' @param storage_format <integer> Storage format, 16-bit default
+#' @param ADC_gain <integer> ADC gain, default of 200
+#' @param ADC_baseline <integer> ADC baseline, defaults to `ADC_zero`
+#' @param ADC_units <character> ADC units, "mV" is default
+#' @param ADC_resolution <integer> ADC resolution, default is 12
+#' @param ADC_zero <integer> ADC zero, defaults to 0
+#' @param initial_value <integer> Initial value, defaults to `ADC_zero` value
+#' @param checksum <integer> Checksum
+#' @param blocksize <integer> Block size
+#' @param label <character> Description
+#' @param info_strings <list> Additional information at end of file
+#' @param additional_gain <numeric> Additional gain, defaults to 1.0
+#' @param low_pass <integer> Low pass filter
+#' @param high_pass <integer> High pass filter
+#' @param color <character> Color as hexadecimal format, defaults to black
+#' @param scale <integer> Scale
+#'
 #' @export
 header_table <- function(record_name = character(), # Record line information
 												 number_of_channels = integer(),
@@ -317,7 +353,7 @@ header_table <- function(record_name = character(), # Record line information
 												 storage_format = 16L,
 												 ADC_gain = 200L,
 												 ADC_baseline = ADC_zero,
-												 ADC_units = 'mV',
+												 ADC_units = "mV",
 												 ADC_resolution = 12L,
 												 ADC_zero = 0L,
 												 initial_value = ADC_zero,
@@ -354,7 +390,6 @@ header_table <- function(record_name = character(), # Record line information
 		frequency = frequency,
 		ADC_saturation = ADC_saturation
 	)
-
 
 	# Channels and specific signal should be organized appropriately
 	# 	Top to bottom should be from high to low, and then from left to right
@@ -404,25 +439,25 @@ header_table <- function(record_name = character(), # Record line information
 
 	# Signal specifications
 	x <- df_list(
-		'file_name' = ifelse(length(file_name) == 0, NA_character_, file_name),
-		'storage_format' = storage_format,
-		'number' = ifelse(length(number_of_channels) == 0, 0, 1:number_of_channels),
-		'ADC_gain' = ADC_gain,
-		'ADC_baseline' = ADC_baseline,
-		'ADC_units' = ADC_units,
-		'ADC_zero' = ADC_zero,
-		'ADC_resolution' = ADC_resolution,
-		'initial_value' = initial_value,
-		'checksum' = checksum,
-		'blocksize' = blocksize,
-		'label' = label,
-		'lead' = lead,
-		'source' = source,
-		'additional_gain' = additional_gain,
-		'low_pass' = low_pass,
-		'high_pass' = high_pass,
-		'color' = color,
-		'scale' = ifelse(length(scale) == 0, NA, scale)
+		"file_name" = ifelse(length(file_name) == 0, NA_character_, file_name),
+		"storage_format" = storage_format,
+		"number" = ifelse(length(number_of_channels) == 0, 0, 1:number_of_channels),
+		"ADC_gain" = ADC_gain,
+		"ADC_baseline" = ADC_baseline,
+		"ADC_units" = ADC_units,
+		"ADC_zero" = ADC_zero,
+		"ADC_resolution" = ADC_resolution,
+		"initial_value" = initial_value,
+		"checksum" = checksum,
+		"blocksize" = blocksize,
+		"label" = label,
+		"lead" = lead,
+		"source" = source,
+		"additional_gain" = additional_gain,
+		"low_pass" = low_pass,
+		"high_pass" = high_pass,
+		"color" = color,
+		"scale" = ifelse(length(scale) == 0, NA, scale)
 	)
 
 	# Info strings
@@ -438,7 +473,6 @@ header_table <- function(record_name = character(), # Record line information
 }
 
 #' @keywords internal
-#' @export
 new_header_table <- function(x = list(),
 														 record_line = list(),
 														 info_strings = list()) {
@@ -447,7 +481,7 @@ new_header_table <- function(x = list(),
 		x,
 		record_line = record_line,
 		info_strings = info_strings,
-		class = c('header_table', 'data.table')
+		class = c("header_table", "data.table")
 	)
 
 }
@@ -464,7 +498,7 @@ print.header_table <- function(x, ...) {
 	if (nrow(x) > 0) {
 		cat(
 			sprintf(
-				'<%s: %s channels, %s samples @ %s Hz> %s\n',
+				"<%s: %s channels, %s samples @ %s Hz> %s\n",
 				class(x)[[1]],
 				attributes(x)$record_line$number_of_channels,
 				attributes(x)$record_line$samples,
@@ -476,7 +510,7 @@ print.header_table <- function(x, ...) {
 			NextMethod()
 		}
 	} else {
-		cat(sprintf( '<%s: 0 channels, 0 samples>\n', class(x)[[1]]))
+		cat(sprintf( "<%s: 0 channels, 0 samples>\n", class(x)[[1]]))
 	}
 
 }

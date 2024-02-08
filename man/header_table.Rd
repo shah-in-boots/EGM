@@ -34,14 +34,59 @@ header_table(
 is_header_table(x)
 }
 \arguments{
-\item{INFO}{List of characters that will be applied when writing out file}
+\item{record_name}{\if{html}{\out{<character>}} Record line information}
+
+\item{number_of_channels}{\if{html}{\out{<integer>}} Number of signals}
+
+\item{frequency}{\if{html}{\out{<numeric>}} Sampling frequency, 250 Hz default}
+
+\item{samples}{\if{html}{\out{<integer>}} Number of samples}
+
+\item{start_time}{\if{html}{\out{<POSIXct>}} Time of recording}
+
+\item{ADC_saturation}{\if{html}{\out{<integer>}} ADC saturation}
+
+\item{file_name}{\if{html}{\out{<character>}} Signal specific information}
+
+\item{storage_format}{\if{html}{\out{<integer>}} Storage format, 16-bit default}
+
+\item{ADC_gain}{\if{html}{\out{<integer>}} ADC gain, default of 200}
+
+\item{ADC_baseline}{\if{html}{\out{<integer>}} ADC baseline, defaults to \code{ADC_zero}}
+
+\item{ADC_units}{\if{html}{\out{<character>}} ADC units, "mV" is default}
+
+\item{ADC_resolution}{\if{html}{\out{<integer>}} ADC resolution, default is 12}
+
+\item{ADC_zero}{\if{html}{\out{<integer>}} ADC zero, defaults to 0}
+
+\item{initial_value}{\if{html}{\out{<integer>}} Initial value, defaults to \code{ADC_zero} value}
+
+\item{checksum}{\if{html}{\out{<integer>}} Checksum}
+
+\item{blocksize}{\if{html}{\out{<integer>}} Block size}
+
+\item{label}{\if{html}{\out{<character>}} Description}
+
+\item{info_strings}{\if{html}{\out{<list>}} Additional information at end of file}
+
+\item{additional_gain}{\if{html}{\out{<numeric>}} Additional gain, defaults to 1.0}
+
+\item{low_pass}{\if{html}{\out{<integer>}} Low pass filter}
+
+\item{high_pass}{\if{html}{\out{<integer>}} High pass filter}
+
+\item{color}{\if{html}{\out{<character>}} Color as hexadecimal format, defaults to black}
+
+\item{scale}{\if{html}{\out{<integer>}} Scale}
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
-
 \code{header_table()} modifies the \code{data.table} class to work with header data.
 The header data is read in from a similar format as to that of WFDB files and
-should be compatible/interchangeable when writing out to disk.
+should be compatible/interchangeable when writing out to disk. The details
+extensively cover the type of data that is input. Generally, this function is
+called by \verb{read_*_header()} functions and will generally not be called by the
+end-user.
 }
 \section{Header file structure}{
 There are three components to the header file

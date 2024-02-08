@@ -28,7 +28,7 @@ information, and annotation information.}
 \item{by}{\if{html}{\out{<character>}} string naming waveform type to segment by. Options
 include the following:
 \itemize{
-\item sinus = Will call \code{\link[=segment_sinus_beats]{segment_sinus_beats()}} on \code{egm} object
+\item sinus = Will call \code{\link[=segment_by_sinus]{segment_by_sinus()}} on \code{egm} object
 }}
 
 \item{pad}{\if{html}{\out{<character>}} String to specify which side of sequence to pad (or

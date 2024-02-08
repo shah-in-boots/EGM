@@ -1,4 +1,4 @@
-#' @export
+#' @keywords internal
 identify_channel_source <- function(x) {
 
 	# Intakes character vector and identifies the source
