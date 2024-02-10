@@ -35,7 +35,7 @@ egm <- function(signal = signal_table(),
 					annotation = annotation)
 }
 
-#' @export
+#' @keywords internal
 new_egm <- function(signal = signal_table(),
 										header = header_table(),
 										annotation = annotation_table(),
