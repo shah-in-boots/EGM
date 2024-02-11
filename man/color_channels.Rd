@@ -7,13 +7,15 @@
 color_channels(x, palette, mode = "light")
 }
 \arguments{
-\item{palette}{Color palette options for leads as below:
+\item{x}{\if{html}{\out{<character>}} Vector of names of requsted ECG or EGM leads}
+
+\item{palette}{\if{html}{\out{<character>}} Color palette options for leads as below:
 \itemize{
 \item \strong{material} - material color theme
 \item \strong{bw} - black or white color theme based on light/dark mode
 }}
 
-\item{mode}{Adjust color settings for either light or dark mode}
+\item{mode}{\if{html}{\out{<character>}} Adjust color settings for either light or dark mode}
 }
 \value{
 Character vector of hex code colors based on the selected palette and

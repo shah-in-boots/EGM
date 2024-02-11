@@ -7,16 +7,18 @@
 add_colors(object, palette, mode = "light")
 }
 \arguments{
-\item{palette}{Color palette options for leads as below:
+\item{object}{\if{html}{\out{<ggm>}} object}
+
+\item{palette}{\if{html}{\out{<character>}} Color palette options for leads as below:
 \itemize{
 \item \strong{material} - material color theme
 \item \strong{bw} - black or white color theme based on light/dark mode
 }}
 
-\item{mode}{Adjust color settings for either light or dark mode}
+\item{mode}{\if{html}{\out{<character>}} Adjust color settings for either light or dark mode}
 }
 \value{
-Returns an updated \code{ggm} object
+Returns an updated \verb{<ggm>} object
 }
 \description{
 Using \code{add_colors()} is part of the theming process for a \verb{<ggm>} object,

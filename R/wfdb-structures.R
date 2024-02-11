@@ -135,13 +135,20 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' The `annotation_table()` function creates a compatible table that can be used
 #' with [write_annotation()] and [read_annotation()] functions.
 #'
-#' @returns A `<data.table>` that has invariant columns that is compatible with
+#' @inheritSection wfdb_annotations Annotation files
+#'
+#' @returns A `<data.table>` that has invariant columns that are compatible with
 #'   the WFDB library
 #'
 #' @inheritParams wfdb
 #' @inheritParams wfdb_io
 #'
-#' @param time <double> A vector of
+#' @param time <numeric> Time stamp of the annotation
+#' @param sample <integer> Sample number of the annotation
+#' @param type <character> Type of the annotation
+#' @param subtype <character> Subtype of the annotation
+#' @param channel <integer> Channel number of the annotation
+#' @param number <integer> Number that further classifies the annotation
 #'
 #' @export
 annotation_table <- function(annotator = character(),

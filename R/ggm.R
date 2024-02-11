@@ -165,7 +165,10 @@ new_ggm <- function(object = ggplot(),
 #'
 #' @inheritParams color_channels
 #'
-#' @return Returns an updated `ggm` object
+#' @param object <ggm> object
+#'
+#' @return Returns an updated `<ggm>` object
+#'
 #' @export
 add_colors <- function(object, palette, mode = "light") {
 

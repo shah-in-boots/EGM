@@ -17,15 +17,19 @@ identify_channel_source <- function(x) {
 
 #' Modify channel colors
 #'
-#' @param palette Color palette options for leads as below:
+#' @param x <character> Vector of names of requsted ECG or EGM leads
+#'
+#' @param palette <character> Color palette options for leads as below:
 #'
 #'   * __material__ - material color theme
 #'
 #'   * __bw__ - black or white color theme based on light/dark mode
 #'
-#' @param mode Adjust color settings for either light or dark mode
+#' @param mode <character> Adjust color settings for either light or dark mode
+#'
 #' @return Character vector of hex code colors based on the selected palette and
 #'   light/dark mode
+#'
 #' @export
 color_channels <- function(x, palette, mode = "light") {
 

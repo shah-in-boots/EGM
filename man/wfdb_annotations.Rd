@@ -51,7 +51,7 @@ further details.}
 device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
 system options on loading of the package, \code{getOption('wfdb_path')}}
 
-\item{data}{A table containing 6 columns}
+\item{data}{<annotation_table> table containing 6 columns}
 }
 \value{
 Outputs a WFDB with the provided extension
@@ -77,6 +77,7 @@ object will be returned.
 }
 \section{Annotation files}{
 The following annotation file types are described below.
+\subsection{\code{ecgpuwave}}{
 
 \code{ecgpuwave} analyzes an ECG signal from the specified record, detecting the
 QRS complexes and locating the beginning, peak, and end of the P, QRS, and
@@ -96,5 +97,6 @@ is a T wave annotation, the \strong{number} column can be 0 (normal), 1
 (inverted), 2 (positive), 3 (negative), 4 (biphasic negative-positive), 5
 (biphasic positive-negative). If the \strong{type} is an waveform onset or offset,
 then \strong{number} can be 0 (P wave), 1 (QRS complex), 2 (T wave).
+}
 }
 

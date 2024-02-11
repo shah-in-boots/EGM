@@ -29,6 +29,8 @@
 #'
 #' The following annotation file types are described below.
 #'
+#' ## `ecgpuwave`
+#'
 #' `ecgpuwave` analyzes an ECG signal from the specified record, detecting the
 #' QRS complexes and locating the beginning, peak, and end of the P, QRS, and
 #' ST-T waveforms. The output of ecgpuwave is written as a standard WFDB-format
@@ -132,7 +134,7 @@ read_annotation <- function(record,
 	new_annotation_table(df_list(dat), annotator)
 }
 
-#' @param data A table containing 6 columns
+#' @param data <annotation_table> table containing 6 columns
 #' @return Outputs a WFDB with the provided extension
 #' @rdname wfdb_annotations
 #' @export

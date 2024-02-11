@@ -23,10 +23,20 @@ type, serving as the extension for the file that is written containing that
 annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
 further details.}
 
-\item{time}{\if{html}{\out{<double>}} A vector of}
+\item{time}{\if{html}{\out{<numeric>}} Time stamp of the annotation}
+
+\item{sample}{\if{html}{\out{<integer>}} Sample number of the annotation}
+
+\item{type}{\if{html}{\out{<character>}} Type of the annotation}
+
+\item{subtype}{\if{html}{\out{<character>}} Subtype of the annotation}
+
+\item{channel}{\if{html}{\out{<integer>}} Channel number of the annotation}
+
+\item{number}{\if{html}{\out{<integer>}} Number that further classifies the annotation}
 }
 \value{
-A \verb{<data.table>} that has invariant columns that is compatible with
+A \verb{<data.table>} that has invariant columns that are compatible with
 the WFDB library
 }
 \description{
@@ -38,3 +48,28 @@ a single annotation (although there may be duplicate time points).
 The \code{annotation_table()} function creates a compatible table that can be used
 with \code{\link[=write_annotation]{write_annotation()}} and \code{\link[=read_annotation]{read_annotation()}} functions.
 }
+\section{Annotation files}{
+The following annotation file types are described below.
+\subsection{\code{ecgpuwave}}{
+
+\code{ecgpuwave} analyzes an ECG signal from the specified record, detecting the
+QRS complexes and locating the beginning, peak, and end of the P, QRS, and
+ST-T waveforms. The output of ecgpuwave is written as a standard WFDB-format
+annotation file (the extension is "*.ecgpuwave", as would be expected). This
+file can be converted into text format using \code{rdann}. Further details are
+given at the \href{https://physionet.org/content/ecgpuwave/1.3.4/}{ECGPUWAVE}
+page.
+
+The \strong{type} column can be \emph{p}, \emph{t}, or \emph{N} for the peak of the P wave, T
+wave, and QRS (R peak) directly. The output notation also includes waveform
+onset XXX and waveform offset XXX. The \strong{number} column gives further
+information about each of these \strong{type} labels.
+
+The \strong{number} column gives modifier information. If the \strong{type} classifier
+is a T wave annotation, the \strong{number} column can be 0 (normal), 1
+(inverted), 2 (positive), 3 (negative), 4 (biphasic negative-positive), 5
+(biphasic positive-negative). If the \strong{type} is an waveform onset or offset,
+then \strong{number} can be 0 (P wave), 1 (QRS complex), 2 (T wave).
+}
+}
+
