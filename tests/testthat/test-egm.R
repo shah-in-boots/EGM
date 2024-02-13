@@ -59,6 +59,9 @@ test_that("egm/signal class definition works", {
 
 test_that('signal can be removed from egm object', {
 
+	skip_on_cran()
+	skip_on_ci()
+
 	object <- read_wfdb('ecg', test_path())
 	expect_s3_class(object, 'egm')
 

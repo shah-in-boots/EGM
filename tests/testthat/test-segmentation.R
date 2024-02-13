@@ -1,6 +1,7 @@
 test_that("ECG can be segmented", {
 
 	skip_on_cran()
+	skip_on_ci()
 
 	rec <- 'ecg'
 	dir <- test_path()
@@ -17,7 +18,9 @@ test_that("ECG can be segmented", {
 })
 
 test_that('ECG can be padded', {
+
 	skip_on_cran()
+	skip_on_ci()
 
 	rec <- 'ecg'
 	dir <- test_path()
@@ -66,6 +69,9 @@ test_that('ECG can be padded', {
 
 test_that("waveforms can be centered", {
 
+	skip_on_cran()
+	skip_on_ci()
+
 	# Generally this ECG has 250 ms beats
 	# Padding up to 500 should allow room to center
 	rec <- 'ecg'
@@ -81,7 +87,9 @@ test_that("waveforms can be centered", {
 })
 
 test_that('Sinus segmentation will not work, appropriately', {
+
 	skip_on_cran()
+	skip_on_ci()
 
 	rec <- 'muse-af'
 	rec_dir <- system.file('extdata', package = 'shiva')

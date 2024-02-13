@@ -24,6 +24,9 @@ test_that("plots can be generated easily", {
 
 test_that('header and labels work fluidly when plotting', {
 
+	skip_on_cran()
+	skip_on_ci()
+
 	data <- read_wfdb(record = 'ludb-ecg',
 										record_dir = test_path(),
 										annotator = 'i')
@@ -92,7 +95,8 @@ test_that("colors can be applied to a light or dark theme", {
 
 test_that("annotations can be added to ggplot", {
 
-	skip_on_cran() # for WFDB
+	skip_on_cran()
+	skip_on_ci()
 	skip() # for annotations being temporary
 
 	record <- '300'

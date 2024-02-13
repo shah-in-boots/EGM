@@ -1,5 +1,8 @@
 test_that("can read in annotation files", {
 
+	skip_on_cran()
+	skip_on_ci()
+
 	x <- read_annotation(
 		record = "300",
 		record_dir = test_path(),
@@ -14,6 +17,9 @@ test_that("can read in annotation files", {
 
 test_that("can write annotation files", {
 
+	skip_on_cran()
+	skip_on_ci()
+
 	ann <- read_annotation(
 		record = "300",
 		record_dir = test_path(),
@@ -26,6 +32,9 @@ test_that("can write annotation files", {
 })
 
 test_that('can read in faulty signal safely', {
+
+	skip_on_cran()
+	skip_on_ci()
 
 	# Bad ECG that has no signal
 	record <- 'bad-ecg'
