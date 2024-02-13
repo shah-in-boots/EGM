@@ -7,9 +7,7 @@ test_that("ECG can be segmented", {
 	object <- read_wfdb(rec, dir, 'ecgpuwave')
 
 	# Visualize
-	g <-
-		ggm(object) |>
-		draw_boundary_mask()
+	g <- ggm(object)
 
 	# Should create a number of high likelihood sinus beats
 	beats <- segmentation(object, by = "sinus")

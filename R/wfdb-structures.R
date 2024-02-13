@@ -181,8 +181,7 @@ annotation_table <- function(annotator = character(),
 							 channel = channel,
 							 number = number)
 
-	new_annotation_table(x = x,
-											 annotator = annotator)
+	new_annotation_table(x, annotator)
 }
 
 #' @keywords internal
