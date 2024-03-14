@@ -310,8 +310,6 @@ pad_sequence <- function(object, pad, pad_length) {
 #' @rdname segmentation
 center_sequence <- function(object, center, pad_length) {
 
-	type <- NULL
-
 	stopifnot('Requires object of `<egm>` class for evaluation'
 						= inherits(object, 'egm'))
 
@@ -333,7 +331,7 @@ center_sequence <- function(object, center, pad_length) {
 	# Only ONE annotation should be present in the signal for centering
 	stopifnot(
 		"Centering fails if the waveform of interest is not unique in sample."
-		= nrow(ann[type == centerWave]) == 1
+		= nrow(ann[type == toupper(centerWave) | type == tolower(centerWave)]) == 1
 	)
 
 	# Now, can center by placing annotation in middle and surrounding by padding

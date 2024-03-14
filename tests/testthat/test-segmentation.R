@@ -47,7 +47,7 @@ test_that('ECG can be padded', {
 	expect_lt(nrow(paddedOutput$signal), nrow(object$signal))
 	expect_equal(nrow(paddedOutput$signal), 1000)
 
-	# Padding of a subsetted beat
+	# Padding of a subset beat
 	beat <- segment_by_sinus(object)[[1]]
 
 	# Padding before
@@ -80,6 +80,7 @@ test_that("waveforms can be centered", {
 	beats <- segment_by_sinus(object)
 	beat <- beats[[1]]
 
+	x <- center_sequence(beat, center = "N", pad_length = 500)
 	x <- center_sequence(beat, center = "N", pad_length = 500)
 	expect_equal(nrow(x$signal), 500)
 
