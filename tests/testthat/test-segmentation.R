@@ -103,7 +103,7 @@ test_that('Sinus segmentation will not work, appropriately', {
 	skip_on_ci()
 
 	rec <- 'muse-af'
-	rec_dir <- system.file('extdata', package = 'shiva')
+	rec_dir <- system.file('extdata', package = 'egm')
 	ecg <- read_wfdb(rec, rec_dir, 'ecgpuwave')
 
 	expect_length(ecg$signal, 13)

@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(shiva)
+library(egm)
 ```
 
 # Surface recordings
@@ -24,7 +24,7 @@ Here is a simple example of taking a MUSE XML file and converting it to digital 
 
 ```{r}
 # Read in data
-fp <- system.file('extdata', 'muse-sinus.xml', package = 'shiva')
+fp <- system.file('extdata', 'muse-sinus.xml', package = 'egm')
 xml <- readLines(fp)
 head(xml)
 
@@ -43,7 +43,7 @@ This signal now comes from the LSPro data.
 
 ```{r}
 # Read in data
-fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'shiva')
+fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'egm')
 lspro <- readLines(fp)
 head(lspro, n = 20)
 

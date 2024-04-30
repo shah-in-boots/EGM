@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 options(wfdb_path = "/usr/local/bin")
-library(shiva)
+library(egm)
 ```
 
 The concept of *beat segmentation* is important in cardiac electrical signal analysis. 
@@ -39,7 +39,7 @@ The initial approach will be to use sinus rhythm, which can most easily be evalu
 
 ```{r}
 ecg <- read_wfdb(record = 'muse-sinus',
-                 record_dir = system.file('extdata', package = 'shiva'),
+                 record_dir = system.file('extdata', package = 'egm'),
                  annotator = 'ecgpuwave')
 # Example data
 ecg
