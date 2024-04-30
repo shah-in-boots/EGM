@@ -1,13 +1,12 @@
-pandoc: 3.1.11
-pkgdown: 2.0.7
+pandoc: 3.1.13
+pkgdown: 2.0.9
 pkgdown_sha: ~
 articles:
   intro-egm: intro-egm.html
   intro-segmentation: intro-segmentation.html
   intro-wfdb: intro-wfdb.html
-  wfdb: wfdb.html
-last_built: 2023-12-22T17:55Z
+last_built: 2024-04-30T21:30Z
 urls:
-  reference: https://asshah4.github.io/shiva/reference
-  article: https://asshah4.github.io/shiva/articles
+  reference: https://shah-in-boots.github.io/egm/reference
+  article: https://shah-in-boots.github.io/egm/articles
 

@@ -1,7 +1,7 @@
 test_that('convert ECG from MUSE XML format to WFDB', {
 
 	# ECG XML file
-	file <- system.file('extdata', 'muse-sinus.xml', package = 'shiva')
+	file <- system.file('extdata', 'muse-sinus.xml', package = 'egm')
 
 	# Get signal data
 	ecg <- read_muse(file)

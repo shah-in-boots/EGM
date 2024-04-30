@@ -1,5 +1,5 @@
-Package: shiva
-Title: Evaluating cardiac electrophysiology signals
+Package: egm
+Title: Evaluating Cardiac Electrophysiology Signals
 Version: 0.0.0.9000
 Authors@R: 
     person(given = "Anish S.",
