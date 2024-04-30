@@ -117,6 +117,10 @@ segment_by_sinus <- function(object) {
 	# Find all RR intervals for the normal beats
 	n <- as.data.table(sig[, .(sample)])
 	rp <- ann[type == 'N', ]$sample
+
+	# If there is only one beat, its unlikely to be sinus
+	# Would consider it a PVC or AF
+	# Will error here if there is only one beat?
 	rr <- findInterval(n$sample, rp)
 	n$rr <- rr
 

@@ -17,6 +17,16 @@ test_that("ECG can be segmented", {
 
 })
 
+test_that("MUSE ECG can be segmented without error", {
+
+	skip()
+	rec <- "MUSE_20230626_141828_25000"
+	rec_dir <- "/Users/asshah4/data/aflubber/ecg_data/wes_wfdb"
+	object <- read_wfdb(rec, rec_dir, "ecgpuwave")
+
+	segmentation(object, by = "sinus")
+})
+
 test_that('ECG can be padded', {
 
 	skip_on_cran()
