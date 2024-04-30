@@ -1,4 +1,4 @@
-url: https://asshah4.github.io/shiva/
+url: https://shah-in-boots.github.io/shiva/
 
 development:
   mode: auto
@@ -32,10 +32,10 @@ navbar:
   components:
     home:
       icon: fas fa-home fa-lg
-      href: https://asshah4.github.io/
+      href: https://shah-in-boots.github.io/
     reference:
       text: Reference
       href: reference/index.html
     github:
       icon: fab fa-github fa-lg
-      href: https://github.com/asshah4/shiva/
+      href: https://github.com/shah-in-boots/shiva/

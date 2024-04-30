@@ -41,6 +41,6 @@ Suggests:
     testthat (>= 3.0.0),
     withr,
 Config/testthat/edition: 3
-URL: https://github.com/asshah4/shiva, https://asshah4.github.io/shiva/
-BugReports: https://github.com/asshah4/shiva/issues
+URL: https://github.com/shah-in-boots/shiva, https://shah-in-boots.github.io/shiva/
+BugReports: https://github.com/shah-in-boots/shiva/issues
 VignetteBuilder: knitr
