@@ -3,14 +3,16 @@ template:
   bootswatch: flatly
   theme: solarized-light
   bslib:
-    primary: "#ee7733"
-    secondary: "#0077bb"
-    success: "#ee3377"
-    info: "#33bbee"
-    warning: "#009988"
-    danger: "#cc3311"
-    light: "#ffffff"
-    dark: "#bbbbbb"
+    bg: "#ffffff"
+    fg: "#000000"
+    primary: "#f49049"
+    secondary: "#efb865"
+    success: "#f56055"
+    danger: "#f2a552"
+    info: "#edc97e"
+    warning: "#f57a4a"
+    light: "#ecd999"
+    dark: "#ef4868"
 
 url: https://shah-in-boots.github.io/egm/
 
@@ -39,3 +41,11 @@ navbar:
     github:
       icon: fab fa-github fa-lg
       href: https://github.com/shah-in-boots/egm/
+
+footer:
+  structure:
+    left: developed_by
+    right: [built_with, colors]
+  components:
+    colors: Colorspace from the **OrYel** palette
+
