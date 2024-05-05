@@ -22,41 +22,40 @@ pad_sequence(object, pad, pad_length)
 center_sequence(object, center, pad_length)
 }
 \arguments{
-\item{object}{Object of the \verb{<egm>} class, which includes header, signal
+\item{object}{Object of the \code{egm} class, which includes header, signal
 information, and annotation information.}
 
-\item{by}{\if{html}{\out{<character>}} string naming waveform type to segment by. Options
+\item{by}{A \code{character} string naming waveform type to segment by. Options
 include the following:
 \itemize{
 \item sinus = Will call \code{\link[=segment_by_sinus]{segment_by_sinus()}} on \code{egm} object
 }}
 
-\item{pad}{\if{html}{\out{<character>}} String to specify which side of sequence to pad (or
+\item{pad}{\code{character} String to specify which side of sequence to pad (or
 both). Options include \code{c("before", "after", "both")}.
 
-Default is \code{"before"}. If \code{center} is being used, then the this argument is
+Default is \emph{before}. If \emph{center} is being used, then the this argument is
 ignored.}
 
-\item{pad_length}{\if{html}{\out{<integer>}} Offer padding of the segmented beats to a maximum
-length. The default is \code{0L}, which means no padding will be applied. If
-\code{pad > 0} then will add the baseline value (specified within the header of
-the signal) to either before or after the signal. You can also choose to \code{center} the
-sequence, which will also only occur if \code{pad > 0}. I.e., if \code{pad = 500}
-then each segmented object will be increased TO a max length of \code{500}. If
-the maximum size is larger than the padding size, then a warning will be
-issued and the sequence will be truncated.}
+\item{pad_length}{Offers padding of the segmented beats to a maximum length,
+as an \code{integer}. The default is \emph{0L}, which means no padding will be
+applied. If \code{pad > 0} then will add the baseline value (specified within
+the header of the signal) to either before or after the signal. You can
+also choose to \code{center} the sequence, which will also only occur if \code{pad > 0}. I.e., if \code{pad = 500} then each segmented object will be increased TO a
+max length of \code{500}. If the maximum size is larger than the padding size,
+then a warning will be issued and the sequence will be truncated.}
 
-\item{center}{\if{html}{\out{<character>}} A single Roman alphabetic letter, that utilizes the
-annotations given in the \verb{<egm>} object to center the sequence. This is
-found under the \strong{type} variable in the annotation table. For example, if
-sinus waveforms were annotated as \code{c("P", "R", "T")} at their peak, then
-could center around \code{"R"}. This will only occur if \code{pad > 0L}. This is
-case-insensitive. The amount of padding will be determined by the
-\code{pad_length} argument}
+\item{center}{A single Roman alphabetic letter \code{character} that utilizes the
+annotations given in the \code{egm} object to center the sequence. This is found
+under the \strong{type} variable in the annotation table.
+
+For example, if sinus waveforms were annotated as \code{c("P", "R", "T")} at
+their peak, then could center around \emph{R}. This will only occur if \code{pad > 0L}. This is case-insensitive. The amount of padding will be determined by
+the \strong{pad_length} argument}
 }
 \value{
-Returns a list of \verb{<egm>} objects. Each item is a segmentation of an
-\verb{<egm>}, using the selected channels (if available). It will attempt to
+Returns a list of \code{egm} objects. Each item is a segmentation of an
+\code{egm}, using the selected channels (if available). It will attempt to
 optimize and pick the best annotations to help create consistencies between
 the signal channels as possible.
 }
@@ -65,7 +64,7 @@ Segmentation of electrical signal by wave specifications
 }
 \details{
 Requires a 12-lead ECG that has been digitized, and input as an
-\verb{<egm>} object. This object must have an annotation file associated with it
+\code{egm} object. This object must have an annotation file associated with it
 that contains demarcation annotations. Please see below for approaches based
 on the annotation type. Current, the following are supported:
 \itemize{
@@ -74,7 +73,7 @@ on the annotation type. Current, the following are supported:
 }
 \section{Sinus beat segmentation}{
 Identify individual sinus beats on surface ECG and extract as individual
-beats, returning a list of sinus beats in the form of the \verb{<egm>} class. a
+beats, returning a list of sinus beats in the form of the \code{egm} class. a
 consistent \strong{P}, \strong{R}, and \strong{T} wave amongst all channels. If a channel
 does not have, for example, a visible \strong{T} wave, it will still label it as
 information gained from other channels. This is based off of the algorithm

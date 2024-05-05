@@ -2,12 +2,10 @@
 
 #' Read WFDB-compatible annotation file
 #'
-#' @description
-#'
-#' Individual annotation types are described as both a command-line tool for
-#' annotating WFDB-files, as well as the extension that is appended to the
-#' `record` name to notate the type. Generally, the types of annotations that
-#' are supported are described below:
+#' @description Individual annotation types are described as both a command-line
+#' tool for annotating WFDB-files, as well as the extension that is appended to
+#' the `record` name to notate the type. Generally, the types of annotations
+#' that are supported are described below:
 #'
 #'   * atr = manually reviewed and corrected reference annotation files
 #'
@@ -17,12 +15,10 @@
 #'
 #'   * sqrs/wqrs/gqrs = standard WFDB peak detection for R waves
 #'
-#' A more detailed explanation is given below.
-#'
-#' Additionally, files when being read in are converted from a binary format to
-#' a textual format. The raw data however may be inadequate, as the original
-#' annotation may be erroneous. In these cases, an empty `annotation_table`
-#' object will be returned.
+#' A more thorough explanation is given in the details. Additionally, files when
+#' being read in are converted from a binary format to a textual format. The raw
+#' data however may be inadequate, as the original annotation may be erroneous.
+#' In these cases, an empty `annotation_table` object will be returned.
 #'
 #' @details
 #' # Annotation files
@@ -50,8 +46,24 @@
 #' (biphasic positive-negative). If the __type__ is an waveform onset or offset,
 #' then __number__ can be 0 (P wave), 1 (QRS complex), 2 (T wave).
 #'
+#' @returns This function will either read in an annotation using the [read_annotation()] function in the format of an `annotation_table` object, or write to file/disk an `annotation_table` to a WFDB-compatible annotation file using the [write_annotation()] function.
+#'
+#' __IMPORTANT__: as annotation files are created by annotators that were
+#' developed independently, there is a higher chance of an erroroneous file
+#' being created on disk. As such, this function will note an error an return an
+#' empty `annotation_table` at times.
+#'
 #' @inheritParams wfdb
+#'
 #' @inheritParams wfdb_io
+#'
+#' @param data An `annotation_table` containing the 6 invariant columns required
+#'   by the [annotation_table()] function
+#'
+#' @param begin,end A `character` in the format of *HH:MM:SS* that will be used
+#'   to help parse the time of the annotation. These parameters together create
+#'   the time range to extract. The default of *0* is a shortcut for *00:00:00*.
+#'   The *seconds* argument can include a decimal place.
 #'
 #' @name wfdb_annotations
 #' @export
@@ -59,8 +71,8 @@ read_annotation <- function(record,
 														record_dir = ".",
 														annotator,
 														wfdb_path = getOption("wfdb_path"),
-														begin = 0,
-														end = NULL,
+														begin = "00:00:00",
+														end = NA_character_,
 														...) {
 
 	# Validate:
@@ -92,7 +104,8 @@ read_annotation <- function(record,
 		wd <- getwd()
 	}
 
-	stopifnot("Expected <numeric>" = is.numeric(begin))
+	stopifnot("Expected <character>" = is.character(begin))
+	stopifnot("Expected <character>" = is.character(end))
 
 	# Create all the necessary parameters for rdann
 	#		-f			Start time
@@ -113,7 +126,7 @@ read_annotation <- function(record,
 		}() |>
 		{
 			\(.) {
-				if (!is.null(end)) {
+				if (!is.na(end)) {
 					paste(., "-t", end)
 				} else {
 					.
@@ -134,8 +147,6 @@ read_annotation <- function(record,
 	new_annotation_table(df_list(dat), annotator)
 }
 
-#' @param data <annotation_table> table containing 6 columns
-#' @return Outputs a WFDB with the provided extension
 #' @rdname wfdb_annotations
 #' @export
 write_annotation <- function(data,
@@ -144,7 +155,6 @@ write_annotation <- function(data,
 														 record_dir = ".",
 														 wfdb_path = getOption("wfdb_path"),
 														 ...) {
-
 
 	# Validate:
 	#		WFDB software command
@@ -180,9 +190,8 @@ write_annotation <- function(data,
 	withr::with_dir(new = wd, code = system(cmd))
 
 }
+
 #' @rdname wfdb_annotations
-#' @inheritParams wfdb
-#' @inheritParams wfdb_io
 #' @export
 annotate_wfdb <- function(record,
 													record_dir,

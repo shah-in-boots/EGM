@@ -10,9 +10,9 @@ signal_table(...)
 is_signal_table(x)
 }
 \arguments{
-\item{...}{\if{html}{\out{<list>}} A list or equal lengths}
+\item{...}{A \code{list} of equal lengths}
 
-\item{x}{<data.frame> A data frame}
+\item{x}{\code{data.frame} A data frame}
 }
 \description{
 \code{signal_table()} modifies the \code{data.table} class to work with electrical

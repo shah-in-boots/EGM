@@ -23,17 +23,21 @@ type, serving as the extension for the file that is written containing that
 annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
 further details.}
 
-\item{time}{\if{html}{\out{<numeric>}} Time stamp of the annotation}
+\item{time}{A \code{numeric} time stamp of the annotation}
 
-\item{sample}{\if{html}{\out{<integer>}} Sample number of the annotation}
+\item{sample}{A \code{integer} representing the sample number of the annotation}
 
-\item{type}{\if{html}{\out{<character>}} Type of the annotation}
+\item{type}{A \code{character} or string representing the type of the annotation}
 
-\item{subtype}{\if{html}{\out{<character>}} Subtype of the annotation}
+\item{subtype}{A \code{character} or string representing the subtype of the
+annotation}
 
-\item{channel}{\if{html}{\out{<integer>}} Channel number of the annotation}
+\item{channel}{An \code{integer} representing the channel number of the annotation}
 
-\item{number}{\if{html}{\out{<integer>}} Number that further classifies the annotation}
+\item{number}{An additional \code{integer} value or number that classifies the
+annotation (allows for compatibility with multiple annotation types)}
+
+\item{x}{A \code{data.table} object that represents an annotation table}
 }
 \value{
 A \verb{<data.table>} that has invariant columns that are compatible with

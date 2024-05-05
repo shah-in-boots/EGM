@@ -34,51 +34,57 @@ header_table(
 is_header_table(x)
 }
 \arguments{
-\item{record_name}{\if{html}{\out{<character>}} Record line information}
+\item{record_name}{A \code{character} vector of record line information}
 
-\item{number_of_channels}{\if{html}{\out{<integer>}} Number of signals}
+\item{number_of_channels}{An \code{integer} describing number of signals}
 
-\item{frequency}{\if{html}{\out{<numeric>}} Sampling frequency, 250 Hz default}
+\item{frequency}{A \code{numeric} value of sampling frequency, 250 Hz default}
 
-\item{samples}{\if{html}{\out{<integer>}} Number of samples}
+\item{samples}{An \code{integer} for the number of samples}
 
-\item{start_time}{\if{html}{\out{<POSIXct>}} Time of recording}
+\item{start_time}{The \code{POSIXct} time of recording}
 
-\item{ADC_saturation}{\if{html}{\out{<integer>}} ADC saturation}
+\item{ADC_saturation}{An \code{integer} representing ADC saturation}
 
-\item{file_name}{\if{html}{\out{<character>}} Signal specific information}
+\item{file_name}{A \code{character} for the signal specific information}
 
-\item{storage_format}{\if{html}{\out{<integer>}} Storage format, 16-bit default}
+\item{storage_format}{An \code{integer} of the bits for the storage format, 16-bit
+default}
 
-\item{ADC_gain}{\if{html}{\out{<integer>}} ADC gain, default of 200}
+\item{ADC_gain}{An \code{integer} of ADC gain, default of 200}
 
-\item{ADC_baseline}{\if{html}{\out{<integer>}} ADC baseline, defaults to \code{ADC_zero}}
+\item{ADC_baseline}{An \code{integer} of ADC baseline, defaults to \strong{ADC_zero}}
 
-\item{ADC_units}{\if{html}{\out{<character>}} ADC units, "mV" is default}
+\item{ADC_units}{A \code{character} to describe ADC units, "mV" is default}
 
-\item{ADC_resolution}{\if{html}{\out{<integer>}} ADC resolution, default is 12}
+\item{ADC_resolution}{An \code{integer} for ADC resolution, default is 12}
 
-\item{ADC_zero}{\if{html}{\out{<integer>}} ADC zero, defaults to 0}
+\item{ADC_zero}{An \code{integer} for ADC zero, defaults to 0}
 
-\item{initial_value}{\if{html}{\out{<integer>}} Initial value, defaults to \code{ADC_zero} value}
+\item{initial_value}{An \code{integer} for the initial value, defaults to
+\strong{ADC_zero} value}
 
-\item{checksum}{\if{html}{\out{<integer>}} Checksum}
+\item{checksum}{An \code{integer} that serves as the checksum}
 
-\item{blocksize}{\if{html}{\out{<integer>}} Block size}
+\item{blocksize}{An \code{integer} of the block size}
 
-\item{label}{\if{html}{\out{<character>}} Description}
+\item{label}{A \code{character} description of the signal}
 
-\item{info_strings}{\if{html}{\out{<list>}} Additional information at end of file}
+\item{info_strings}{A \code{list} of strings that will be written as an appendix
+to the header file, usually containing information about the channels,
+(e.g. list of colors, extra labels, etc).}
 
-\item{additional_gain}{\if{html}{\out{<numeric>}} Additional gain, defaults to 1.0}
+\item{additional_gain}{A \code{numeric} Additional gain, defaults to 1.0}
 
-\item{low_pass}{\if{html}{\out{<integer>}} Low pass filter}
+\item{low_pass}{An \code{integer} Low pass filter}
 
-\item{high_pass}{\if{html}{\out{<integer>}} High pass filter}
+\item{high_pass}{An \code{integer} High pass filter}
 
-\item{color}{\if{html}{\out{<character>}} Color as hexadecimal format, defaults to black}
+\item{color}{A \code{character} Color as hexadecimal format, defaults to black}
 
-\item{scale}{\if{html}{\out{<integer>}} Scale}
+\item{scale}{An \code{integer} Scale}
+
+\item{x}{A \code{data.table} object that serves as the header table}
 }
 \description{
 \code{header_table()} modifies the \code{data.table} class to work with header data.

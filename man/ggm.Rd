@@ -7,7 +7,7 @@
 ggm(data, channels = character(), time_frame = NULL, mode = "dark", ...)
 }
 \arguments{
-\item{data}{Data of the \code{egm} class, which inclues header (meta) and signal
+\item{data}{Data of the \code{egm} class, which includes header (meta) and signal
 information together.}
 
 \item{channels}{Character vector of which channels to use. Can give either
@@ -21,7 +21,21 @@ value is the end time. This is given in seconds (decimals may be used).}
 \item{mode}{The base color scheme to be used. Defaults to the a "white on
 black" scheme, similar to that of \emph{LabSystem Pro} format (and most other
 high-contrast visualizations), for minimizing eye strain.}
+
+\item{...}{Additional arguments to be passed to the function}
+}
+\value{
+An \code{{ggplot2}} compatible object with the \code{ggm} class, which
+contains additional elements about the header and annotations of the
+original data.
 }
 \description{
-Visualization of EGMs using \code{ggplot}
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
+The \code{ggm()} function is used to plot objects of the \code{egm} class. This
+function however is more than just a plotting function - it serves as a
+visualization tool and confirmation of patterns, annotations, and underlying
+waveforms in the data. The power of this, instead of being a \verb{geom_*()}
+object, is that annotations, intervals, and measurements can be added
+incrementally.
 }

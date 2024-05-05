@@ -1,8 +1,8 @@
 #' Read in ECG and EGM data from LabSystem Pro
 #'
-#' @description
-#' This function allows for reading in LS Pro data based on their text export of
-#' signals. Signals can be exported directly from the LS Pro system.
+#' @description This function allows for reading in LS Pro data based on their
+#' text export of signals. Signals can be exported directly from the LS Pro
+#' system.
 #'
 #' The [LabSystem
 #' Pro](https://www.bostonscientific.com/en-US/products/capital-equipment--diagnotic/labsystem-pro.html)

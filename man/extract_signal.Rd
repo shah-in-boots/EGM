@@ -7,23 +7,27 @@
 extract_signal(object, data_format = c("data.frame", "matrix", "array"), ...)
 }
 \arguments{
-\item{format}{A \verb{<character>} choice of either \code{data.frame} (default),
-\code{matrix}, or \code{array} that tells how the data should be structured.
+\item{object}{An \code{egm} object that contains the signal data to be extracted}
+
+\item{data_format}{A \code{character} choice of either \emph{data.frame} (default),
+\emph{matrix}, or \emph{array} that tells how the data should be structured.
 Further explanation in the details.}
+
+\item{...}{Additional arguments to be passed to the function}
 }
 \value{
 An object as described by the \strong{format} option
 }
 \description{
-Raw signal data may be all that is required, particularly when storing or
-manipulating data, or for example, feeding it into an analytical pipeline.
-This means the extraneous elements, such as the \emph{meta} information, may be
-unnecessary. This function helps to strip away and extract just the signal
-data itself and channel names.
+Raw signal data may be all that is required, particularly when
+storing or manipulating data, or for example, feeding it into an analytical
+pipeline. This means the extraneous elements, such as the \emph{meta} information,
+may be unnecessary. This function helps to strip away and extract just the
+signal data itself and channel names.
 }
 \details{
-The options to return the data vary based on need. The data can be extracted
-as follows:
+The options to return the data vary based on need. The data can be
+extracted as follows:
 \itemize{
 \item \code{data.frame} containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from. Data frames, as they are columnar by nature, will also include the sample index position.
 \item \code{matrix} containing an equal number of rows to the number of samples, with each column named after the recording channel it was derived from

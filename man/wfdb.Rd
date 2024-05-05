@@ -19,6 +19,8 @@ further details.}
 \item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
 device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
 system options on loading of the package, \code{getOption('wfdb_path')}}
+
+\item{...}{Additional arguments to be passed to the function}
 }
 \description{
 This implementation of WFDB is a back-end for the WFDB using a combination of
@@ -57,5 +59,5 @@ labels or alarm triggers
 \author{
 Original software: George Moody, Tom Pollard, Benjamin Moody \cr
 R implementation: Anish S. Shah \cr
-Last updated: 04/28/23 \cr
+Last updated: 2024-05-04 \cr
 }

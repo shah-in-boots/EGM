@@ -12,8 +12,8 @@ read_annotation(
   record_dir = ".",
   annotator,
   wfdb_path = getOption("wfdb_path"),
-  begin = 0,
-  end = NULL,
+  begin = "00:00:00",
+  end = NA_character_,
   ...
 )
 
@@ -51,16 +51,29 @@ further details.}
 device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
 system options on loading of the package, \code{getOption('wfdb_path')}}
 
-\item{data}{<annotation_table> table containing 6 columns}
+\item{begin, end}{A \code{character} in the format of \emph{HH:MM:SS} that will be used
+to help parse the time of the annotation. These parameters together create
+the time range to extract. The default of \emph{0} is a shortcut for \emph{00:00:00}.
+The \emph{seconds} argument can include a decimal place.}
+
+\item{...}{Additional arguments to be passed to the function}
+
+\item{data}{An \code{annotation_table} containing the 6 invariant columns required
+by the \code{\link[=annotation_table]{annotation_table()}} function}
 }
 \value{
-Outputs a WFDB with the provided extension
+This function will either read in an annotation using the \code{\link[=read_annotation]{read_annotation()}} function in the format of an \code{annotation_table} object, or write to file/disk an \code{annotation_table} to a WFDB-compatible annotation file using the \code{\link[=write_annotation]{write_annotation()}} function.
+
+\strong{IMPORTANT}: as annotation files are created by annotators that were
+developed independently, there is a higher chance of an erroroneous file
+being created on disk. As such, this function will note an error an return an
+empty \code{annotation_table} at times.
 }
 \description{
-Individual annotation types are described as both a command-line tool for
-annotating WFDB-files, as well as the extension that is appended to the
-\code{record} name to notate the type. Generally, the types of annotations that
-are supported are described below:
+Individual annotation types are described as both a command-line
+tool for annotating WFDB-files, as well as the extension that is appended to
+the \code{record} name to notate the type. Generally, the types of annotations
+that are supported are described below:
 \itemize{
 \item atr = manually reviewed and corrected reference annotation files
 \item ann = general annotator file
@@ -68,12 +81,10 @@ are supported are described below:
 \item sqrs/wqrs/gqrs = standard WFDB peak detection for R waves
 }
 
-A more detailed explanation is given below.
-
-Additionally, files when being read in are converted from a binary format to
-a textual format. The raw data however may be inadequate, as the original
-annotation may be erroneous. In these cases, an empty \code{annotation_table}
-object will be returned.
+A more thorough explanation is given in the details. Additionally, files when
+being read in are converted from a binary format to a textual format. The raw
+data however may be inadequate, as the original annotation may be erroneous.
+In these cases, an empty \code{annotation_table} object will be returned.
 }
 \section{Annotation files}{
 The following annotation file types are described below.

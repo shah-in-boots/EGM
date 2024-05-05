@@ -2,7 +2,18 @@
 
 #' Visualization of EGMs using `ggplot`
 #'
-#' @param data Data of the `egm` class, which inclues header (meta) and signal
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' The `ggm()` function is used to plot objects of the `egm` class. This
+#' function however is more than just a plotting function - it serves as a
+#' visualization tool and confirmation of patterns, annotations, and underlying
+#' waveforms in the data. The power of this, instead of being a `geom_*()`
+#' object, is that annotations, intervals, and measurements can be added
+#' incrementally.
+#'
+#' @param data Data of the `egm` class, which includes header (meta) and signal
 #'   information together.
 #'
 #' @param channels Character vector of which channels to use. Can give either
@@ -16,6 +27,12 @@
 #' @param mode The base color scheme to be used. Defaults to the a "white on
 #'   black" scheme, similar to that of _LabSystem Pro_ format (and most other
 #'   high-contrast visualizations), for minimizing eye strain.
+#'
+#' @param ... Additional arguments to be passed to the function
+#'
+#' @returns An `{ggplot2}` compatible object with the `ggm` class, which
+#'   contains additional elements about the header and annotations of the
+#'   original data.
 #'
 #' @import ggplot2 data.table
 #' @export

@@ -8,9 +8,9 @@
 #' signal data. The input should be a data set of equal number of rows. It will
 #' add a column of index positions called `sample` if it does not already exist.
 #'
-#' @param x <data.frame> A data frame
+#' @param x `data.frame` A data frame
 #'
-#' @param ... <list> A list or equal lengths
+#' @param ... A `list` of equal lengths
 #'
 #' @import data.table
 #' @export
@@ -23,7 +23,7 @@ signal_table <- function(...) {
 	# 	Signal columns must be numeric (integer or double)
 	#
 	# Invariant columns:
-	# 	sample <integer> represents a time point and order of data (<integer>)
+	# 	sample <integer> = represents a time point and order of data
 
 	x <- df_list(..., .name_repair = ~ make.unique(.x, sep = "_"))
 
@@ -141,14 +141,24 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #'   the WFDB library
 #'
 #' @inheritParams wfdb
+#'
 #' @inheritParams wfdb_io
 #'
-#' @param time <numeric> Time stamp of the annotation
-#' @param sample <integer> Sample number of the annotation
-#' @param type <character> Type of the annotation
-#' @param subtype <character> Subtype of the annotation
-#' @param channel <integer> Channel number of the annotation
-#' @param number <integer> Number that further classifies the annotation
+#' @param x A `data.table` object that represents an annotation table
+#'
+#' @param time A `numeric` time stamp of the annotation
+#'
+#' @param sample A `integer` representing the sample number of the annotation
+#'
+#' @param type A `character` or string representing the type of the annotation
+#'
+#' @param subtype A `character` or string representing the subtype of the
+#'   annotation
+#'
+#' @param channel An `integer` representing the channel number of the annotation
+#'
+#' @param number An additional `integer` value or number that classifies the
+#'   annotation (allows for compatibility with multiple annotation types)
 #'
 #' @export
 annotation_table <- function(annotator = character(),
@@ -324,29 +334,57 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #' the record. Usually are descriptive. Starts with initial '#' without
 #' preceding white space at beginning of line.
 #'
-#' @param record_name <character> Record line information
-#' @param number_of_channels <integer> Number of signals
-#' @param frequency <numeric> Sampling frequency, 250 Hz default
-#' @param samples <integer> Number of samples
-#' @param start_time <POSIXct> Time of recording
-#' @param ADC_saturation <integer> ADC saturation
-#' @param file_name <character> Signal specific information
-#' @param storage_format <integer> Storage format, 16-bit default
-#' @param ADC_gain <integer> ADC gain, default of 200
-#' @param ADC_baseline <integer> ADC baseline, defaults to `ADC_zero`
-#' @param ADC_units <character> ADC units, "mV" is default
-#' @param ADC_resolution <integer> ADC resolution, default is 12
-#' @param ADC_zero <integer> ADC zero, defaults to 0
-#' @param initial_value <integer> Initial value, defaults to `ADC_zero` value
-#' @param checksum <integer> Checksum
-#' @param blocksize <integer> Block size
-#' @param label <character> Description
-#' @param info_strings <list> Additional information at end of file
-#' @param additional_gain <numeric> Additional gain, defaults to 1.0
-#' @param low_pass <integer> Low pass filter
-#' @param high_pass <integer> High pass filter
-#' @param color <character> Color as hexadecimal format, defaults to black
-#' @param scale <integer> Scale
+#' @param x A `data.table` object that serves as the header table
+#'
+#' @param record_name A `character` vector of record line information
+#'
+#' @param number_of_channels An `integer` describing number of signals
+#'
+#' @param frequency A `numeric` value of sampling frequency, 250 Hz default
+#'
+#' @param samples An `integer` for the number of samples
+#'
+#' @param start_time The `POSIXct` time of recording
+#'
+#' @param ADC_saturation An `integer` representing ADC saturation
+#'
+#' @param file_name A `character` for the signal specific information
+#'
+#' @param storage_format An `integer` of the bits for the storage format, 16-bit
+#'   default
+#'
+#' @param ADC_gain An `integer` of ADC gain, default of 200
+#'
+#' @param ADC_baseline An `integer` of ADC baseline, defaults to __ADC_zero__
+#'
+#' @param ADC_units A `character` to describe ADC units, "mV" is default
+#'
+#' @param ADC_resolution An `integer` for ADC resolution, default is 12
+#'
+#' @param ADC_zero An `integer` for ADC zero, defaults to 0
+#'
+#' @param initial_value An `integer` for the initial value, defaults to
+#'   __ADC_zero__ value
+#'
+#' @param checksum An `integer` that serves as the checksum
+#'
+#' @param blocksize An `integer` of the block size
+#'
+#' @param label A `character` description of the signal
+#'
+#' @param info_strings A `list` of strings that will be written as an appendix
+#'   to the header file, usually containing information about the channels,
+#'   (e.g. list of colors, extra labels, etc).
+#'
+#' @param additional_gain A `numeric` Additional gain, defaults to 1.0
+#'
+#' @param low_pass An `integer` Low pass filter
+#'
+#' @param high_pass An `integer` High pass filter
+#'
+#' @param color A `character` Color as hexadecimal format, defaults to black
+#'
+#' @param scale An `integer` Scale
 #'
 #' @export
 header_table <- function(record_name = character(), # Record line information

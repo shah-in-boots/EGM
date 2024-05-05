@@ -35,7 +35,7 @@ read_signal(
   record,
   record_dir = ".",
   wfdb_path = getOption("wfdb_path"),
-  begin = 0,
+  begin = 0L,
   end = NA_integer_,
   interval = NA_integer_,
   units = "digital",
@@ -50,7 +50,7 @@ read_header(record, record_dir = ".", wfdb_path = getOption("wfdb_path"), ...)
 object. The function will appropriately set defaults based on the type.
 \itemize{
 \item \code{egm} = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format
-\item \code{signal_table} = This is a custom \code{data.table} class that has an invariant column containing sample information.
+\item \code{signal_table} = This is a customized \code{data.table} class that has an invariant column containing sample information.
 \item \code{data.frame} or \code{data.table} = Must have a column that represents a time point or index, and columns that represent signal values (preferably integers)
 }}
 
@@ -65,9 +65,9 @@ files. Defaults to current directory.}
 device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
 system options on loading of the package, \code{getOption('wfdb_path')}}
 
-\item{header}{A header file is an \strong{optional} named list of parameters that
-will be used to organize and describe the signal input from the \code{data}
-argument. If the \code{type} is given, specific additional elements will be
+\item{header}{A header file is an optional named list of parameters that
+will be used to organize and describe the signal input from the \strong{data}
+argument. If the \strong{type} is given, specific additional elements will be
 searched for, such as the low or high pass filters, colors, or other signal
 attributes. At minimum, the following elements are required (as cannot be
 calculated):
@@ -77,18 +77,25 @@ calculated):
 \item start_time = date/time object \if{html}{\out{<date>}}
 }}
 
+\item{info_strings}{A \code{list} of strings that will be written as an appendix
+to the header file, usually containing information about the channels,
+(e.g. list of colors, extra labels, etc).}
+
+\item{...}{Additional arguments to be passed to the function}
+
 \item{annotator}{String that is the name of a WFDB-compatible annotation
 type, serving as the extension for the file that is written containing that
 annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
 further details.}
 
-\item{begin, end, interval}{Timepoint in seconds, which is converted to an
-index position based on sampling frequency. The default is to start at the
-beginning of the record. If \code{end} or \code{interval} are given, the earlier of
-the two will be returned. The \code{end} argument gives a time index to read
-until. The \code{interval} argument is the length of time past the start point.}
+\item{begin, end, interval}{Timepoint as an \code{integer} (representing seconds),
+which is converted to an index position based on sampling frequency. The
+default is to start at the beginning of the record. If \code{end} or \code{interval}
+are given, the earlier of the two will be returned. The \code{end} argument
+gives a time index to read until. The \code{interval} argument is the length of
+time past the start point.}
 
-\item{units}{A string representing either \code{digital} (DEFAULT) or \code{physical}
+\item{units}{A string representing either \emph{digital} (DEFAULT) or \emph{physical}
 units that should be used, if available.
 \itemize{
 \item digital = Index in sample number, signal in integers (A/D units)
@@ -100,6 +107,12 @@ describes units
 \item{channels}{Either the signal/channel in a vector as a name or number.
 Allows for duplication of signal or to re-order signal if needed. If
 nothing is given, will default to all channels available.}
+}
+\value{
+Depends on if it is a reading or writing function. For writing, will
+output an WFDB-based object reflecting the function. For reading, will
+output an extension of a \code{data.table} object reflecting the underlying
+function (e.g. \code{signal_table()} will return an object of class).
 }
 \description{
 This function allows for WFDB files to be read from any WFDB-compatible

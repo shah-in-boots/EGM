@@ -1,7 +1,7 @@
 #' Segmentation of electrical signal by wave specifications
 #'
 #' @details Requires a 12-lead ECG that has been digitized, and input as an
-#' `<egm>` object. This object must have an annotation file associated with it
+#' `egm` object. This object must have an annotation file associated with it
 #' that contains demarcation annotations. Please see below for approaches based
 #' on the annotation type. Current, the following are supported:
 #'
@@ -10,48 +10,49 @@
 #' # Sinus beat segmentation
 #'
 #' Identify individual sinus beats on surface ECG and extract as individual
-#' beats, returning a list of sinus beats in the form of the `<egm>` class. a
+#' beats, returning a list of sinus beats in the form of the `egm` class. a
 #' consistent __P__, __R__, and __T__ wave amongst all channels. If a channel
 #' does not have, for example, a visible __T__ wave, it will still label it as
 #' information gained from other channels. This is based off of the algorithm
 #' from the annotation tool named `ecgpuwave`. Please see [read_annotation()]
 #' for further details.
 #'
-#' @return Returns a list of `<egm>` objects. Each item is a segmentation of an
-#' `<egm>`, using the selected channels (if available). It will attempt to
-#' optimize and pick the best annotations to help create consistencies between
-#' the signal channels as possible.
+#' @return Returns a list of `egm` objects. Each item is a segmentation of an
+#'   `egm`, using the selected channels (if available). It will attempt to
+#'   optimize and pick the best annotations to help create consistencies between
+#'   the signal channels as possible.
 #'
-#' @param object Object of the `<egm>` class, which includes header, signal
+#' @param object Object of the `egm` class, which includes header, signal
 #'   information, and annotation information.
 #'
-#' @param by <character> string naming waveform type to segment by. Options
+#' @param by A `character` string naming waveform type to segment by. Options
 #'   include the following:
 #'
 #'   * sinus = Will call [segment_by_sinus()] on `egm` object
 #'
-#' @param pad <character> String to specify which side of sequence to pad (or
+#' @param pad `character` String to specify which side of sequence to pad (or
 #'   both). Options include `c("before", "after", "both")`.
 #'
-#'   Default is `"before"`. If `center` is being used, then the this argument is
+#'   Default is *before*. If *center* is being used, then the this argument is
 #'   ignored.
 #'
-#' @param pad_length <integer> Offer padding of the segmented beats to a maximum
-#'   length. The default is `0L`, which means no padding will be applied. If
-#'   `pad > 0` then will add the baseline value (specified within the header of
-#'   the signal) to either before or after the signal. You can also choose to `center` the
-#'   sequence, which will also only occur if `pad > 0`. I.e., if `pad = 500`
-#'   then each segmented object will be increased TO a max length of `500`. If
-#'   the maximum size is larger than the padding size, then a warning will be
-#'   issued and the sequence will be truncated.
+#' @param pad_length Offers padding of the segmented beats to a maximum length,
+#'   as an `integer`. The default is *0L*, which means no padding will be
+#'   applied. If `pad > 0` then will add the baseline value (specified within
+#'   the header of the signal) to either before or after the signal. You can
+#'   also choose to `center` the sequence, which will also only occur if `pad >
+#'   0`. I.e., if `pad = 500` then each segmented object will be increased TO a
+#'   max length of `500`. If the maximum size is larger than the padding size,
+#'   then a warning will be issued and the sequence will be truncated.
 #'
-#' @param center <character> A single Roman alphabetic letter, that utilizes the
-#'   annotations given in the `<egm>` object to center the sequence. This is
-#'   found under the __type__ variable in the annotation table. For example, if
-#'   sinus waveforms were annotated as `c("P", "R", "T")` at their peak, then
-#'   could center around `"R"`. This will only occur if `pad > 0L`. This is
-#'   case-insensitive. The amount of padding will be determined by the
-#'   `pad_length` argument
+#' @param center A single Roman alphabetic letter `character` that utilizes the
+#'   annotations given in the `egm` object to center the sequence. This is found
+#'   under the __type__ variable in the annotation table.
+#'
+#'   For example, if sinus waveforms were annotated as `c("P", "R", "T")` at
+#'   their peak, then could center around *R*. This will only occur if `pad >
+#'   0L`. This is case-insensitive. The amount of padding will be determined by
+#'   the __pad_length__ argument
 #'
 #' @name segmentation
 #' @export
@@ -61,7 +62,7 @@ segmentation <- function(object,
 												 pad_length = 0L,
 												 center = NULL) {
 
-	stopifnot('Requires object of `egm` class for evaluation'
+	stopifnot('Requires object of <egm> class for evaluation'
 						= inherits(object, 'egm'))
 
 	# Choose based on waveform segmentation request
@@ -314,8 +315,11 @@ pad_sequence <- function(object, pad, pad_length) {
 #' @rdname segmentation
 center_sequence <- function(object, center, pad_length) {
 
-	stopifnot('Requires object of `<egm>` class for evaluation'
+	stopifnot('Requires object of <egm> class for evaluation'
 						= inherits(object, 'egm'))
+
+	# Global variables
+	type <- NULL
 
 	# Center the waveform of interest if needed
 	# If centering, waveform type of segmentation is needed
@@ -347,13 +351,17 @@ center_sequence <- function(object, center, pad_length) {
 	# Must do the left side, only adding hte needed number of rows before
 	# Inclusive of the center index
 	leftSig <- sig[sample > cenInd - left & sample <= cenInd, ]
-	before <- stats::setNames(data.table(matrix(nrow = left - nrow(leftSig), ncol = length(nm))), nm)
+	before <- stats::setNames(data.table(matrix(
+		nrow = left - nrow(leftSig), ncol = length(nm)
+	)), nm)
 	before[is.na(before), ] <- 0
 	before$sample <- (cenInd - left + 1):(min(leftSig$sample) - 1)
 
 	# Now the right sided, only adding needed rows afterwards
 	rightSig <- sig[sample > cenInd & sample <= cenInd + right, ]
-	after <- stats::setNames(data.table(matrix(nrow = right - nrow(rightSig), ncol = length(nm))), nm)
+	after <- stats::setNames(data.table(matrix(
+		nrow = right - nrow(rightSig), ncol = length(nm)
+	)), nm)
 	after[is.na(after), ] <- 0
 	after$sample <- (max(rightSig$sample) + 1):(cenInd + right)
 
@@ -376,6 +384,7 @@ center_sequence <- function(object, center, pad_length) {
 	centerAnn <- copy(ann)
 	centerAnn[sample >= min(centerSignal$sample) & sample <= max(centerSignal$sample), ]
 
+	# Return EGM object
 	egm(
 		signal = signal_table(centerSignal),
 		header = centerHeader,

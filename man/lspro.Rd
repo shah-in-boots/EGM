@@ -26,8 +26,9 @@ An \code{egm} class object that is a list of \code{eps} signals the format of a
 additional recording data.
 }
 \description{
-This function allows for reading in LS Pro data based on their text export of
-signals. Signals can be exported directly from the LS Pro system.
+This function allows for reading in LS Pro data based on their
+text export of signals. Signals can be exported directly from the LS Pro
+system.
 
 The \href{https://www.bostonscientific.com/en-US/products/capital-equipment--diagnotic/labsystem-pro.html}{LabSystem Pro}
 was acquired by Boston Scientific from the original company
