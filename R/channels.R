@@ -15,19 +15,24 @@ identify_channel_source <- function(x) {
 	y
 }
 
-#' Modify channel colors
+#' Identify the color for a channel based on palettes
 #'
-#' @param x <character> Vector of names of requsted ECG or EGM leads
+#' This primarily restricts the colors to color-space safe options. It is
+#' intended to be used with [add_colors()] to provide a color scheme for the
+#' `ggm` object. It has been exposed to users for custom or advanced theming
+#' options.
 #'
-#' @param palette <character> Color palette options for leads as below:
+#' @param x Vector of `character` names of requested ECG or EGM leads
+#'
+#' @param palette A `character` name of the color palette options for leads as
+#'   below:
 #'
 #'   * __material__ - material color theme
 #'
-#'   * __bw__ - black or white color theme based on light/dark mode
+#' @param mode Adjust color settings for either light or dark mode, as
+#'   `character` input
 #'
-#' @param mode <character> Adjust color settings for either light or dark mode
-#'
-#' @return Character vector of hex code colors based on the selected palette and
+#' @return Vector of hex code colors as `character` based on the selected palette and
 #'   light/dark mode
 #'
 #' @export

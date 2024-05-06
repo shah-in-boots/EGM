@@ -54,7 +54,7 @@ egm
 
 # Similarly, can be visualized with ease
 ggm(egm, channels = c('HIS', 'CS', 'RV')) +
-	theme_egm()
+	theme_egm() 
 ```
 
 

@@ -10,7 +10,7 @@ ggm(data, channels = character(), time_frame = NULL, mode = "dark", ...)
 \item{data}{Data of the \code{egm} class, which includes header (meta) and signal
 information together.}
 
-\item{channels}{Character vector of which channels to use. Can give either
+\item{channels}{A \code{character} vector of which channels to use. Can give either
 the channel label (e.g "CS 1-2") or the recording device/catheter type (e.g
 "His" or "ECG"). If no channels are selected, the default is all channels.}
 
@@ -18,9 +18,10 @@ the channel label (e.g "CS 1-2") or the recording device/catheter type (e.g
 of a vector with a length of 2. The left value is the start, and right
 value is the end time. This is given in seconds (decimals may be used).}
 
-\item{mode}{The base color scheme to be used. Defaults to the a "white on
-black" scheme, similar to that of \emph{LabSystem Pro} format (and most other
-high-contrast visualizations), for minimizing eye strain.}
+\item{mode}{A \code{character} string from \code{c("dark", "light")} to describe the
+base color settings to be used. Defaults to the a "white on black" scheme,
+similar to that of \emph{LabSystem Pro} format (and most other high-contrast
+visualizations), for minimizing eye strain.}
 
 \item{...}{Additional arguments to be passed to the function}
 }

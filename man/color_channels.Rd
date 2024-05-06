@@ -2,25 +2,29 @@
 % Please edit documentation in R/channels.R
 \name{color_channels}
 \alias{color_channels}
-\title{Modify channel colors}
+\title{Identify the color for a channel based on palettes}
 \usage{
 color_channels(x, palette, mode = "light")
 }
 \arguments{
-\item{x}{\if{html}{\out{<character>}} Vector of names of requsted ECG or EGM leads}
+\item{x}{Vector of \code{character} names of requested ECG or EGM leads}
 
-\item{palette}{\if{html}{\out{<character>}} Color palette options for leads as below:
+\item{palette}{A \code{character} name of the color palette options for leads as
+below:
 \itemize{
 \item \strong{material} - material color theme
-\item \strong{bw} - black or white color theme based on light/dark mode
 }}
 
-\item{mode}{\if{html}{\out{<character>}} Adjust color settings for either light or dark mode}
+\item{mode}{Adjust color settings for either light or dark mode, as
+\code{character} input}
 }
 \value{
-Character vector of hex code colors based on the selected palette and
+Vector of hex code colors as \code{character} based on the selected palette and
 light/dark mode
 }
 \description{
-Modify channel colors
+This primarily restricts the colors to color-space safe options. It is
+intended to be used with \code{\link[=add_colors]{add_colors()}} to provide a color scheme for the
+\code{ggm} object. It has been exposed to users for custom or advanced theming
+options.
 }

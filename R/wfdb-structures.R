@@ -444,7 +444,7 @@ header_table <- function(record_name = character(), # Record line information
 	# 	All are made upper character
 	label <-
 		toupper(label) |>
-		gsub("\ ", "_", x = _)
+		gsub("_", "\ ", x = _)
 
 	if (length(label) > 0 & all(label %in% .labels)) {
 		lab_splits <-

@@ -16,7 +16,7 @@
 #' @param data Data of the `egm` class, which includes header (meta) and signal
 #'   information together.
 #'
-#' @param channels Character vector of which channels to use. Can give either
+#' @param channels A `character` vector of which channels to use. Can give either
 #'   the channel label (e.g "CS 1-2") or the recording device/catheter type (e.g
 #'   "His" or "ECG"). If no channels are selected, the default is all channels.
 #'
@@ -24,9 +24,10 @@
 #'   of a vector with a length of 2. The left value is the start, and right
 #'   value is the end time. This is given in seconds (decimals may be used).
 #'
-#' @param mode The base color scheme to be used. Defaults to the a "white on
-#'   black" scheme, similar to that of _LabSystem Pro_ format (and most other
-#'   high-contrast visualizations), for minimizing eye strain.
+#' @param mode A `character` string from `c("dark", "light")` to describe the
+#'   base color settings to be used. Defaults to the a "white on black" scheme,
+#'   similar to that of _LabSystem Pro_ format (and most other high-contrast
+#'   visualizations), for minimizing eye strain.
 #'
 #' @param ... Additional arguments to be passed to the function
 #'
@@ -48,13 +49,15 @@ ggm <- function(data,
 	stopifnot(inherits(data, "egm"))
 
 	# Clean channels
-	channels <- gsub("\ ", "_", x = channels)
+	channels <- gsub("_", "\ ", x = channels)
 
 	# Process header and signal
 	hea <- data$header
 	ann <- data$annotation
 	sig <- data.table::as.data.table(data$signal)
-	hea$label <- as.character(hea$label)
+	hea$label <-
+		as.character(hea$label) |>
+		gsub("_", "\ ", x = _)
 	names(sig) <- c('sample', hea$label)
 
 	# Should be all of the same frequency of data
@@ -99,7 +102,11 @@ ggm <- function(data,
 		hea[, c("label", "source", "lead", "color")] |>
 		as.data.table()
 	if (is.null(channelData$color)) {
-		channelData$color <- '#000000'
+		if (mode == "light") {
+			channelData$color <- '#000000'
+		} else {
+			channelData$color <- '#FFFFFF'
+		}
 	}
 
 
@@ -129,15 +136,15 @@ ggm <- function(data,
 
 	# TODO need to tweak plotting parameter for hertz
 	g <-
-		ggplot(dt, aes(x = sample, y = mV, color = color)) +
+		ggplot(dt, aes(x = sample, y = mV, colour = color)) +
 		geom_line() +
 		facet_wrap( ~ label,
 								ncol = 1,
 								scales = "free_y",
 								strip.position = "left") +
-		scale_color_identity() +
+		scale_colour_identity() +
 		theme_egm() +
-		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz / 10), labels = NULL)
+		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz), labels = NULL)
 
 	# Return with updated class
 	new_ggm(g,
@@ -160,54 +167,7 @@ new_ggm <- function(object = ggplot(),
 	)
 }
 
-# Annotations ------------------------------------------------------------------
-
-
-# Themes/colors ----------------------------------------------------------------
-
-#' Add color scheme to a `ggm` object
-#'
-#' Using `add_colors()` is part of the theming process for a `<ggm>` object,
-#' which in turn is a visual representation of an `<egm>` object. Often, the
-#' `<egm>` dataset will contain default colors based on where the signal data
-#' was brought in from. `add_colors()` can allow customization of those features
-#' to some degree based on *opinionated* color palettes.
-#'
-#' @details
-#' Currently, the color choices are individual decided based on the channel
-#' source (e.g. lead) and are inspired by some modern palettes. The eventual
-#' goal for this function is to accept a multitude of palette options using
-#' heuristics similar to what is found in `{ggplot2}` or other graphing
-#' packages.
-#'
-#' @inheritParams color_channels
-#'
-#' @param object <ggm> object
-#'
-#' @return Returns an updated `<ggm>` object
-#'
-#' @export
-add_colors <- function(object, palette, mode = "light") {
-
-	stopifnot("Requires `ggm` class" = inherits(object, "ggm"))
-
-	# Extract data from ggplot
-	dt <- object$data
-	dt$color <- color_channels(dt$label, palette = palette, mode = mode)
-	object$data <- dt
-
-	# Depends on mode to add or update theme
-	if (mode == "light") {
-		object + theme_egm_light()
-	} else if (mode == "dark") {
-		object + theme_egm_dark()
-	} else {
-		message("Return unmodified `ggm` plot object")
-		object
-	}
-
-
-}
+# Colors -----------------------------------------------------------------------
 
 #' Theming and color options for `ggm` objects
 #'
@@ -280,7 +240,7 @@ theme_egm_light <- function() {
 				# Legend
 				legend.position = "none"
 			),
-		scale_color_manual(values = 'black')
+		scale_color_manual(values = "black")
 	)
 }
 
@@ -316,6 +276,6 @@ theme_egm_dark <- function() {
 				# Legend
 				legend.position = "none"
 			),
-		scale_color_manual(values = 'white')
+		scale_color_manual(values = "white",)
 	)
 }

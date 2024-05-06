@@ -1,5 +1,7 @@
 # nocov start
 
+# Annotations ------------------------------------------------------------------
+
 #' Add annotations
 #'
 #' @description
@@ -229,6 +231,52 @@ add_intervals <- function(object,
 
 	# Return updated plot
 	object + gtxt
+}
+
+# Themes/colors ----------------------------------------------------------------
+
+#' Add color scheme to a `ggm` object
+#'
+#' Using `add_colors()` is part of the theme process for a `ggm` object,
+#' which in turn is a visual representation of an `egm` object. Often, the
+#' `egm` dataset will contain default colors based on where the signal data
+#' was brought in from. `add_colors()` can allow customization of those features
+#' to some degree based on *opinionated* color palettes.
+#'
+#' @details
+#' Currently, the color choices are individual decided based on the channel
+#' source (e.g. lead) and are inspired by some modern palettes. The eventual
+#' goal for this function is to accept a multitude of palette options using
+#' heuristics similar to what is found in `{ggplot2}` or other graphing
+#' packages.
+#'
+#' @inheritParams color_channels
+#'
+#' @param object A `ggm` object
+#'
+#' @return Returns an updated `ggm` object
+#'
+#' @export
+add_colors <- function(object, palette, mode = "light") {
+
+	stopifnot("Requires `ggm` class" = inherits(object, "ggm"))
+
+	# Extract data from ggplot
+	dt <- object$data
+	dt$color <- color_channels(dt$label, palette = palette, mode = mode)
+	object$data <- dt
+
+	# Depends on mode to add or update theme
+	if (mode == "light") {
+		object + theme_egm_light()
+	} else if (mode == "dark") {
+		object + theme_egm_dark()
+	} else {
+		message("Return unmodified `ggm` plot object")
+		object
+	}
+
+
 }
 
 # nocov end

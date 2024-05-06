@@ -22,22 +22,22 @@ lead_loc <- c("D",
 	factor(c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6)),
 				 ordered = TRUE)
 .hra <-
-	factor(rev(paste0("RA_", bipoles[1:2])),
+	factor(rev(paste0("RA ", bipoles[1:2])),
 				 ordered = TRUE)
 .his <-
-	factor(rev(paste0("HIS_", c(bipoles[1:3], lead_loc))),
+	factor(rev(paste0("HIS ", c(bipoles[1:3], lead_loc))),
 				 ordered = TRUE)
 .cs <-
-	factor(rev(paste0("CS_", bipoles[1:5])),
+	factor(rev(paste0("CS ", bipoles[1:5])),
 				 ordered = TRUE)
 .dd <-
-	factor(rev(paste0("DD_", bipoles[1:10])),
+	factor(rev(paste0("DD ", bipoles[1:10])),
 				 ordered = TRUE)
 .rv <-
-	factor(rev(paste0("RV_", bipoles[1:2])),
+	factor(rev(paste0("RV ", bipoles[1:2])),
 				 ordered = TRUE)
 .abl <-
-	factor(rev(paste0("ABL_", c(bipoles[1:2], lead_loc[c(1:3, 7:9)]))),
+	factor(rev(paste0("ABL ", c(bipoles[1:2], lead_loc[c(1:3, 7:9)]))),
 				 ordered = TRUE)
 
 # Order patterns

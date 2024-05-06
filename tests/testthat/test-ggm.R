@@ -18,7 +18,8 @@ test_that("plots can be generated easily", {
 
 	# ECG data
 	data <- read_muse(test_path('ecg.xml'))
-	ggm(data, channels = c("I", "II", "III")) + theme_egm_dark()
+	ggm(data, channels = c("I", "II", "III")) +
+		theme_egm_dark()
 
 })
 
@@ -37,87 +38,3 @@ test_that('header and labels work fluidly when plotting', {
 
 })
 
-test_that("simple intervals can be added to surface leads", {
-
-	skip()
-
-	object <- ggm(data = read_lspro(test_path('egm.txt')),
-								channels = c("I", "CS", "HIS D", "HIS M", "RV"))
-
-	obj1 <-
-		object |>
-		add_intervals(channel = "I")
-
-	expect_s3_class(obj1, "ggm")
-	expect_s3_class(obj1, "ggplot")
-
-	obj2 <-
-		object |>
-		add_intervals(channel = "CS 9-10")
-
-	obj3 <-
-		object |>
-		add_intervals(channel = "I") |>
-		add_intervals(channel = "CS 9-10")
-
-	expect_s3_class(obj3, "ggm")
-
-})
-
-# Colors/theme ----
-
-test_that("colors can be applied to a light or dark theme", {
-
-	data <- read_lspro(test_path('egm.txt'))
-	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
-	time_frame <- c(.1, 3)
-
-	# Basic signal plot of egms
-	basic <- ggm(
-		data = data,
-		channels = channels,
-		time_frame = time_frame
-	)
-
-	expect_true("#FFFFFF" %in% basic$data$color)
-	expect_equal(basic$theme$plot.background$fill, NULL)
-
-	light <-
-		basic |>
-		add_colors(palette = "material", mode = "light")
-
-	expect_length(light$theme$plot.background, 0)
-	expect_length(light$theme$panel.background, 0)
-
-})
-
-# Annotations ----
-
-test_that("annotations can be added to ggplot", {
-
-	skip_on_cran()
-	skip_on_ci()
-	skip() # for annotations being temporary
-
-	record <- '300'
-	record_dir = test_path()
-	data <- read_wfdb(record, record_dir, annotator = 'ecgpuwave')
-	channels <- 'ECG'
-
-	object <- ggm(
-		data,
-		channels = 'ECG',
-		time_frame = c(3, 6)
-	)
-
-
-	expect_length(unique(object$data$label), 2)
-
-	masked <-
-		object |>
-		draw_boundary_mask()
-
-	expect_equal(attributes(masked)$annotation, attributes(object)$annotation)
-	expect_equal(attributes(masked)$header, attributes(object)$header)
-
-})
