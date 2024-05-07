@@ -43,6 +43,7 @@ test_that('header and labels work fluidly when plotting', {
 })
 
 # Colors ----
+
 test_that("theming works", {
 
 	# EPS data
@@ -61,5 +62,26 @@ test_that("theming works", {
 
 	expect_equal(g$labels$x, "sample")
 	expect_length(g$theme, 0)
+
+	dark <- ggm(
+		data = data,
+		channels = channels,
+		time_frame = time_frame
+	)
+
+	# When adding a theme, should be similar to the built-in
+
+
+})
+
+test_that("multiple channel data from different leads can be theme", {
+
+	fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'egm')
+	dat <- read_lspro(fp)
+
+	# Similarly, can be visualized with ease
+	g <-
+		ggm(dat, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
+		theme_egm_dark()
 
 })

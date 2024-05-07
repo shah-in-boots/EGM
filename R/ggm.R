@@ -255,7 +255,7 @@ theme_egm_light <- function() {
 				# Legend
 				legend.position = "none"
 			),
-		scale_color_manual(values = "black")
+		scale_color_manual(values = rep("black", length(.labels)), na.value = "black")
 	)
 }
 
@@ -291,6 +291,6 @@ theme_egm_dark <- function() {
 				# Legend
 				legend.position = "none"
 			),
-		scale_color_manual(values = "white",)
+		scale_color_manual(values = rep("white", length(.labels)), na.value = "white")
 	)
 }
