@@ -1,3 +1,5 @@
+# Plotting ----
+
 test_that("plots can be generated easily", {
 
 	# EPS data
@@ -18,8 +20,9 @@ test_that("plots can be generated easily", {
 
 	# ECG data
 	data <- read_muse(test_path('ecg.xml'))
-	ggm(data, channels = c("I", "II", "III")) +
-		theme_egm_dark()
+	g <- ggm(data, channels = c("I", "II", "III"))
+	expect_s3_class(g, "ggm")
+	expect_s3_class(g, "ggplot")
 
 })
 
@@ -35,6 +38,28 @@ test_that('header and labels work fluidly when plotting', {
 	object <- ggm(data, channels = data$header$label)
 
 	expect_s3_class(object, 'ggm')
+	expect_equal(attributes(object$theme$axis.ticks)$class[1], "element_blank")
 
 })
 
+# Colors ----
+test_that("theming works", {
+
+	# EPS data
+	data <- read_lspro(test_path('egm.txt'))
+	expect_s3_class(data, "egm")
+
+	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
+	time_frame <- c(.1, 3)
+
+	g <- ggm(
+		data = data,
+		channels = channels,
+		time_frame = time_frame,
+		mode = NULL
+	)
+
+	expect_equal(g$labels$x, "sample")
+	expect_length(g$theme, 0)
+
+})

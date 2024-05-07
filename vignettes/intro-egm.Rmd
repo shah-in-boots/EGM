@@ -53,8 +53,8 @@ egm <- read_lspro(fp)
 egm
 
 # Similarly, can be visualized with ease
-ggm(egm, channels = c('HIS', 'CS', 'RV')) +
-	theme_egm() 
+ggm(egm, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
+	theme_egm_dark() 
 ```
 
 

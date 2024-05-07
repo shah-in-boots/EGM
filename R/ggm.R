@@ -16,18 +16,25 @@
 #' @param data Data of the `egm` class, which includes header (meta) and signal
 #'   information together.
 #'
-#' @param channels A `character` vector of which channels to use. Can give either
-#'   the channel label (e.g "CS 1-2") or the recording device/catheter type (e.g
-#'   "His" or "ECG"). If no channels are selected, the default is all channels.
+#' @param channels A `character` vector of which channels to use. Can give
+#'   either the channel label (e.g "CS 1-2") or the recording device/catheter
+#'   type (e.g "His" or "ECG"). If no channels are selected, the default is all
+#'   channels.
 #'
 #' @param time_frame A time range that should be displaced given in the format
 #'   of a vector with a length of 2. The left value is the start, and right
 #'   value is the end time. This is given in seconds (decimals may be used).
 #'
 #' @param mode A `character` string from `c("dark", "light")` to describe the
-#'   base color settings to be used. Defaults to the a "white on black" scheme,
-#'   similar to that of _LabSystem Pro_ format (and most other high-contrast
-#'   visualizations), for minimizing eye strain.
+#'   base/background color settings to be used. If there are preset channel
+#'   colors that were exported in the `egm` object, these colors will be used
+#'   for the individual channels.
+#'
+#'   * The _dark_ theme mimics the "white on black" scheme seen in _LabSystem Pro_ format (and most other high-contrast visualizations), for minimizing eye strain. This calls the [theme_egm_dark()] function. DEFAULT.
+#'
+#'   * The _light_ theme mimics the "black on white" colors seen in the _Prucka_ system.
+#'
+#'   * `NULL` removes any theme, and uses the default [ggplot2::ggplot()] settings
 #'
 #' @param ... Additional arguments to be passed to the function
 #'
@@ -102,7 +109,7 @@ ggm <- function(data,
 		hea[, c("label", "source", "lead", "color")] |>
 		as.data.table()
 	if (is.null(channelData$color)) {
-		if (mode == "light") {
+		if (theme == "light") {
 			channelData$color <- '#000000'
 		} else {
 			channelData$color <- '#FFFFFF'
@@ -134,7 +141,7 @@ ggm <- function(data,
 		dt$label <- factor(dt$label)
 	}
 
-	# TODO need to tweak plotting parameter for hertz
+	# Create final plot
 	g <-
 		ggplot(dt, aes(x = sample, y = mV, colour = color)) +
 		geom_line() +
@@ -143,8 +150,16 @@ ggm <- function(data,
 								scales = "free_y",
 								strip.position = "left") +
 		scale_colour_identity() +
-		theme_egm() +
 		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz), labels = NULL)
+
+	# Add theme/colors if not NULL
+	if (!is.null(mode)) {
+		if (mode == "light") {
+			g <- g + theme_egm_light()
+		} else if (mode == "dark") {
+			g <- g + theme_egm_dark()
+		}
+	}
 
 	# Return with updated class
 	new_ggm(g,
