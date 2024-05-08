@@ -25,10 +25,24 @@
 #'   of a vector with a length of 2. The left value is the start, and right
 #'   value is the end time. This is given in seconds (decimals may be used).
 #'
+#' @param palette A `character` choice from the below options that describe the
+#'   color choices to be used for plotting. If set to the default, which is
+#'   `NULL`, no changes to the colors for individual channels will be performed.
+#'   If a positive choice is made, then the background __mode__ argument will be
+#' set to *dark* as the default, unless otherwise specified. *WARNING*: This is
+#' an experimental argument, and may be moved in future version.
+#'
+#'   * __NULL__: no changes to the colors will be made. DEFAULT.
+#'
+#'   * __material__: a colorscheme based off of the [Material Design](https://m3.material.io/styles/color/system/how-the-system-works) color scheme
+#'
 #' @param mode A `character` string from `c("dark", "light")` to describe the
 #'   base/background color settings to be used. If there are preset channel
 #'   colors that were exported in the `egm` object, these colors will be used
-#'   for the individual channels.
+#'   for the individual channels. If __palette__ is specified, then the *dark*
+#'   option will be set automatically (a palette choice cannot be made without
+#'   understanding the background to plate it across). *WARNING*: This is an
+#'   experimental argument, and may be moved in future version.
 #'
 #'   * The _dark_ theme mimics the "white on black" scheme seen in _LabSystem Pro_ format (and most other high-contrast visualizations), for minimizing eye strain. This calls the [theme_egm_dark()] function. DEFAULT.
 #'
@@ -47,6 +61,7 @@
 ggm <- function(data,
 								channels = character(),
 								time_frame = NULL,
+								palette = NULL,
 								mode = "dark",
 								...) {
 
@@ -152,19 +167,12 @@ ggm <- function(data,
 		scale_colour_identity() +
 		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz), labels = NULL)
 
-	# Add theme/colors if not NULL
-	if (!is.null(mode)) {
-		if (mode == "light") {
-			g <- g + theme_egm_light()
-		} else if (mode == "dark") {
-			g <- g + theme_egm_dark()
-		}
-	}
 
-	# Return with updated class
-	new_ggm(g,
-					header = hea,
-					annotation = ann)
+	# Update class
+	g <- new_ggm(g, header = hea, annotation = ann)
+
+	# Add palette and color mode to the plot
+	g <- add_colors(g, palette = palette, mode = mode)
 
 }
 
@@ -254,8 +262,9 @@ theme_egm_light <- function() {
 
 				# Legend
 				legend.position = "none"
-			),
-		scale_color_manual(values = rep("black", length(.labels)), na.value = "black")
+			)
+		# If needed to force the colors to be black, can add something like this...
+		#scale_color_manual(values = rep("black", length(.labels)), na.value = "black")
 	)
 }
 
@@ -290,7 +299,9 @@ theme_egm_dark <- function() {
 
 				# Legend
 				legend.position = "none"
-			),
-		scale_color_manual(values = rep("white", length(.labels)), na.value = "white")
+			)
+		# If needed to force the colors to be white, can add something like this...
+		#scale_color_manual(values = rep("white", length(.labels)), na.value = "white")
 	)
 }
+

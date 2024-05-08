@@ -4,19 +4,34 @@
 \alias{color_channels}
 \title{Identify the color for a channel based on palettes}
 \usage{
-color_channels(x, palette, mode = "light")
+color_channels(x, palette, mode = "dark")
 }
 \arguments{
 \item{x}{Vector of \code{character} names of requested ECG or EGM leads}
 
-\item{palette}{A \code{character} name of the color palette options for leads as
-below:
+\item{palette}{A \code{character} choice from the below options that describe the
+color choices to be used for plotting. If set to the default, which is
+\code{NULL}, no changes to the colors for individual channels will be performed.
+If a positive choice is made, then the background \strong{mode} argument will be
+set to \emph{dark} as the default, unless otherwise specified. \emph{WARNING}: This is
+an experimental argument, and may be moved in future version.
 \itemize{
-\item \strong{material} - material color theme
+\item \strong{NULL}: no changes to the colors will be made. DEFAULT.
+\item \strong{material}: a colorscheme based off of the \href{https://m3.material.io/styles/color/system/how-the-system-works}{Material Design} color scheme
 }}
 
-\item{mode}{Adjust color settings for either light or dark mode, as
-\code{character} input}
+\item{mode}{A \code{character} string from \code{c("dark", "light")} to describe the
+base/background color settings to be used. If there are preset channel
+colors that were exported in the \code{egm} object, these colors will be used
+for the individual channels. If \strong{palette} is specified, then the \emph{dark}
+option will be set automatically (a palette choice cannot be made without
+understanding the background to plate it across). \emph{WARNING}: This is an
+experimental argument, and may be moved in future version.
+\itemize{
+\item The \emph{dark} theme mimics the "white on black" scheme seen in \emph{LabSystem Pro} format (and most other high-contrast visualizations), for minimizing eye strain. This calls the \code{\link[=theme_egm_dark]{theme_egm_dark()}} function. DEFAULT.
+\item The \emph{light} theme mimics the "black on white" colors seen in the \emph{Prucka} system.
+\item \code{NULL} removes any theme, and uses the default \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} settings
+}}
 }
 \value{
 Vector of hex code colors as \code{character} based on the selected palette and
