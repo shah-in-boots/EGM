@@ -3,7 +3,7 @@
 system, and also allows writing out WFDB-compatible files from specific EP
 recording systems, as indicated in the details section. Writing WFDB leads to
 creation of both a dat (signal) and hea (header) file. These are both
-required for reading in files as well."><title>I/O of WFDB-compatible signal &amp; header files from EP recording systems — wfdb_io • egm</title><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous"><!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js" integrity="sha512-7O5pXpc0oCRrxk8RUfDYFgn0nO1t+jLuIOQdOMRp4APB7uZ4vSjspzp5y6YDtDs4VzUSTbWzBFZ/LKJhnyFOKw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="I/O of WFDB-compatible signal &amp; header files from EP recording systems — wfdb_io"><meta property="og:description" content="This function allows for WFDB files to be read from any WFDB-compatible
+required for reading in files as well."><title>I/O of WFDB-compatible signal &amp; header files from EP recording systems — wfdb_io • egm</title><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous"><!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="I/O of WFDB-compatible signal &amp; header files from EP recording systems — wfdb_io"><meta property="og:description" content="This function allows for WFDB files to be read from any WFDB-compatible
 system, and also allows writing out WFDB-compatible files from specific EP
 recording systems, as indicated in the details section. Writing WFDB leads to
 creation of both a dat (signal) and hea (header) file. These are both
@@ -14,7 +14,7 @@ required for reading in files as well."><!-- mathjax --><script src="https://cdn
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
     
 
-    <nav class="navbar fixed-top navbar-dark navbar-expand-lg bg-primary" data-bs-theme="dark"><div class="container">
+    <nav class="navbar fixed-top navbar-dark navbar-expand-lg bg-primary"><div class="container">
     
     <a class="navbar-brand me-2" href="../index.html">egm</a>
 
@@ -104,7 +104,7 @@ required for reading in files as well.</p>
 <span>  <span class="va">record</span>,</span>
 <span>  record_dir <span class="op">=</span> <span class="st">"."</span>,</span>
 <span>  wfdb_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"wfdb_path"</span><span class="op">)</span>,</span>
-<span>  begin <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  begin <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  end <span class="op">=</span> <span class="cn">NA_integer_</span>,</span>
 <span>  interval <span class="op">=</span> <span class="cn">NA_integer_</span>,</span>
 <span>  units <span class="op">=</span> <span class="st">"digital"</span>,</span>
@@ -120,7 +120,7 @@ required for reading in files as well.</p>
     <dl><dt>data</dt>
 <dd><p>Can either be an <code>egm</code> object, or a <code>data.frame</code> (or similar)
 object. The function will appropriately set defaults based on the type.</p><ul><li><p><code>egm</code> = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format</p></li>
-<li><p><code>signal_table</code> = This is a custom <code>data.table</code> class that has an invariant column containing sample information.</p></li>
+<li><p><code>signal_table</code> = This is a customized <code>data.table</code> class that has an invariant column containing sample information.</p></li>
 <li><p><code>data.frame</code> or <code>data.table</code> = Must have a column that represents a time point or index, and columns that represent signal values (preferably integers)</p></li>
 </ul></dd>
 
@@ -143,15 +143,25 @@ system options on loading of the package, <code>getOption('wfdb_path')</code></p
 
 
 <dt>header</dt>
-<dd><p>A header file is an <strong>optional</strong> named list of parameters that
-will be used to organize and describe the signal input from the <code>data</code>
-argument. If the <code>type</code> is given, specific additional elements will be
+<dd><p>A header file is an optional named list of parameters that
+will be used to organize and describe the signal input from the <strong>data</strong>
+argument. If the <strong>type</strong> is given, specific additional elements will be
 searched for, such as the low or high pass filters, colors, or other signal
 attributes. At minimum, the following elements are required (as cannot be
 calculated):</p><ul><li><p>frequency = sample frequency in Hertz <integer></integer></p></li>
 <li><p>label = vector of names for each channel <character></character></p></li>
 <li><p>start_time = date/time object <date></date></p></li>
 </ul></dd>
+
+
+<dt>info_strings</dt>
+<dd><p>A <code>list</code> of strings that will be written as an appendix
+to the header file, usually containing information about the channels,
+(e.g. list of colors, extra labels, etc).</p></dd>
+
+
+<dt>...</dt>
+<dd><p>Additional arguments to be passed to the function</p></dd>
 
 
 <dt>annotator</dt>
@@ -162,15 +172,16 @@ further details.</p></dd>
 
 
 <dt>begin, end, interval</dt>
-<dd><p>Timepoint in seconds, which is converted to an
-index position based on sampling frequency. The default is to start at the
-beginning of the record. If <code>end</code> or <code>interval</code> are given, the earlier of
-the two will be returned. The <code>end</code> argument gives a time index to read
-until. The <code>interval</code> argument is the length of time past the start point.</p></dd>
+<dd><p>Timepoint as an <code>integer</code> (representing seconds),
+which is converted to an index position based on sampling frequency. The
+default is to start at the beginning of the record. If <code>end</code> or <code>interval</code>
+are given, the earlier of the two will be returned. The <code>end</code> argument
+gives a time index to read until. The <code>interval</code> argument is the length of
+time past the start point.</p></dd>
 
 
 <dt>units</dt>
-<dd><p>A string representing either <code>digital</code> (DEFAULT) or <code>physical</code>
+<dd><p>A string representing either <em>digital</em> (DEFAULT) or <em>physical</em>
 units that should be used, if available.</p><ul><li><p>digital = Index in sample number, signal in integers (A/D units)</p></li>
 <li><p>physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
 This will <strong>include 1 additional row over the header/column names</strong> that
@@ -184,6 +195,15 @@ Allows for duplication of signal or to re-order signal if needed. If
 nothing is given, will default to all channels available.</p></dd>
 
 </dl></div>
+    <div class="section level2">
+    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    
+
+<p>Depends on if it is a reading or writing function. For writing, will
+output an WFDB-based object reflecting the function. For reading, will
+output an extension of a <code>data.table</code> object reflecting the underlying
+function (e.g. <code><a href="signal_table.html">signal_table()</a></code> will return an object of class).</p>
+    </div>
     <div class="section level2">
     <h2 id="functions">Functions<a class="anchor" aria-label="anchor" href="#functions"></a></h2>
     
@@ -211,11 +231,11 @@ supported.</p><ul><li><p><em>lspro</em> = LabSystem Pro, e.g. <code><a href="lsp
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Anish S. Shah.</p>
+  <p></p><p>Developed by Anish S. Shah.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9. Colorspace from the <strong>OrYel</strong> palette</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7. Colorspace from the <strong>OrYel</strong> palette</p>
 </div>
 
     </footer></div>
