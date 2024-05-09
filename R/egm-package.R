@@ -5,7 +5,7 @@
 #'
 #' @import vctrs
 #' @keywords internal
-#' @name egm-vctrs
+#' @name EGM-vctrs
 
 ## usethis namespace: start
 #' @importFrom data.table :=

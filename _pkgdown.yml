@@ -14,7 +14,7 @@ template:
     light: "#ecd999"
     dark: "#ef4868"
 
-url: https://shah-in-boots.github.io/egm/
+url: https://shah-in-boots.github.io/EGM/
 
 destination: docs
 
@@ -44,7 +44,7 @@ navbar:
       href: reference/index.html
     github:
       icon: fab fa-github fa-lg
-      href: https://github.com/shah-in-boots/egm/
+      href: https://github.com/shah-in-boots/EGM/
 
 footer:
   structure:

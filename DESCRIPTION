@@ -1,4 +1,4 @@
-Package: egm
+Package: EGM
 Title: Evaluating Cardiac Electrophysiology Signals
 Version: 0.0.0.9000
 Authors@R: 
@@ -41,6 +41,6 @@ Suggests:
     testthat (>= 3.0.0),
     withr,
 Config/testthat/edition: 3
-URL: https://shah-in-boots.github.io/egm/
-BugReports: https://github.com/shah-in-boots/egm/issues
+URL: https://shah-in-boots.github.io/EGM/
+BugReports: https://github.com/shah-in-boots/EGM/issues
 VignetteBuilder: knitr

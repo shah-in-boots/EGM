@@ -13,31 +13,31 @@ knitr::opts_chunk$set(
 )
 ```
 
-# egm
+# EGM
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![CRAN status](https://www.r-pkg.org/badges/version/egm)](https://CRAN.R-project.org/package=egm)
-[![R-CMD-check](https://github.com/shah-in-boots/egm/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/shah-in-boots/egm/actions/workflows/R-CMD-check.yaml)
-[![test-coverage](https://github.com/shah-in-boots/egm/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/shah-in-boots/egm/actions/workflows/test-coverage.yaml)
-[![pkgdown](https://github.com/shah-in-boots/egm/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/shah-in-boots/egm/actions/workflows/pkgdown.yaml)
+[![CRAN status](https://www.r-pkg.org/badges/version/EGM)](https://CRAN.R-project.org/package=EGM)
+[![R-CMD-check](https://github.com/shah-in-boots/EGM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/shah-in-boots/EGM/actions/workflows/R-CMD-check.yaml)
+[![test-coverage](https://github.com/shah-in-boots/EGM/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/shah-in-boots/EGM/actions/workflows/test-coverage.yaml)
+[![pkgdown](https://github.com/shah-in-boots/EGM/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/shah-in-boots/EGM/actions/workflows/pkgdown.yaml)
 <!-- badges: end -->
 
 When looking at cardiac electrogram data, an important practice is identifying intervals between depolarizations. These range from _sinoatrial_ conduction properties, _atrioventricular_ and _ventriculoatrial_ intervals, _Hissian_ intervals, etc. 
 
-The goal of `egm` is to work with electrophysiology (EP) signal data to help evaluate intervals, pacing maneuvers, stimulation protocols, as well as generate informative plots for teaching/learning and understanding of EP studies.
+The goal of `EGM` is to work with electrophysiology (EP) signal data to help evaluate intervals, pacing maneuvers, stimulation protocols, as well as generate informative plots for teaching/learning and understanding of EP studies.
 
 ## Installation
 
-You can install the released version of egm from [CRAN](https://CRAN.R-project.org) with:
+You can install the released version of EGM from [CRAN](https://CRAN.R-project.org) with:
 
 ```{r, eval=FALSE}
-#install.packages("egm")
+#install.packages("EGM")
 ```
 
 And the development version from [GitHub](https://github.com/) with:
 
 ```{r, eval=FALSE}
 # install.packages("devtools")
-devtools::install_github("shah-in-boots/egm")
+devtools::install_github("shah-in-boots/EGM")
 ```
