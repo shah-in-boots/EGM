@@ -10,7 +10,6 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-options(wfdb_path = "/usr/local/bin")
 library(egm)
 ```
 
@@ -33,6 +32,7 @@ The initial approach will be to use sinus rhythm, which can most easily be evalu
 1. There should not be additional depolarization signals between the $P_{i}$ and $QRS_{i}$
 
 ```{r}
+#| eval: false
 ecg <- read_wfdb(record = 'muse-sinus',
                  record_dir = system.file('extdata', package = 'egm'),
                  annotator = 'ecgpuwave')
