@@ -1,8 +1,8 @@
 ---
-title: "Introduction to the EGM Class"
+title: "Getting Started"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Introduction to the EGM Class}
+  %\VignetteIndexEntry{Getting Started}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -56,5 +56,4 @@ egm
 ggm(egm, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
 	theme_egm_dark() 
 ```
-
 

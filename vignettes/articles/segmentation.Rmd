@@ -1,10 +1,5 @@
 ---
-title: "Introduction to Signal Segmentation"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Introduction to Signal Segmentation}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+title: "Signal Segmentation"
 ---
 
 ```{r, include = FALSE}
@@ -46,14 +41,3 @@ ecg
 ```
 
 This file represent an ECG data set obtained from MUSE v9 that contains 12-leads of data over 10 seconds.
-
-	# Visualize
-	g <-
-		ggm(object) |>
-		draw_boundary_mask()
-
-	# Should create a number of high likelihood sinus beats
-	beats <- segment_sinus_beats(object)
-	expect_length(beats, 11)
-	expect_equal(nrow(beats[[1]]$signal), 263) # Checked the size of the 1st beat
-
