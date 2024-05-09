@@ -63,7 +63,7 @@ find_wfdb_command <- function(.app,
 	# Check for wfdb_path
 	# Maybe NULL or NA
 	if (is.null(.path) | is.na(.path)) {
-		stop('No wfdb_path set. Please set using `set_wfdb_path()`')
+		stop('No `wfdb_path` set. Please set using `set_wfdb_path()`')
 	}
 
 	cmd <- fs::path(.path, .app)
