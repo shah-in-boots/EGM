@@ -10,9 +10,8 @@ A system for importing electrophysiological signal into R, based on the Waveform
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/shah-in-boots/shiva}
-  \item \url{https://shah-in-boots.github.io/shiva/}
-  \item Report bugs at \url{https://github.com/shah-in-boots/shiva/issues}
+  \item \url{https://shah-in-boots.github.io/egm/}
+  \item Report bugs at \url{https://github.com/shah-in-boots/egm/issues}
 }
 
 }

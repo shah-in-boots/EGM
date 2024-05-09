@@ -14,10 +14,10 @@ set_wfdb_path(.path)
 find_wfdb_command(.app, .path = getOption("wfdb_path"))
 }
 \arguments{
-\item{.path}{\if{html}{\out{<character>}} String that describes the path to the WFDB binary
+\item{.path}{A \code{character} string that describes the path to the WFDB binary
 directory}
 
-\item{.app}{\if{html}{\out{<character>}} Name of WFDB software command or application}
+\item{.app}{The name of WFDB software command or application as a \code{character}}
 }
 \description{
 These functions are used to help find and locate commands from the

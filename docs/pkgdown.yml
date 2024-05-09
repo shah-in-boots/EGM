@@ -1,11 +1,11 @@
 pandoc: 3.1.13
-pkgdown: 2.0.7
+pkgdown: 2.0.9
 pkgdown_sha: ~
 articles:
   intro-egm: intro-egm.html
   intro-segmentation: intro-segmentation.html
   intro-wfdb: intro-wfdb.html
-last_built: 2024-05-08T23:27Z
+last_built: 2024-05-09T15:43Z
 urls:
   reference: https://shah-in-boots.github.io/egm/reference
   article: https://shah-in-boots.github.io/egm/articles

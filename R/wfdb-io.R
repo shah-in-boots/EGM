@@ -103,11 +103,11 @@ NULL
 #'   attributes. At minimum, the following elements are required (as cannot be
 #'   calculated):
 #'
-#'   * frequency = sample frequency in Hertz <integer>
+#'   * frequency = sample frequency in Hertz as `integer`
 #'
-#'   * label = vector of names for each channel <character>
+#'   * label = vector of names for each channel as `character`
 #'
-#'   * start_time = date/time object <date>
+#'   * start_time = date/time object
 #'
 #' @param begin,end,interval Timepoint as an `integer` (representing seconds),
 #'   which is converted to an index position based on sampling frequency. The
@@ -116,7 +116,7 @@ NULL
 #'   gives a time index to read until. The `interval` argument is the length of
 #'   time past the start point.
 #'
-#' @param units A string representing either *digital* (DEFAULT) or *physical*
+#' @param units A `character` string representing either *digital* (DEFAULT) or *physical*
 #'   units that should be used, if available.
 #'
 #'   * digital = Index in sample number, signal in integers (A/D units)
@@ -125,7 +125,7 @@ NULL
 #'   This will __include 1 additional row over the header/column names__ that
 #'   describes units
 #'
-#' @param channels Either the signal/channel in a vector as a name or number.
+#' @param channels Either the signal/channel in a `character` vector as a name or number.
 #'   Allows for duplication of signal or to re-order signal if needed. If
 #'   nothing is given, will default to all channels available.
 #'
@@ -374,9 +374,9 @@ read_signal <- function(record,
 		wd <- getwd()
 	}
 
-	stopifnot("Expected <integer>" = is.numeric(begin))
-	stopifnot("Expected <integer>" = is.numeric(end))
-	stopifnot("Expected <integer>" = is.numeric(interval))
+	stopifnot("Expected `integer`" = is.numeric(begin))
+	stopifnot("Expected `integer`" = is.numeric(end))
+	stopifnot("Expected `integer`" = is.numeric(interval))
 	stopifnot("Expected to be in c('digital', 'physical')"
 						= units %in% c("digital", "physical"))
 

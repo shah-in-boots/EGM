@@ -5,7 +5,7 @@
 #' system.
 #'
 #' The [LabSystem
-#' Pro](https://www.bostonscientific.com/en-US/products/capital-equipment--diagnotic/labsystem-pro.html)
+#' Pro](https://www.bostonscientific.com/en-EU/medical-specialties/electrophysiology/arrhythmias/cardiac-mapping-system/electrophysiology-recording-system.html)
 #' was acquired by Boston Scientific from the original company
 #' [Bard](https://news.bostonscientific.com/2013-06-28-Boston-Scientific-To-Acquire-C-R-Bard-Electrophysiology-Business).
 #' They are a common electrophysiology signal processing device for

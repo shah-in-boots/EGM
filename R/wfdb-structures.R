@@ -319,11 +319,11 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #' above record line. From left to right....
 #'
 #'		- File name: usually *.dat
-#'		- Format <integer>: represents storage type, e.g. 8-bit or 16-bit
+#'		- Format `integer`: represents storage type, e.g. 8-bit or 16-bit
 #'		- ADC gain: ADC units per physical unit (optional)
 #'			- Baseline: corresponds to 0 physical units, sep = '*(0)" (optional)
 #'			- Units: with '/' as a field separator e.g '*/mV' (optional)
-#'		- ADC resolution <integer>: bits, usually 8 or 16 (optional)
+#'		- ADC resolution `integer`: bits, usually 8 or 16 (optional)
 #'		- ADC zero: represents middle of ADC input range (optional)
 #'		- Initial value (optional)
 #'		- Checksum (optional)

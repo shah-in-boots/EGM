@@ -113,13 +113,13 @@ signals, and there must be as many signal lines as there are reported by the
 above record line. From left to right....
 \itemize{
 \item File name: usually *.dat
-\item Format \if{html}{\out{<integer>}}: represents storage type, e.g. 8-bit or 16-bit
+\item Format \code{integer}: represents storage type, e.g. 8-bit or 16-bit
 \item ADC gain: ADC units per physical unit (optional)
 \itemize{
 \item Baseline: corresponds to 0 physical units, sep = '*(0)" (optional)
 \item Units: with '/' as a field separator e.g '*/mV' (optional)
 }
-\item ADC resolution \if{html}{\out{<integer>}}: bits, usually 8 or 16 (optional)
+\item ADC resolution \code{integer}: bits, usually 8 or 16 (optional)
 \item ADC zero: represents middle of ADC input range (optional)
 \item Initial value (optional)
 \item Checksum (optional)

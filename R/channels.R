@@ -207,7 +207,6 @@ color_channels <- function(x, palette, mode = "dark") {
 
 }
 
-
 #' Add color scheme to a `ggm` object
 #'
 #' @description Using `add_colors()` is part of the theme process for a `ggm`

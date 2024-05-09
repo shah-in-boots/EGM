@@ -72,9 +72,9 @@ searched for, such as the low or high pass filters, colors, or other signal
 attributes. At minimum, the following elements are required (as cannot be
 calculated):
 \itemize{
-\item frequency = sample frequency in Hertz \if{html}{\out{<integer>}}
-\item label = vector of names for each channel \if{html}{\out{<character>}}
-\item start_time = date/time object \if{html}{\out{<date>}}
+\item frequency = sample frequency in Hertz as \code{integer}
+\item label = vector of names for each channel as \code{character}
+\item start_time = date/time object
 }}
 
 \item{info_strings}{A \code{list} of strings that will be written as an appendix
@@ -95,7 +95,7 @@ are given, the earlier of the two will be returned. The \code{end} argument
 gives a time index to read until. The \code{interval} argument is the length of
 time past the start point.}
 
-\item{units}{A string representing either \emph{digital} (DEFAULT) or \emph{physical}
+\item{units}{A \code{character} string representing either \emph{digital} (DEFAULT) or \emph{physical}
 units that should be used, if available.
 \itemize{
 \item digital = Index in sample number, signal in integers (A/D units)
@@ -104,7 +104,7 @@ This will \strong{include 1 additional row over the header/column names} that
 describes units
 }}
 
-\item{channels}{Either the signal/channel in a vector as a name or number.
+\item{channels}{Either the signal/channel in a \code{character} vector as a name or number.
 Allows for duplication of signal or to re-order signal if needed. If
 nothing is given, will default to all channels available.}
 }

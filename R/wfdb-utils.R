@@ -5,9 +5,9 @@
 #' and specific WFDB commands. They are primarily internal helper functions, but
 #' are documented for troubleshooting purposes.
 #'
-#' @param .app <character> Name of WFDB software command or application
+#' @param .app The name of WFDB software command or application as a `character`
 #'
-#' @param .path <character> String that describes the path to the WFDB binary
+#' @param .path A `character` string that describes the path to the WFDB binary
 #'   directory
 #'
 #' @name wfdb_paths
@@ -121,7 +121,7 @@ annotation_table_to_lines <- function(data) {
 #' @noRd
 parse_date_and_time <- function(x) {
 
-	stopifnot('Requires `x` to be a character string' = is.character(x))
+	stopifnot('Requires `x` to be a `character`' = is.character(x))
 
 	# Time
 	# 	Assumes HH:MM:SS
