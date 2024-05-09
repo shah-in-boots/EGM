@@ -61,7 +61,8 @@ find_wfdb_command <- function(.app,
 															.path = getOption('wfdb_path')) {
 
 	# Check for wfdb_path
-	if (is.null(.path)) {
+	# Maybe NULL or NA
+	if (is.null(.path) | is.na(.path)) {
 		stop('No wfdb_path set. Please set using `set_wfdb_path()`')
 	}
 
