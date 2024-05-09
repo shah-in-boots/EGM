@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 [![pkgdown](https://github.com/shah-in-boots/egm/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/shah-in-boots/egm/actions/workflows/pkgdown.yaml)
 <!-- badges: end -->
 
-When looking at cardiac electrogram data, an important practice is identifying intervals between depolarizations. These range from _sinoatrial_ conduction properties, _atrioventricular_ and _ventriculoatrial_ intervals, _Hissian_ intervals, etc. These names (STIMULATION, HISSIAN, INTERVALS, VENTRICULAR, ATRIAL) were put into an anagram for the name of the package: `egm`. 
+When looking at cardiac electrogram data, an important practice is identifying intervals between depolarizations. These range from _sinoatrial_ conduction properties, _atrioventricular_ and _ventriculoatrial_ intervals, _Hissian_ intervals, etc. 
 
 The goal of `egm` is to work with electrophysiology (EP) signal data to help evaluate intervals, pacing maneuvers, stimulation protocols, as well as generate informative plots for teaching/learning and understanding of EP studies.
 
