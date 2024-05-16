@@ -78,22 +78,29 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="egm">egm<a class="anchor" aria-label="anchor" href="#egm"></a>
+<div class="page-header"><h1 id="egm">EGM<a class="anchor" aria-label="anchor" href="#egm"></a>
 </h1></div>
 <!-- badges: start -->
 
-<p>When looking at cardiac electrogram data, an important practice is identifying intervals between depolarizations. These range from <em>sinoatrial</em> conduction properties, <em>atrioventricular</em> and <em>ventriculoatrial</em> intervals, <em>Hissian</em> intervals, etc. These names (STIMULATION, HISSIAN, INTERVALS, VENTRICULAR, ATRIAL) were put into an anagram for the name of the package: <code>egm</code>.</p>
-<p>The goal of <code>egm</code> is to work with electrophysiology (EP) signal data to help evaluate intervals, pacing maneuvers, stimulation protocols, as well as generate informative plots for teaching/learning and understanding of EP studies.</p>
+<p>The purpose of <a href="https://shah-in-boots.github.io/EGM/">EGM</a> is to work with electrophysiology (EP) signal data to help understand and simplify the complexity of complex, multi-channel electrical signal data. The target audience is those working, in particular, with <em>cardiac electrophysiology data</em>, from intracardiac electrograms to surface electrocardiography. The package is heavily inspired by and gains additional functionality from the <a href="https://physionet.org/content/wfdb/10.7.0/" class="external-link">Waveform Database (WFDB) software package</a>.</p>
+<p>The goals and major arms of this software are…</p>
+<ol style="list-style-type: decimal">
+<li>Adapt <code>WFDB</code>-compatible signal data to an <code>R</code> format that is interchangeable</li>
+<li>Provide simple visualization tools to work with short elements of raw signal data</li>
+<li>Allow for annotation of intracardiac electrograms in an interactive manner</li>
+<li>Train and allow development of learning algorithms for the evaluation of multi-channel time series data</li>
+</ol>
+<p>Please see the vignettes for further details on usage.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the released version of egm from <a href="https://CRAN.R-project.org" class="external-link">CRAN</a> with:</p>
+<p>You can install the released version of <a href="https://shah-in-boots.github.io/EGM/">EGM</a> from <a href="https://CRAN.R-project.org" class="external-link">CRAN</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">#install.packages("egm")</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co">#install.packages("EGM")</span></span></code></pre></div>
 <p>And the development version from <a href="https://github.com/" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"shah-in-boots/egm"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"shah-in-boots/EGM"</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -131,10 +138,11 @@
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
-<li><a href="https://CRAN.R-project.org/package=egm" class="external-link"><img src="https://www.r-pkg.org/badges/version/egm" alt="CRAN status"></a></li>
+<li><a href="https://CRAN.R-project.org/package=EGM" class="external-link"><img src="https://www.r-pkg.org/badges/version/EGM" alt="CRAN status"></a></li>
+<li><a href="https://github.com/shah-in-boots/EGM/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/shah-in-boots/EGM/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
+<li><a href="https://github.com/shah-in-boots/EGM/actions/workflows/test-coverage.yaml" class="external-link"><img src="https://github.com/shah-in-boots/EGM/actions/workflows/test-coverage.yaml/badge.svg" alt="test-coverage"></a></li>
+<li><a href="https://github.com/shah-in-boots/EGM/actions/workflows/pkgdown.yaml" class="external-link"><img src="https://github.com/shah-in-boots/EGM/actions/workflows/pkgdown.yaml/badge.svg" alt="pkgdown"></a></li>
 <li><a href="https://github.com/shah-in-boots/egm/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/shah-in-boots/egm/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
-<li><a href="https://github.com/shah-in-boots/egm/actions/workflows/test-coverage.yaml" class="external-link"><img src="https://github.com/shah-in-boots/egm/actions/workflows/test-coverage.yaml/badge.svg" alt="test-coverage"></a></li>
-<li><a href="https://github.com/shah-in-boots/egm/actions/workflows/pkgdown.yaml" class="external-link"><img src="https://github.com/shah-in-boots/egm/actions/workflows/pkgdown.yaml/badge.svg" alt="pkgdown"></a></li>
 </ul>
 </div>
 
