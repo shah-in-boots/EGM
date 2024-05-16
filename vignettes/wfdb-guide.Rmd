@@ -33,8 +33,7 @@ The installation instructions are relatively clear across multiple operating sys
 For Windows, I have found that using [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) is the most consistent and supported way to utilize the software.
 When hidden on WSL, the path must be specified explicitly using the `set_wfdb_path()` function using the command from Powershell, for example, to switch to a WSL command environment.
 
-```{r}
-#| eval: false
+```{r, eval=FALSE}
 set_wfdb_path("wsl /usr/local/bin")
 ```
 
@@ -51,7 +50,7 @@ To begin, let's take an example of a simple ECG dataset.
 This data is included in the package, and can be accessed as below.
 
 ```{r}
-fp <- system.file('extdata', 'muse-sinus.xml', package = 'egm')
+fp <- system.file('extdata', 'muse-sinus.xml', package = 'EGM')
 ecg <- read_muse(fp)
 fig <- ggm(ecg) + theme_egm_light()
 fig
@@ -61,7 +60,7 @@ We may have customized software, manual approaches, or machine learning models t
 We can use the `annotation_table()` function to create `WFDB`-compatible annotations, updating both the `egm` object and the written file.
 To trial this, let's label the peaks of the QRS complex from this 12-lead ECG.
 
-1. Create a quick, non-robust function for labeling QRS complex peaks
+1. Create a quick, non-robust function for labeling QRS complex peaks. The function `pracma::findpeaks()` is quite good, but to avoid dependencies we are writing our own.
 1. Evaluate the fit of the peaks to the dataset
 1. Place the annotations into a table, updating the `egm` object
 1. Plot the results
@@ -69,10 +68,78 @@ To trial this, let's label the peaks of the QRS complex from this 12-lead ECG.
 ```{r}
 # Let x = 10-second signal dataset
 # We will apply this across the dataset
-find_peaks <- function(x) {
+# This is an oversimplified approach.
+find_peaks <- function(x,
+                       threshold = 
+                         mean(x, na.rm = TRUE) + 2 * sd(x, na.rm = TRUE)
+                       ) {
+  
+  # Ensure signal is "positive" for peak finding algorithm
+  x <- abs(x)
+  
+  # Find the peaks
+  peaks <- which(diff(sign(diff(x))) == -2) + 1
+  
+  # Filter the peaks
+  peaks <- peaks[x[peaks] > threshold]
+  
+  # Return
+  peaks
 }
 
 # Create a signal dataset
 dat <- extract_signal(ecg)
-x <- dat$I
+
+# Find the peaks
+sig <- dat[["I"]]
+pk_loc <- find_peaks(sig)
+pk_val <- sig[pk_loc]
+pks <- data.frame(x = pk_loc, y = pk_val)
+
+# Plot them
+plot(sig, type = "l")
+points(x = pks$x, y = pks$y, col = "orange")
+```
+
+The result is *not bad* for a simple peak finder, but it lets us generate a small dataset of annotations that can then be used.
+Please see the additional vignettes for advanced annotation options, such as multichannel plots, and multichannel annotations.
+We can take a look under the hood at the annotation positions we generated.
+The relevant arguments, which are displayed below, include:
+
+- annotator: name of annotation function or creator
+- time: constructed from sample number and frequency
+- sample: integer index of positions
+- type: a single character describing the type
+- subtype: a single character describing the type
+- channel: which channel the data is mapped to
+- number: an additional qualifier of the annotation type
+
+```{r}
+# Find the peaks
+raw_signal <- dat[["I"]]
+peak_positions <- find_peaks(raw_signal)
+peak_positions
+
+# Annotations do not need to store the value at that time point however
+# The annotation table function has the following arguments
+args(annotation_table)
+
+# We can fill this in as below using additional data from the original ECG
+hea <- ecg$header
+start <- attributes(hea)$record_line$start_time
+hz <- attributes(hea)$record_line$frequency
+
+ann <- annotation_table(
+  annotator = "pks",
+  time = peak_positions / hz,
+  sample = peak_positions,
+  type = vector(mode = "character", length = length(peak_positions)),
+  subtype = vector(mode = "character", length = length(peak_positions)),
+  channel = "I",
+  number = vector(mode = "integer", length = length(peak_positions))
+)
+
+# Then, add this back to the original signal
+ecg$annotation <- ann
+ecg
 ```

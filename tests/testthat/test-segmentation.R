@@ -3,9 +3,9 @@ test_that("ECG can be segmented", {
 	skip_on_cran()
 	skip_on_ci()
 
-	rec <- 'ecg'
+	rec <- "ecg"
 	dir <- test_path()
-	object <- read_wfdb(rec, dir, 'ecgpuwave')
+	object <- read_wfdb(rec, dir, "ecgpuwave")
 
 	# Visualize
 	g <- ggm(object)
@@ -27,14 +27,14 @@ test_that("MUSE ECG can be segmented without error", {
 	segmentation(object, by = "sinus")
 })
 
-test_that('ECG can be padded', {
+test_that("ECG can be padded", {
 
 	skip_on_cran()
 	skip_on_ci()
 
-	rec <- 'ecg'
+	rec <- "ecg"
 	dir <- test_path()
-	object <- read_wfdb(rec, dir, 'ecgpuwave')
+	object <- read_wfdb(rec, dir, "ecgpuwave")
 
 	# Truncating before
 	expect_warning(
@@ -84,9 +84,9 @@ test_that("waveforms can be centered", {
 
 	# Generally this ECG has 250 ms beats
 	# Padding up to 500 should allow room to center
-	rec <- 'ecg'
+	rec <- "ecg"
 	dir <- test_path()
-	object <- read_wfdb(rec, dir, 'ecgpuwave')
+	object <- read_wfdb(rec, dir, "ecgpuwave")
 	beats <- segment_by_sinus(object)
 	beat <- beats[[1]]
 
@@ -97,14 +97,14 @@ test_that("waveforms can be centered", {
 
 })
 
-test_that('Sinus segmentation will not work, appropriately', {
+test_that("Sinus segmentation will not work, appropriately", {
 
 	skip_on_cran()
 	skip_on_ci()
 
-	rec <- 'muse-af'
-	rec_dir <- system.file('extdata', package = 'egm')
-	ecg <- read_wfdb(rec, rec_dir, 'ecgpuwave')
+	rec <- "muse-af"
+	rec_dir <- system.file("extdata", package = "EGM")
+	ecg <- read_wfdb(rec, rec_dir, "ecgpuwave")
 
 	expect_length(ecg$signal, 13)
 

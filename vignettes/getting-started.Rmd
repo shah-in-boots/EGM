@@ -30,7 +30,7 @@ This was tested against the 9th version of the MUSE XML format.
 
 ```{r}
 # Read in data
-fp <- system.file('extdata', 'muse-sinus.xml', package = 'egm')
+fp <- system.file('extdata', 'muse-sinus.xml', package = 'EGM')
 xml <- readLines(fp)
 head(xml)
 
@@ -48,17 +48,17 @@ Similarly, intracardiac recordings obtained through LSPro can be read in as well
 
 ```{r}
 # Read in data
-fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'egm')
+fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'EGM')
 lspro <- readLines(fp)
 head(lspro, n = 20)
 
 # Instead, read this as signal, breaking apart header and signal data
 # Presented as an `egm` class object
-egm <- read_lspro(fp)
-egm
+egram <- read_lspro(fp)
+egram
 
 # Similarly, can be visualized with ease
-ggm(egm, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
+ggm(egram, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
 	theme_egm_dark() 
 ```
 

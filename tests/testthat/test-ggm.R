@@ -76,7 +76,7 @@ test_that("theming works", {
 
 test_that("multiple channel data from different leads can be theme", {
 
-	fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'egm')
+	fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'EGM')
 	dat <- read_lspro(fp)
 
 	# Similarly, can be visualized with ease
