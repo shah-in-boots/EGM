@@ -48,8 +48,8 @@
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/getting-started.html">Getting Started</a>
-    <a class="dropdown-item" href="../articles/intro-wfdb.html">Introduction to the WFDB Software Package</a>
-    <a class="dropdown-item" href="../articles/segmentation.html">Signal Segmentation</a>
+    <a class="dropdown-item" href="../articles/segmentation-guide.html">Signal Segmentation</a>
+    <a class="dropdown-item" href="../articles/wfdb-guide.html">WFDB: An Introduction to the Waveform Database Software Package</a>
   </div>
 </li>
 <li class="nav-item">
@@ -89,14 +89,22 @@
     
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shah-in-boots.github.io/egm/" class="external-link">egm</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shah-in-boots.github.io/EGM/">EGM</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; Loading required package: vctrs</span></span>
 <span><span class="co">#&gt; Loading required package: data.table</span></span></code></pre></div>
 <div class="section level2">
-<h2 id="surface-recordings">Surface recordings<a class="anchor" aria-label="anchor" href="#surface-recordings"></a>
+<h2 id="reading-in-data">Reading in Data<a class="anchor" aria-label="anchor" href="#reading-in-data"></a>
 </h2>
+<p>Thie software supports reading in certain types of raw cardiac
+electric signal currently. This includes both intracardiac and
+extracardiac data. Please see <code><a href="../reference/muse.html">read_muse()</a></code> and
+<code><a href="../reference/lspro.html">read_lspro()</a></code> as examples. If additional formats are
+requested, please <a href="https://github.com/shah-in-boots/EGM/issues" class="external-link">file an issue</a> and
+provide a sample file (which primarily requires signal, in whatever
+format, and meta-information about the individual channels).</p>
 <p>Here is a simple example of taking a MUSE XML file and converting it
-to digital signal.</p>
+to digital signal. This was tested against the 9th version of the MUSE
+XML format.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Read in data</span></span>
 <span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'muse-sinus.xml'</span>, package <span class="op">=</span> <span class="st">'egm'</span><span class="op">)</span></span>
@@ -107,8 +115,9 @@ to digital signal.</p>
 <span><span class="co">#&gt; [3] "&lt;RestingECG&gt;"                                   </span></span>
 <span><span class="co">#&gt; [4] "   &lt;MuseInfo&gt;"                                  </span></span>
 <span><span class="co">#&gt; [5] "      &lt;MuseVersion&gt;9.0.10.18530&lt;/MuseVersion&gt;"  </span></span>
-<span><span class="co">#&gt; [6] "   &lt;/MuseInfo&gt;"</span></span>
-<span></span>
+<span><span class="co">#&gt; [6] "   &lt;/MuseInfo&gt;"</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co"># Instead, can read this in as a MUSE XML file</span></span>
 <span><span class="co"># Now as an `egm` class</span></span>
 <span><span class="va">ecg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/muse.html">read_muse</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
@@ -119,16 +128,16 @@ to digital signal.</p>
 <span><span class="co">#&gt; Recording frequency  500  hz</span></span>
 <span><span class="co">#&gt; Number of channels:  12 </span></span>
 <span><span class="co">#&gt; Channel Names:  I II III AVF AVL AVR V1 V2 V3 V4 V5 V6 </span></span>
-<span><span class="co">#&gt; Annotation:</span></span>
-<span></span>
+<span><span class="co">#&gt; Annotation:</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co"># Can now plot this easily</span></span>
-<span><span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">ecg</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="intracardiac-recordings">Intracardiac recordings<a class="anchor" aria-label="anchor" href="#intracardiac-recordings"></a>
-</h2>
-<p>This signal now comes from the LSPro data.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<span><span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">ecg</span><span class="op">)</span> <span class="op">+</span> </span>
+<span>  <span class="fu"><a href="../reference/colors.html">theme_egm_light</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="getting-started_files/figure-html/unnamed-chunk-2-1.png" width="700"></p>
+<p>Similarly, intracardiac recordings obtained through LSPro can be read
+in as well. The function itself documents how this generally work.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Read in data</span></span>
 <span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'lspro-avnrt.txt'</span>, package <span class="op">=</span> <span class="st">'egm'</span><span class="op">)</span></span>
 <span><span class="va">lspro</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
@@ -142,8 +151,9 @@ to digital signal.</p>
 <span><span class="co">#&gt; [13] "Sample Rate: 1000Hz"       "Channel #:   1"           </span></span>
 <span><span class="co">#&gt; [15] "Label: I"                  "Range: 5mv "              </span></span>
 <span><span class="co">#&gt; [17] "Low: .5Hz"                 "High: 100Hz"              </span></span>
-<span><span class="co">#&gt; [19] "Sample rate: 1000Hz"       "Color: FFFFFF"</span></span>
-<span></span>
+<span><span class="co">#&gt; [19] "Sample rate: 1000Hz"       "Color: FFFFFF"</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co"># Instead, read this as signal, breaking apart header and signal data</span></span>
 <span><span class="co"># Presented as an `egm` class object</span></span>
 <span><span class="va">egm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lspro.html">read_lspro</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
@@ -154,12 +164,24 @@ to digital signal.</p>
 <span><span class="co">#&gt; Recording frequency  1000  hz</span></span>
 <span><span class="co">#&gt; Number of channels:  11 </span></span>
 <span><span class="co">#&gt; Channel Names:  I III V1 CS 1-2 CS 3-4 CS 5-6 CS 7-8 CS 9-10 HIS D HIS M RV 1-2 </span></span>
-<span><span class="co">#&gt; Annotation:</span></span>
-<span></span>
+<span><span class="co">#&gt; Annotation:</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co"># Similarly, can be visualized with ease</span></span>
 <span><span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">egm</span>, channels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'HIS'</span>, <span class="st">'CS'</span>, <span class="st">'RV'</span><span class="op">)</span>, mode <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="../reference/colors.html">theme_egm_dark</a></span><span class="op">(</span><span class="op">)</span> </span></code></pre></div>
 <p><img src="getting-started_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
+</div>
+<div class="section level2">
+<h2 id="class-introduction">Class Introduction<a class="anchor" aria-label="anchor" href="#class-introduction"></a>
+</h2>
+<p>The <a href="https://shah-in-boots.github.io/EGM/">EGM</a> package introduces a specific data-oriented
+class called <code>egm</code> (note the <em>lower-case</em> spelling
+compared to the package name). This class is the primary data structure,
+and allows for compatibility within multiple signal types, including
+when reading in WFDB-formatted data. Once in this class, everything can
+be written out as well - with the preferred option being for the stated
+<code>WFDB</code> format.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
