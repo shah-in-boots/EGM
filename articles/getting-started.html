@@ -47,6 +47,7 @@
 <li class="active nav-item dropdown">
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
+    <a class="dropdown-item" href="../articles/annotations.html">Advanced Annotations</a>
     <a class="dropdown-item" href="../articles/getting-started.html">Getting Started</a>
     <a class="dropdown-item" href="../articles/segmentation-guide.html">Signal Segmentation</a>
     <a class="dropdown-item" href="../articles/wfdb-guide.html">WFDB: An Introduction to the Waveform Database Software Package</a>
@@ -107,7 +108,7 @@ to digital signal. This was tested against the 9th version of the MUSE
 XML format.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Read in data</span></span>
-<span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'muse-sinus.xml'</span>, package <span class="op">=</span> <span class="st">'egm'</span><span class="op">)</span></span>
+<span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'muse-sinus.xml'</span>, package <span class="op">=</span> <span class="st">'EGM'</span><span class="op">)</span></span>
 <span><span class="va">xml</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">xml</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "&lt;?xml version=\"1.0\" encoding=\"ISO-8859-1\"?&gt;"</span></span>
@@ -139,7 +140,7 @@ XML format.</p>
 in as well. The function itself documents how this generally work.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Read in data</span></span>
-<span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'lspro-avnrt.txt'</span>, package <span class="op">=</span> <span class="st">'egm'</span><span class="op">)</span></span>
+<span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'lspro-avnrt.txt'</span>, package <span class="op">=</span> <span class="st">'EGM'</span><span class="op">)</span></span>
 <span><span class="va">lspro</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">lspro</span>, n <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  [1] "[Header]"                  "File Type: 1"             </span></span>
@@ -156,8 +157,8 @@ in as well. The function itself documents how this generally work.</p>
 <code class="sourceCode R"><span></span>
 <span><span class="co"># Instead, read this as signal, breaking apart header and signal data</span></span>
 <span><span class="co"># Presented as an `egm` class object</span></span>
-<span><span class="va">egm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lspro.html">read_lspro</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
-<span><span class="va">egm</span></span>
+<span><span class="va">egram</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lspro.html">read_lspro</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
+<span><span class="va">egram</span></span>
 <span><span class="co">#&gt; &lt;Electrical Signal&gt;</span></span>
 <span><span class="co">#&gt; -------------------</span></span>
 <span><span class="co">#&gt; Recording Duration:  3.522 seconds</span></span>
@@ -168,7 +169,7 @@ in as well. The function itself documents how this generally work.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="co"># Similarly, can be visualized with ease</span></span>
-<span><span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">egm</span>, channels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'HIS'</span>, <span class="st">'CS'</span>, <span class="st">'RV'</span><span class="op">)</span>, mode <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
+<span><span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">egram</span>, channels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'HIS'</span>, <span class="st">'CS'</span>, <span class="st">'RV'</span><span class="op">)</span>, mode <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu"><a href="../reference/colors.html">theme_egm_dark</a></span><span class="op">(</span><span class="op">)</span> </span></code></pre></div>
 <p><img src="getting-started_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
 </div>

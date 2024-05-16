@@ -47,6 +47,7 @@
 <li class="active nav-item dropdown">
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
+    <a class="dropdown-item" href="../articles/annotations.html">Advanced Annotations</a>
     <a class="dropdown-item" href="../articles/getting-started.html">Getting Started</a>
     <a class="dropdown-item" href="../articles/segmentation-guide.html">Signal Segmentation</a>
     <a class="dropdown-item" href="../articles/wfdb-guide.html">WFDB: An Introduction to the Waveform Database Software Package</a>
@@ -140,7 +141,7 @@ integration into <code>R</code>.</p>
 <p>To begin, let’s take an example of a simple ECG dataset. This data is
 included in the package, and can be accessed as below.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'muse-sinus.xml'</span>, package <span class="op">=</span> <span class="st">'egm'</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'muse-sinus.xml'</span>, package <span class="op">=</span> <span class="st">'EGM'</span><span class="op">)</span></span>
 <span><span class="va">ecg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/muse.html">read_muse</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
 <span><span class="va">fig</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">ecg</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/colors.html">theme_egm_light</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fig</span></span></code></pre></div>
@@ -152,8 +153,9 @@ learning models that may label signal data. We can use the
 <code>egm</code> object and the written file. To trial this, let’s label
 the peaks of the QRS complex from this 12-lead ECG.</p>
 <ol style="list-style-type: decimal">
-<li>Create a quick, non-robust function for labeling QRS complex
-peaks</li>
+<li>Create a quick, non-robust function for labeling QRS complex peaks.
+The function <code>pracma::findpeaks()</code> is quite good, but to
+avoid dependencies we are writing our own.</li>
 <li>Evaluate the fit of the peaks to the dataset</li>
 <li>Place the annotations into a table, updating the <code>egm</code>
 object</li>
@@ -162,12 +164,95 @@ object</li>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Let x = 10-second signal dataset</span></span>
 <span><span class="co"># We will apply this across the dataset</span></span>
-<span><span class="va">find_peaks</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="co"># This is an oversimplified approach.</span></span>
+<span><span class="va">find_peaks</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>,</span>
+<span>                       <span class="va">threshold</span> <span class="op">=</span> </span>
+<span>                         <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">x</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">+</span> <span class="fl">2</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">x</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>                       <span class="op">)</span> <span class="op">{</span></span>
+<span>  </span>
+<span>  <span class="co"># Ensure signal is "positive" for peak finding algorithm</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># Find the peaks</span></span>
+<span>  <span class="va">peaks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sign.html" class="external-link">sign</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="op">-</span><span class="fl">2</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span></span>
+<span>  </span>
+<span>  <span class="co"># Filter the peaks</span></span>
+<span>  <span class="va">peaks</span> <span class="op">&lt;-</span> <span class="va">peaks</span><span class="op">[</span><span class="va">x</span><span class="op">[</span><span class="va">peaks</span><span class="op">]</span> <span class="op">&gt;</span> <span class="va">threshold</span><span class="op">]</span></span>
+<span>  </span>
+<span>  <span class="co"># Return</span></span>
+<span>  <span class="va">peaks</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Create a signal dataset</span></span>
 <span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_signal.html">extract_signal</a></span><span class="op">(</span><span class="va">ecg</span><span class="op">)</span></span>
-<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">dat</span><span class="op">$</span><span class="va">I</span></span></code></pre></div>
+<span></span>
+<span><span class="co"># Find the peaks</span></span>
+<span><span class="va">sig</span> <span class="op">&lt;-</span> <span class="va">dat</span><span class="op">[[</span><span class="st">"I"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">pk_loc</span> <span class="op">&lt;-</span> <span class="fu">find_peaks</span><span class="op">(</span><span class="va">sig</span><span class="op">)</span></span>
+<span><span class="va">pk_val</span> <span class="op">&lt;-</span> <span class="va">sig</span><span class="op">[</span><span class="va">pk_loc</span><span class="op">]</span></span>
+<span><span class="va">pks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">pk_loc</span>, y <span class="op">=</span> <span class="va">pk_val</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot them</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sig</span>, type <span class="op">=</span> <span class="st">"l"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">pks</span><span class="op">$</span><span class="va">x</span>, y <span class="op">=</span> <span class="va">pks</span><span class="op">$</span><span class="va">y</span>, col <span class="op">=</span> <span class="st">"orange"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="wfdb-guide_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
+<p>The result is <em>not bad</em> for a simple peak finder, but it lets
+us generate a small dataset of annotations that can then be used. Please
+see the additional vignettes for advanced annotation options, such as
+multichannel plots, and multichannel annotations. We can take a look
+under the hood at the annotation positions we generated. The relevant
+arguments, which are displayed below, include:</p>
+<ul>
+<li>annotator: name of annotation function or creator</li>
+<li>time: constructed from sample number and frequency</li>
+<li>sample: integer index of positions</li>
+<li>type: a single character describing the type</li>
+<li>subtype: a single character describing the type</li>
+<li>channel: which channel the data is mapped to</li>
+<li>number: an additional qualifier of the annotation type</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Find the peaks</span></span>
+<span><span class="va">raw_signal</span> <span class="op">&lt;-</span> <span class="va">dat</span><span class="op">[[</span><span class="st">"I"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">peak_positions</span> <span class="op">&lt;-</span> <span class="fu">find_peaks</span><span class="op">(</span><span class="va">raw_signal</span><span class="op">)</span></span>
+<span><span class="va">peak_positions</span></span>
+<span><span class="co">#&gt;  [1]   96  427  759 1091 1753 2085 2417 2750 3080 3412 3744 4076 4409</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="co"># Annotations do not need to store the value at that time point however</span></span>
+<span><span class="co"># The annotation table function has the following arguments</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/args.html" class="external-link">args</a></span><span class="op">(</span><span class="va">annotation_table</span><span class="op">)</span></span>
+<span><span class="co">#&gt; function (annotator = character(), time = numeric(), sample = integer(), </span></span>
+<span><span class="co">#&gt;     type = character(), subtype = character(), channel = integer(), </span></span>
+<span><span class="co">#&gt;     number = integer()) </span></span>
+<span><span class="co">#&gt; NULL</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="co"># We can fill this in as below using additional data from the original ECG</span></span>
+<span><span class="va">hea</span> <span class="op">&lt;-</span> <span class="va">ecg</span><span class="op">$</span><span class="va">header</span></span>
+<span><span class="va">start</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/attributes.html" class="external-link">attributes</a></span><span class="op">(</span><span class="va">hea</span><span class="op">)</span><span class="op">$</span><span class="va">record_line</span><span class="op">$</span><span class="va">start_time</span></span>
+<span><span class="va">hz</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/attributes.html" class="external-link">attributes</a></span><span class="op">(</span><span class="va">hea</span><span class="op">)</span><span class="op">$</span><span class="va">record_line</span><span class="op">$</span><span class="va">frequency</span></span>
+<span></span>
+<span><span class="va">ann</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/annotation_table.html">annotation_table</a></span><span class="op">(</span></span>
+<span>  annotator <span class="op">=</span> <span class="st">"pks"</span>,</span>
+<span>  time <span class="op">=</span> <span class="va">peak_positions</span> <span class="op">/</span> <span class="va">hz</span>,</span>
+<span>  sample <span class="op">=</span> <span class="va">peak_positions</span>,</span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">vector</a></span><span class="op">(</span>mode <span class="op">=</span> <span class="st">"character"</span>, length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">peak_positions</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  subtype <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">vector</a></span><span class="op">(</span>mode <span class="op">=</span> <span class="st">"character"</span>, length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">peak_positions</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  channel <span class="op">=</span> <span class="st">"I"</span>,</span>
+<span>  number <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">vector</a></span><span class="op">(</span>mode <span class="op">=</span> <span class="st">"integer"</span>, length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">peak_positions</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Then, add this back to the original signal</span></span>
+<span><span class="va">ecg</span><span class="op">$</span><span class="va">annotation</span> <span class="op">&lt;-</span> <span class="va">ann</span></span>
+<span><span class="va">ecg</span></span>
+<span><span class="co">#&gt; &lt;Electrical Signal&gt;</span></span>
+<span><span class="co">#&gt; -------------------</span></span>
+<span><span class="co">#&gt; Recording Duration:  10 seconds</span></span>
+<span><span class="co">#&gt; Recording frequency  500  hz</span></span>
+<span><span class="co">#&gt; Number of channels:  12 </span></span>
+<span><span class="co">#&gt; Channel Names:  I II III AVF AVL AVR V1 V2 V3 V4 V5 V6 </span></span>
+<span><span class="co">#&gt; Annotation:  pks</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>
