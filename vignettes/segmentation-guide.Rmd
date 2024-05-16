@@ -1,5 +1,10 @@
 ---
 title: "Signal Segmentation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Signal Segmentation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -10,7 +15,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(egm)
+library(EGM)
 ```
 
 The concept of *beat segmentation* is important in cardiac electrical signal analysis. 

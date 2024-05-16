@@ -15,12 +15,18 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(egm)
+library(EGM)
 ```
 
-# Surface recordings
+# Reading in Data
+
+Thie software supports reading in certain types of raw cardiac electric signal currently. 
+This includes both intracardiac and extracardiac data.
+Please see `read_muse()` and `read_lspro()` as examples.
+If additional formats are requested, please [file an issue](https://github.com/shah-in-boots/EGM/issues) and provide a sample file (which primarily requires signal, in whatever format, and meta-information about the individual channels).
 
 Here is a simple example of taking a MUSE XML file and converting it to digital signal.
+This was tested against the 9th version of the MUSE XML format.
 
 ```{r}
 # Read in data
@@ -34,12 +40,11 @@ ecg <- read_muse(fp)
 ecg
 
 # Can now plot this easily
-ggm(ecg)
+ggm(ecg) + 
+  theme_egm_light()
 ```
 
-# Intracardiac recordings
-
-This signal now comes from the LSPro data.
+Similarly, intracardiac recordings obtained through LSPro can be read in as well. The function itself documents how this generally work.
 
 ```{r}
 # Read in data
@@ -57,3 +62,8 @@ ggm(egm, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
 	theme_egm_dark() 
 ```
 
+# Class Introduction
+
+The `{EGM}` package introduces a specific data-oriented class called `egm` (note the *lower-case* spelling compared to the package name). 
+This class is the primary data structure, and allows for compatibility within multiple signal types, including when reading in WFDB-formatted data.
+Once in this class, everything can be written out as well - with the preferred option being for the stated `WFDB` format.

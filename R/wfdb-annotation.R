@@ -104,8 +104,8 @@ read_annotation <- function(record,
 		wd <- getwd()
 	}
 
-	stopifnot("Expected <character>" = is.character(begin))
-	stopifnot("Expected <character>" = is.character(end))
+	stopifnot("Expected `character`" = is.character(begin))
+	stopifnot("Expected `character`" = is.character(end))
 
 	# Create all the necessary parameters for rdann
 	#		-f			Start time
@@ -168,7 +168,7 @@ write_annotation <- function(data,
 		wd <- getwd()
 	}
 
-	stopifnot("Expected <data.frame>" = inherits(data, "data.frame"))
+	stopifnot("Expected `data.frame`" = inherits(data, "data.frame"))
 
 	# Take annotation data and write to temporary file
 	# 	This later is sent to `wrann` through `cat` with a pipe

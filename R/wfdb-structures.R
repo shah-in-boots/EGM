@@ -148,7 +148,7 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #'
 #' @param time A `numeric` time stamp of the annotation
 #'
-#' @param sample A `integer` representing the sample number of the annotation
+#' @param sample An `integer` representing the sample number of the annotation
 #'
 #' @param type A `character` or string representing the type of the annotation
 #'

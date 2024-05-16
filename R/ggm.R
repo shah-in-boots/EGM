@@ -124,13 +124,12 @@ ggm <- function(data,
 		hea[, c("label", "source", "lead", "color")] |>
 		as.data.table()
 	if (is.null(channelData$color)) {
-		if (theme == "light") {
+		if (mode == "light") {
 			channelData$color <- '#000000'
 		} else {
 			channelData$color <- '#FFFFFF'
 		}
 	}
-
 
 	dt <-
 		data.table::melt(
@@ -173,6 +172,9 @@ ggm <- function(data,
 
 	# Add palette and color mode to the plot
 	g <- add_colors(g, palette = palette, mode = mode)
+
+	# Return object if available
+	g
 
 }
 

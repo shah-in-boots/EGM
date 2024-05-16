@@ -25,7 +25,7 @@ further details.}
 
 \item{time}{A \code{numeric} time stamp of the annotation}
 
-\item{sample}{A \code{integer} representing the sample number of the annotation}
+\item{sample}{An \code{integer} representing the sample number of the annotation}
 
 \item{type}{A \code{character} or string representing the type of the annotation}
 

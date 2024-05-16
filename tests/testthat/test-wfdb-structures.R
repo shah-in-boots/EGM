@@ -156,3 +156,7 @@ test_that("minimal header_table can be made that can then be written to WFDB", {
 
 })
 
+test_that("an annotation table can be created without using WFDB", {
+
+
+})
