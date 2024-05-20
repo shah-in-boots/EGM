@@ -156,7 +156,19 @@ test_that("minimal header_table can be made that can then be written to WFDB", {
 
 })
 
-test_that("an annotation table can be created without using WFDB", {
+test_that("an annotation table can be created", {
+
+	fp <- system.file('extdata', 'muse-sinus.xml', package = 'EGM')
+	ecg <- read_muse(fp)
+	x <-
+		ecg$signal$I |>
+		abs()
+	peaks <- which(diff(sign(diff(x))) == -2) + 1
+	peaks <- peaks[x[peaks] > (mean(x, na.rm = TRUE) + 2 * sd(x, na.rm = TRUE))]
+
+
+
+
 
 
 })

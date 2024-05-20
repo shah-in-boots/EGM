@@ -23,7 +23,10 @@ type, serving as the extension for the file that is written containing that
 annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
 further details.}
 
-\item{time}{A \code{numeric} time stamp of the annotation}
+\item{time}{A \code{character} time stamp of the annotation, written in the format
+of \strong{HH:MM:SS.SSS}, starting at \strong{00:00:00.000}. This is converted to the
+appropriate time based on the header file (which records the actual start
+time and sampling frequency).}
 
 \item{sample}{An \code{integer} representing the sample number of the annotation}
 

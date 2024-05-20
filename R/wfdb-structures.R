@@ -146,7 +146,10 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #'
 #' @param x A `data.table` object that represents an annotation table
 #'
-#' @param time A `numeric` time stamp of the annotation
+#' @param time A `character` time stamp of the annotation, written in the format
+#'   of __HH:MM:SS.SSS__, starting at __00:00:00.000__. This is converted to the
+#'   appropriate time based on the header file (which records the actual start
+#'   time and sampling frequency).
 #'
 #' @param sample An `integer` representing the sample number of the annotation
 #'
@@ -162,12 +165,13 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #'
 #' @export
 annotation_table <- function(annotator = character(),
-														 time = numeric(),
+														 time = character(),
 														 sample = integer(),
 														 type = character(),
 														 subtype = character(),
 														 channel = integer(),
-														 number = integer()) {
+														 number = integer(),
+														 frequency = integer()) {
 
 
 	# Invariant rules:
@@ -177,12 +181,49 @@ annotation_table <- function(annotator = character(),
 	# 	Each column type is specific and invariant
 	#
 	# Invariant columns:
-	#		time: <double>
+	#		time: <character>
 	# 	sample: <integer>
 	#		type: <character>
 	# 	subtype: <character>
 	#		channel: <integer>
 	# 	number: <integer>
+
+	# The input data may be partially missing, and can be cleaned up empirically
+	# Can recycle some elements of data before placing in list
+	# The minimum data point is the type of annotation
+	# Everything revolves around the annotation itself
+	n <- length(type)
+
+	# Subtypes
+	if (length(subtype) == 0) {
+		subtype <- vector(mode = "character", length = n)
+	}
+
+
+	# Number
+	if (length(number) == 0) {
+		number <- vector(mode = "integer", length = n)
+	}
+
+
+	# Channel
+	if (length(channel) == 0) {
+		channel <- vector(mode = "integer", length = n)
+	}
+
+	# Sample/time are more complicated
+	# Sample can be given, and if so, time can be imputed if frequency is known
+	# If time is given, sample can be imputed if frequency is known
+	if (length(time) == 0 & length(sample) > 0) {
+		if (length(frequency) == 0) {
+			stop("Frequency must be given to impute time from sample")
+		}
+
+		#time <- as.character(as.POSIXct(as.numeric(sample) / frequency, origin = "1970-01-01", tz = "UTC"))
+	}
+
+
+
 
 	x <- df_list(time = time,
 							 sample = sample,
@@ -201,16 +242,16 @@ new_annotation_table <- function(x = list(),
 	if (length(x) > 0) {
 		checkmate::assert_list(
 			x,
-			types = c('numeric', 'integer', 'character')
+			types = c("integer", "character")
 		)
 
 		checkmate::assert_names(
 			names(x),
-			identical.to = c('time', 'sample', 'type', 'subtype', 'channel', 'number')
+			identical.to = c("time", "sample", "type", "subtype", "channel", "number")
 		)
 	}
 
-	new_data_frame(x, annotator = annotator, class = c('annotation_table', 'data.table'))
+	new_data_frame(x, annotator = annotator, class = c("annotation_table", "data.table"))
 
 }
 
