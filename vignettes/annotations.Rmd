@@ -78,5 +78,4 @@ for (i in 1:nrow(pks)) {
 # Now add to the original figure
 fig +
   geom_point(inherit.aes = FALSE, data = pks, aes(x = sample, y = mV))
-
 ```

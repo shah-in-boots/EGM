@@ -7,10 +7,11 @@ Authors@R:
            role = c("aut", "cre"),
            email = "ashah282@uic.edu",
            comment = c(ORCID = "0000-0002-9729-1558"))
-Description: A system for importing electrophysiological signal into R, based on
-    the Waveform Database(WFDB) software package. This package provides a wrapper 
-    for utilizing WFDB functions for reading and writing signal data in R, as 
-    well as functions for visualization and analysis. This package introduces a
+Description: A system for importing electrophysiological signal into R, based 
+    on the Waveform Database(WFDB) software package, written by Moody et al 
+    2022 <doi:10.13026/gjvw-1m31>. This package provides a wrapper for 
+    utilizing WFDB functions for reading and writing signal data in R, as well 
+    as functions for visualization and analysis. This package introduces a 
     stable and compatible class for working with signal data, and supports 
     reading in of specific, electrophysiogical file formats, including 
     intracardiac electrograms.
@@ -21,8 +22,8 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 Depends: 
     R (>= 4.0),
-    vctrs,
-    data.table,
+    vctrs (>= 0.5.0),
+    data.table (>= 1.15.0)
 Imports: 
     stats,
     fs,
