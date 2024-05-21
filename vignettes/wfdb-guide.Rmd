@@ -130,13 +130,10 @@ start <- attributes(hea)$record_line$start_time
 hz <- attributes(hea)$record_line$frequency
 
 ann <- annotation_table(
-  annotator = "pks",
-  time = peak_positions / hz,
+  annotator = "our_pks",
   sample = peak_positions,
-  type = vector(mode = "character", length = length(peak_positions)),
-  subtype = vector(mode = "character", length = length(peak_positions)),
-  channel = "I",
-  number = vector(mode = "integer", length = length(peak_positions))
+  type = "R",
+  frequency = hz
 )
 
 # Then, add this back to the original signal

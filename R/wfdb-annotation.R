@@ -145,9 +145,32 @@ read_annotation <- function(record,
 	# Rename annotation table
 	names(dat) <- c("time", "sample", "type", "subtype", "channel", "number")
 
-	# TODO
 	# The time is raw, and converted to HH:MM:SS.SSS format, without a date
+	# 	This could be just M:S format or H:M:S format
 	# This is a discrepancy between `rdann` and this software
+	# Can temporarily convert this to a POSIX format here
+	hea <- read_header(record, record_dir)
+	start_time <- attributes(hea)$record_line$start_time
+
+	# Extract time appropriately
+	# Also make sure the type is appropriate
+	timeType <- stringr::str_count(dat$time, ":")
+	dat$time <- ifelse(timeType == 1, paste0("0:", dat$time), dat$time)
+
+	# Now split the strings by the position and check the times
+	datHMS <-
+		stringr::str_split(dat$time, ":", simplify = TRUE) |>
+		as.data.frame()
+	hours <- as.numeric(datHMS[[1]])
+	minutes <- as.numeric(datHMS[[2]])
+	seconds <- as.numeric(datHMS[[3]])
+
+	# Convert to characters
+	hours <- ifelse(hours < 10, paste0("0", hours), hours)
+	minutes <- ifelse(minutes < 10, paste0("0", minutes), minutes)
+	seconds <- ifelse(seconds < 10, paste0("0", seconds), seconds)
+
+	dat$time <- paste0(hours, ":", minutes, ":", seconds)
 
 	# Return
 	new_annotation_table(df_list(dat), annotator)

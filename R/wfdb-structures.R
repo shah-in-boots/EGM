@@ -194,7 +194,12 @@ annotation_table <- function(annotator = character(),
 	# Can recycle some elements of data before placing in list
 	# The minimum data point is the type of annotation
 	# Everything revolves around the annotation itself
-	n <- length(type)
+	n <- length(sample)
+
+	# Type data
+	if (length(type) == 0) {
+		type <- vector(mode = "character", length = n)
+	}
 
 	# Subtypes
 	if (length(subtype) == 0) {
@@ -220,16 +225,16 @@ annotation_table <- function(annotator = character(),
 			stop("Frequency must be given to impute time from sample")
 		} else {
 			# These periods are the time points in seconds
-			time_points <- sample / frequency
+			timePoints <- sample / frequency
 
 			# Hours
-			hours <- floor(time_points / 3600)
+			hours <- floor(timePoints / 3600)
 
 			# Minutes
-			minutes <- floor((time_points - (hours * 3600)) / 60)
+			minutes <- floor((timePoints - (hours * 3600)) / 60)
 
 			# Seconds
-			seconds <- time_points - (hours * 3600) - (minutes * 60)
+			seconds <- timePoints - (hours * 3600) - (minutes * 60)
 
 			# Convert to characters
 			hours <- ifelse(hours < 10, paste0("0", hours), hours)
@@ -257,7 +262,7 @@ new_annotation_table <- function(x = list(),
 	if (length(x) > 0) {
 		checkmate::assert_list(
 			x,
-			types = c("integer", "character")
+			types = c("numeric", "integer", "character")
 		)
 
 		checkmate::assert_names(
