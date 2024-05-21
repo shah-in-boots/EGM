@@ -236,9 +236,30 @@ arguments, which are displayed below, include:</p>
 <span>  annotator <span class="op">=</span> <span class="st">"our_pks"</span>,</span>
 <span>  sample <span class="op">=</span> <span class="va">peak_positions</span>,</span>
 <span>  type <span class="op">=</span> <span class="st">"R"</span>,</span>
-<span>  frequency <span class="op">=</span> <span class="va">hz</span></span>
+<span>  frequency <span class="op">=</span> <span class="va">hz</span>,</span>
+<span>  channel <span class="op">=</span> <span class="st">"I"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Here are our annotations</span></span>
+<span><span class="va">ann</span></span>
+<span><span class="co">#&gt; &lt;annotation_table: 13 `our_pks` annotations&gt;</span></span>
+<span><span class="co">#&gt;             time sample   type subtype channel number</span></span>
+<span><span class="co">#&gt;           &lt;char&gt;  &lt;num&gt; &lt;char&gt;  &lt;char&gt;  &lt;char&gt;  &lt;int&gt;</span></span>
+<span><span class="co">#&gt;  1: 00:00:00.192     96      R               I      0</span></span>
+<span><span class="co">#&gt;  2: 00:00:00.854    427      R               I      0</span></span>
+<span><span class="co">#&gt;  3: 00:00:01.518    759      R               I      0</span></span>
+<span><span class="co">#&gt;  4: 00:00:02.182   1091      R               I      0</span></span>
+<span><span class="co">#&gt;  5: 00:00:03.506   1753      R               I      0</span></span>
+<span><span class="co">#&gt;  6:  00:00:04.17   2085      R               I      0</span></span>
+<span><span class="co">#&gt;  7: 00:00:04.834   2417      R               I      0</span></span>
+<span><span class="co">#&gt;  8:   00:00:05.5   2750      R               I      0</span></span>
+<span><span class="co">#&gt;  9:  00:00:06.16   3080      R               I      0</span></span>
+<span><span class="co">#&gt; 10: 00:00:06.824   3412      R               I      0</span></span>
+<span><span class="co">#&gt; 11: 00:00:07.488   3744      R               I      0</span></span>
+<span><span class="co">#&gt; 12: 00:00:08.152   4076      R               I      0</span></span>
+<span><span class="co">#&gt; 13: 00:00:08.818   4409      R               I      0</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="co"># Then, add this back to the original signal</span></span>
 <span><span class="va">ecg</span><span class="op">$</span><span class="va">annotation</span> <span class="op">&lt;-</span> <span class="va">ann</span></span>
 <span><span class="va">ecg</span></span>

@@ -62,7 +62,28 @@
 <h2 class="pkg-version" data-toc-text="0.0.0.9000" id="egm-0009000">EGM 0.0.0.9000<a class="anchor" aria-label="anchor" href="#egm-0009000"></a></h2>
 <ul><li>Added a <code>NEWS.md</code> file to track changes to the package.</li>
 </ul></div>
-  </main></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.0" id="egm-010">EGM 0.1.0<a class="anchor" aria-label="anchor" href="#egm-010"></a></h2>
+<p>This is the first <em>CRAN</em> release for this package. The initial version contains key features for working with intracardiac electrograms (EGM) and surface electrocardiograms (ECG), visualizing signals, and working with annotations stored in the <code>WFDB</code> format. A single, major class is introduced here.</p>
+<ul><li>
+<code>egm</code> objects contain signal data and meta-data with specific dispatch methods, and are composed of three internal classes
+<ul><li>a <code>signal_table</code> that contains the raw signal data</li>
+<li>a <code>header_table</code> that contains meta-data about the signal data</li>
+<li>an <code>annotation_table</code> that identifies samples and labels them with specific annotations</li>
+</ul></li>
+</ul><p>Additional I/O features are introduced to work with data stored in the <code>WFDB</code> format:</p>
+<ul><li>
+<code><a href="../reference/wfdb_io.html">read_wfdb()</a></code> reads in <code>WFDB</code> data and returns an <code>egm</code> object</li>
+<li>
+<code><a href="../reference/wfdb_io.html">write_wfdb()</a></code> writes an <code>egm</code> object to a <code>WFDB</code>-compatible format</li>
+</ul><p>This first version also allows working with ECG and EGM data using:</p>
+<ul><li>
+<code><a href="../reference/muse.html">read_muse()</a></code> for ECG data (GE MUSE, v9)</li>
+<li>
+<code><a href="../reference/lspro.html">read_lspro()</a></code> for EGM data (LabSystem Pro)</li>
+</ul></div>
+  </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
