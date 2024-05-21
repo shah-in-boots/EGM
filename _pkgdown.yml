@@ -7,7 +7,7 @@ template:
     fg: "#000000"
     primary: "#ff5954"
     secondary: "#42a7c6"
-    success: "#f7634"
+    success: "#f57634"
     danger: "#a01813"
     info: "#eceada"
     warning: "#238f9d"
