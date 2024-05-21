@@ -1,6 +1,6 @@
-# EGM 0.0.0.9000
+# EGM (developmental version)
 
-* Added a `NEWS.md` file to track changes to the package.
+* Updates to `{pkgdown}` settings for documentation organization
 
 # EGM 0.1.0
 

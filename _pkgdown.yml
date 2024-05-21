@@ -5,13 +5,13 @@ template:
   bslib:
     bg: "#ffffff"
     fg: "#000000"
-    primary: "#ff5954"
-    secondary: "#42a7c6"
-    success: "#f57634"
-    danger: "#a01813"
-    info: "#eceada"
-    warning: "#238f9d"
-    light: "#eceada"
+    primary: "#ffb954"
+    secondary: "#238f9d"
+    success: "#42a7c6"
+    info: "#dee6e7"
+    warning: "#f57634"
+    danger: "#d11807"
+    light: "#f0e6e2"
     dark: "#125a56"
 
 url: https://shah-in-boots.github.io/EGM/
@@ -21,10 +21,11 @@ destination: docs
 home:
   title: Evaluating Cardiac Electrophysiological Signals
   description: >
-    A system for importing electrophysiological signal into R, based on the
-    Waveform Database(WFDB) software package. This package provides a wrapper
-    for utilizing WFDB functions for reading and writing signal data in R, as
-    well as functions for visualization and analysis. This package introduces a
+    A system for importing electrophysiological signal into R, based
+    on the Waveform Database(WFDB) software package, written by Moody et al
+    2022 <doi:10.13026/gjvw-1m31>. This package provides a wrapper for
+    utilizing WFDB functions for reading and writing signal data in R, as well
+    as functions for visualization and analysis. This package introduces a
     stable and compatible class for working with signal data, and supports
     reading in of specific, electrophysiogical file formats, including
     intracardiac electrograms.
