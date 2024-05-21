@@ -163,6 +163,8 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' @param number An additional `integer` value or number that classifies the
 #'   annotation (allows for compatibility with multiple annotation types)
 #'
+#' @param frequency An `integer` that represents the sampling frequency in Hertz
+#'
 #' @export
 annotation_table <- function(annotator = character(),
 														 time = character(),
@@ -217,11 +219,33 @@ annotation_table <- function(annotator = character(),
 	if (length(time) == 0 & length(sample) > 0) {
 		if (length(frequency) == 0) {
 			stop("Frequency must be given to impute time from sample")
-		}
+		} else {
+			# These periods are the time points in seconds
+			time_points <- sample / frequency
 
-		#time <- as.character(as.POSIXct(as.numeric(sample) / frequency, origin = "1970-01-01", tz = "UTC"))
+			# Hours
+			hours <- floor(time_points / 3600)
+
+			# Minutes
+			minutes <- floor((time_points - (hours * 3600)) / 60)
+
+			# Seconds
+			seconds <- time_points - (hours * 3600) - (minutes * 60)
+
+			# Convert to characters
+			hours <- ifelse(hours < 10, paste0("0", hours), hours)
+			minutes <- ifelse(minutes < 10, paste0("0", minutes), minutes)
+			seconds <- ifelse(seconds < 10, paste0("0", seconds), seconds)
+
+			time <- paste0(hours, ":", minutes, ":", seconds)
+		}
 	}
 
+	# TODO
+	if (length(time) > 0 & length(sample > 0)) {
+
+
+	}
 
 
 
@@ -385,7 +409,9 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #'
 #' @param samples An `integer` for the number of samples
 #'
-#' @param start_time The `POSIXct` time of recording
+#' @param start_time The `POSIXct` time of recording, with miliseconds included.
+#'   For example, `strptime(start_time, "%Y-%m-%d %H:%M%:%OSn")` where as
+#'   described in [base::strptime()]
 #'
 #' @param ADC_saturation An `integer` representing ADC saturation
 #'
@@ -432,7 +458,7 @@ header_table <- function(record_name = character(), # Record line information
 												 number_of_channels = integer(),
 												 frequency = 250.0,
 												 samples = integer(),
-												 start_time = Sys.time(),
+												 start_time = strptime(Sys.time(), "%Y-%m-%d %H:%M:%OSn"),
 												 ADC_saturation = integer(),
 												 file_name = character(), # Signal specific information
 												 storage_format = 16L,
@@ -520,6 +546,7 @@ header_table <- function(record_name = character(), # Record line information
 		ADC_gain <- ADC_saturation / additional_gain
 	}
 
+	# TODO
 	# Option characteristics
 
 	# Signal specifications
@@ -545,6 +572,7 @@ header_table <- function(record_name = character(), # Record line information
 		"scale" = ifelse(length(scale) == 0, NA, scale)
 	)
 
+	# TODO
 	# Info strings
 
 

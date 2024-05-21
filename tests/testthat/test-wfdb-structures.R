@@ -163,8 +163,8 @@ test_that("an annotation table can be created", {
 	x <-
 		ecg$signal$I |>
 		abs()
-	peaks <- which(diff(sign(diff(x))) == -2) + 1
-	peaks <- peaks[x[peaks] > (mean(x, na.rm = TRUE) + 2 * sd(x, na.rm = TRUE))]
+	sample <- which(diff(sign(diff(x))) == -2) + 1
+	sample <- sample[x[sample] > (mean(x, na.rm = TRUE) + 2 * sd(x, na.rm = TRUE))]
 
 
 

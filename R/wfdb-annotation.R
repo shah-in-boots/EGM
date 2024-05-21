@@ -142,6 +142,10 @@ read_annotation <- function(record,
 			data.table::fread(cmd = cmd, header = FALSE)
 	})
 
+	# Correct time to match the header file
+	hea <- read_header(record, record_dir)
+	start_time <- attributes(hea)$record_line$start_time
+
 	# Rename and return as annotation table
 	names(dat) <- c('time', 'sample', 'type', 'subtype', 'channel', 'number')
 	new_annotation_table(df_list(dat), annotator)
