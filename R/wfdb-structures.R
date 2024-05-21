@@ -126,18 +126,16 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 
 #' Annotation Table
 #'
-#' @description
-#' `annotation_table()` modifies the `<data.table>` class to work with
-#' annotation data. The columns are of all equal length, and each row describes
-#' a single annotation (although there may be duplicate time points).
+#' @description `annotation_table()` modifies the `data.table` class to work
+#' with annotation data. The columns are of all equal length, and each row
+#' describes a single annotation (although there may be duplicate time points).
 #'
-#' @details
-#' The `annotation_table()` function creates a compatible table that can be used
-#' with [write_annotation()] and [read_annotation()] functions.
+#' @details The `annotation_table()` function creates a compatible table that
+#' can be used with [write_annotation()] and [read_annotation()] functions.
 #'
 #' @inheritSection wfdb_annotations Annotation files
 #'
-#' @returns A `<data.table>` that has invariant columns that are compatible with
+#' @returns A `data.table` that has invariant columns that are compatible with
 #'   the WFDB library
 #'
 #' @inheritParams wfdb
@@ -149,7 +147,8 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' @param time A `character` time stamp of the annotation, written in the format
 #'   of __HH:MM:SS.SSS__, starting at __00:00:00.000__. This is converted to the
 #'   appropriate time based on the header file (which records the actual start
-#'   time and sampling frequency).
+#'   time and sampling frequency). This is often an unnecessary variable and is
+#'   given for compatibility with the WFDB applications.
 #'
 #' @param sample An `integer` representing the sample number of the annotation
 #'
@@ -169,11 +168,12 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 annotation_table <- function(annotator = character(),
 														 time = character(),
 														 sample = integer(),
+														 frequency = integer(),
 														 type = character(),
 														 subtype = character(),
 														 channel = integer(),
 														 number = integer(),
-														 frequency = integer()) {
+														 ...) {
 
 
 	# Invariant rules:
@@ -215,7 +215,6 @@ annotation_table <- function(annotator = character(),
 
 	# Sample/time are more complicated
 	# Sample can be given, and if so, time can be imputed if frequency is known
-	# If time is given, sample can be imputed if frequency is known
 	if (length(time) == 0 & length(sample) > 0) {
 		if (length(frequency) == 0) {
 			stop("Frequency must be given to impute time from sample")
@@ -240,14 +239,6 @@ annotation_table <- function(annotator = character(),
 			time <- paste0(hours, ":", minutes, ":", seconds)
 		}
 	}
-
-	# TODO
-	if (length(time) > 0 & length(sample > 0)) {
-
-
-	}
-
-
 
 	x <- df_list(time = time,
 							 sample = sample,

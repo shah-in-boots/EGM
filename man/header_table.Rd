@@ -10,7 +10,7 @@ header_table(
   number_of_channels = integer(),
   frequency = 250,
   samples = integer(),
-  start_time = Sys.time(),
+  start_time = strptime(Sys.time(), "\%Y-\%m-\%d \%H:\%M:\%OSn"),
   ADC_saturation = integer(),
   file_name = character(),
   storage_format = 16L,
@@ -42,7 +42,9 @@ is_header_table(x)
 
 \item{samples}{An \code{integer} for the number of samples}
 
-\item{start_time}{The \code{POSIXct} time of recording}
+\item{start_time}{The \code{POSIXct} time of recording, with miliseconds included.
+For example, \code{strptime(start_time, "\%Y-\%m-\%d \%H:\%M\%:\%OSn")} where as
+described in \code{\link[base:strptime]{base::strptime()}}}
 
 \item{ADC_saturation}{An \code{integer} representing ADC saturation}
 

@@ -7,12 +7,14 @@
 \usage{
 annotation_table(
   annotator = character(),
-  time = numeric(),
+  time = character(),
   sample = integer(),
+  frequency = integer(),
   type = character(),
   subtype = character(),
   channel = integer(),
-  number = integer()
+  number = integer(),
+  ...
 )
 
 is_annotation_table(x)
@@ -26,9 +28,12 @@ further details.}
 \item{time}{A \code{character} time stamp of the annotation, written in the format
 of \strong{HH:MM:SS.SSS}, starting at \strong{00:00:00.000}. This is converted to the
 appropriate time based on the header file (which records the actual start
-time and sampling frequency).}
+time and sampling frequency). This is often an unnecessary variable and is
+given for compatibility with the WFDB applications.}
 
 \item{sample}{An \code{integer} representing the sample number of the annotation}
+
+\item{frequency}{An \code{integer} that represents the sampling frequency in Hertz}
 
 \item{type}{A \code{character} or string representing the type of the annotation}
 
@@ -40,20 +45,22 @@ annotation}
 \item{number}{An additional \code{integer} value or number that classifies the
 annotation (allows for compatibility with multiple annotation types)}
 
+\item{...}{Additional arguments to be passed to the function}
+
 \item{x}{A \code{data.table} object that represents an annotation table}
 }
 \value{
-A \verb{<data.table>} that has invariant columns that are compatible with
+A \code{data.table} that has invariant columns that are compatible with
 the WFDB library
 }
 \description{
-\code{annotation_table()} modifies the \verb{<data.table>} class to work with
-annotation data. The columns are of all equal length, and each row describes
-a single annotation (although there may be duplicate time points).
+\code{annotation_table()} modifies the \code{data.table} class to work
+with annotation data. The columns are of all equal length, and each row
+describes a single annotation (although there may be duplicate time points).
 }
 \details{
-The \code{annotation_table()} function creates a compatible table that can be used
-with \code{\link[=write_annotation]{write_annotation()}} and \code{\link[=read_annotation]{read_annotation()}} functions.
+The \code{annotation_table()} function creates a compatible table that
+can be used with \code{\link[=write_annotation]{write_annotation()}} and \code{\link[=read_annotation]{read_annotation()}} functions.
 }
 \section{Annotation files}{
 The following annotation file types are described below.

@@ -125,7 +125,7 @@ parse_date_and_time <- function(x) {
 	stopifnot('Requires `x` to be a `character`' = is.character(x))
 
 	# Time
-	# 	Assumes HH:MM:SS
+	# 	Assumes HH:MM:SS.SSS
 	tm <- stringr::str_extract(x, '\\d\\d:\\d\\d:\\d\\d')
 
 	# Dates are more varied
@@ -133,6 +133,6 @@ parse_date_and_time <- function(x) {
 	dt <- stringr::str_extract(x, '\\d+/\\d+/\\d+')
 
 	# Create date time
-	as.POSIXct(strptime(paste(tm[1], dt[1]), "%H:%M:%S %d/%m/%Y"))
+	as.POSIXct(strptime(paste(tm[1], dt[1]), "%H:%M:%OS %d/%m/%Y"))
 
 }

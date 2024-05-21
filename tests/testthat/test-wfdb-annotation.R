@@ -38,11 +38,11 @@ test_that("can read in faulty signal safely", {
 
 })
 
-test_that("annotation read in uses appropriate header data") {
+test_that("annotation read in uses appropriate header data", {
 
 	skip_on_cran()
 	skip_on_ci()
 
 	hea <- read_header("ecg", test_path())
 
-}
+})

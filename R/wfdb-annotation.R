@@ -142,12 +142,14 @@ read_annotation <- function(record,
 			data.table::fread(cmd = cmd, header = FALSE)
 	})
 
-	# Correct time to match the header file
-	hea <- read_header(record, record_dir)
-	start_time <- attributes(hea)$record_line$start_time
+	# Rename annotation table
+	names(dat) <- c("time", "sample", "type", "subtype", "channel", "number")
 
-	# Rename and return as annotation table
-	names(dat) <- c('time', 'sample', 'type', 'subtype', 'channel', 'number')
+	# TODO
+	# The time is raw, and converted to HH:MM:SS.SSS format, without a date
+	# This is a discrepancy between `rdann` and this software
+
+	# Return
 	new_annotation_table(df_list(dat), annotator)
 }
 

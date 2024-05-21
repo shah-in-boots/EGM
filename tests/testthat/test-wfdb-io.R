@@ -43,7 +43,7 @@ test_that('R data objects can be converted or written to WFDB format', {
 	expect_gt(length(headerFile), 14)
 	expect_output(print(headerFile[1]), 'egm 14')
 
-	file <- system.file('extdata', 'muse-sinus.xml', package = 'shiva')
+	file <- system.file('extdata', 'muse-sinus.xml', package = 'EGM')
 	ecg <- read_muse(file)
 
 	write_wfdb(
@@ -188,7 +188,7 @@ test_that('can read in WFDB file into `egm` directly', {
 	# From the stored package data
 
 	rec <- 'muse-sinus'
-	dir <- system.file('extdata', 'muse-sinus.dat', package = 'shiva')
+	dir <- system.file('extdata', 'muse-sinus.dat', package = 'EGM')
 	ecg <- read_wfdb(rec, fs::path_dir(dir))
 
 
@@ -200,11 +200,11 @@ test_that('can read in MUSE ECG header', {
 	skip_on_ci()
 
 	# Simple header
-	hea <- read_header('ecg', record_dir = test_path())
-	expect_equal(unique(hea$file_name), 'ecg.dat')
+	hea <- read_header("ecg", record_dir = test_path())
+	expect_equal(unique(hea$file_name), "ecg.dat")
 
 	# Complex header
-	fp <- system.file('extdata', 'muse-sinus.hea', package = 'shiva')
+	fp <- system.file("extdata", "muse-sinus.hea", package = "EGM")
 	hea <- read_header(
 		record =
 			fs::path_file(fp) |>
@@ -213,7 +213,7 @@ test_that('can read in MUSE ECG header', {
 	)
 
 	header <- readLines(fp)
-	expect_equal(hea$color, unlist(strsplit(header[16], ' '))[-c(1:2)])
+	expect_equal(hea$color, unlist(strsplit(header[16], " "))[-c(1:2)])
 
 })
 
