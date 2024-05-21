@@ -85,7 +85,7 @@ end-user.</p>
 <span>  number_of_channels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  frequency <span class="op">=</span> <span class="fl">250</span>,</span>
 <span>  samples <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  start_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  start_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/strptime.html" class="external-link">strptime</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"%Y-%m-%d %H:%M:%OSn"</span><span class="op">)</span>,</span>
 <span>  ADC_saturation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  file_name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  storage_format <span class="op">=</span> <span class="fl">16L</span>,</span>
@@ -128,7 +128,9 @@ end-user.</p>
 
 
 <dt>start_time</dt>
-<dd><p>The <code>POSIXct</code> time of recording</p></dd>
+<dd><p>The <code>POSIXct</code> time of recording, with miliseconds included.
+For example, <code>strptime(start_time, "%Y-%m-%d %H:%M%:%OSn")</code> where as
+described in <code><a href="https://rdrr.io/r/base/strptime.html" class="external-link">base::strptime()</a></code></p></dd>
 
 
 <dt>ADC_saturation</dt>
