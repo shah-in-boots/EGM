@@ -4,7 +4,7 @@ Version: 0.0.0.9000
 Authors@R: 
     person(given = "Anish S.",
            family = "Shah",
-           role = c("aut", "cre"),
+           role = c("aut", "cre", "cph"),
            email = "ashah282@uic.edu",
            comment = c(ORCID = "0000-0002-9729-1558"))
 Description: A system for importing electrophysiological signal into R, based 
