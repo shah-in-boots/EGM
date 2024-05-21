@@ -167,8 +167,14 @@ test_that("an annotation table can be created", {
 	sample <- sample[x[sample] > (mean(x, na.rm = TRUE) + 2 * sd(x, na.rm = TRUE))]
 
 
+	ann <- annotation_table(
+	  annotator = "test_peaks",
+	  sample = sample,
+	  type = "R",
+	  frequency = attributes(ecg$header)$record_line$frequency,
+	  channel = "I"
+	)
 
-
-
+	expect_s3_class(ann, "annotation_table")
 
 })

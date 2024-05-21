@@ -133,8 +133,12 @@ ann <- annotation_table(
   annotator = "our_pks",
   sample = peak_positions,
   type = "R",
-  frequency = hz
+  frequency = hz,
+  channel = "I"
 )
+
+# Here are our annotations
+ann
 
 # Then, add this back to the original signal
 ecg$annotation <- ann

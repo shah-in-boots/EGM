@@ -5,14 +5,14 @@ template:
   bslib:
     bg: "#ffffff"
     fg: "#000000"
-    primary: "#f49049"
-    secondary: "#efb865"
-    success: "#f56055"
-    danger: "#f2a552"
-    info: "#edc97e"
-    warning: "#f57a4a"
-    light: "#ecd999"
-    dark: "#ef4868"
+    primary: "#ff5954"
+    secondary: "#42a7c6"
+    success: "#f7634"
+    danger: "#a01813"
+    info: "#eceada"
+    warning: "#238f9d"
+    light: "#eceada"
+    dark: "#125a56"
 
 url: https://shah-in-boots.github.io/EGM/
 
