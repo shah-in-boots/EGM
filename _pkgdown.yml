@@ -5,7 +5,7 @@ template:
   bslib:
     bg: "#ffffff"
     fg: "#000000"
-    primary: "#ffb954"
+    primary: "#fd9a44"
     secondary: "#238f9d"
     success: "#42a7c6"
     info: "#dee6e7"
