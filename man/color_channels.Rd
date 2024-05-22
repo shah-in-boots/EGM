@@ -34,8 +34,8 @@ experimental argument, and may be moved in future version.
 }}
 }
 \value{
-Vector of hex code colors as \code{character} based on the selected palette and
-light/dark mode
+Vector of hex code colors as \code{character} based on the selected
+palette and light/dark mode
 }
 \description{
 This primarily restricts the colors to color-space safe options. It is

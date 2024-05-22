@@ -198,9 +198,14 @@ new_ggm <- function(object = ggplot(),
 #'
 #' @description
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' The general purpose is to improve visualization of electrical signals. There
 #' is a pattern of colors that are generally given from different recording
 #' software, and they can be replicated to help improve visibility.
+#'
+#' @returns A `ggm` object, with inheritance similar to
+#'   [ggplot2::theme_minimal()]
 #'
 #' @name colors
 NULL

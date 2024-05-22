@@ -1,9 +1,15 @@
 #' WFDB path utilities
 #'
-#' These functions are used to help find and locate commands from the
+#' @description These functions are used to help find and locate commands from the
 #' installation of WFDB. They are helpful in setting and getting path options
 #' and specific WFDB commands. They are primarily internal helper functions, but
 #' are documented for troubleshooting purposes.
+#'
+#' @returns These functions are helper functions to work with the user-installed
+#'   WFDB software. They do not always return an object, and are primarily used
+#'   for their side effects. They are primarily developer functions, but are
+#'   exposed to the user to help troubleshoot issues with their installation of
+#'   WFDB.
 #'
 #' @param .app The name of WFDB software command or application as a `character`
 #'

@@ -12,10 +12,16 @@ is_signal_table(x)
 \arguments{
 \item{...}{A \code{list} of equal lengths}
 
-\item{x}{\code{data.frame} A data frame}
+\item{x}{\code{data.frame} A data frame of signal data}
+}
+\value{
+An object of class \code{signal_table}, which is an extension of the
+\code{data.table} class. The \code{sample} column is \emph{invariant} and will always be
+present. The other columns represent additional channels.
 }
 \description{
-\code{signal_table()} modifies the \code{data.table} class to work with electrical
-signal data. The input should be a data set of equal number of rows. It will
-add a column of index positions called \code{sample} if it does not already exist.
+The \code{signal_table()} function modifies the \code{data.table} class to
+work with electrical signal data. The input should be a data set of equal
+number of rows. It will add a column of index positions called \code{sample} if
+it does not already exist.
 }

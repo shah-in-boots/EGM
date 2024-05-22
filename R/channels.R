@@ -22,12 +22,13 @@ identify_channel_source <- function(x) {
 #' `ggm` object. It has been exposed to users for custom or advanced theming
 #' options.
 #'
+#' @return Vector of hex code colors as `character` based on the selected
+#'   palette and light/dark mode
+#'
 #' @inheritParams ggm
 #'
 #' @param x Vector of `character` names of requested ECG or EGM leads
 #'
-#' @return Vector of hex code colors as `character` based on the selected palette and
-#'   light/dark mode
 #'
 #' @export
 color_channels <- function(x, palette, mode = "dark") {
@@ -221,11 +222,11 @@ color_channels <- function(x, palette, mode = "dark") {
 #'   using heuristics similar to what is found in `{ggplot2}` or other graphing
 #'   packages.
 #'
+#' @return Returns an updated `ggm` object
+#'
 #' @inheritParams ggm
 #'
 #' @param object A `ggm` object
-#'
-#' @return Returns an updated `ggm` object
 #'
 #' @export
 add_colors <- function(object, palette, mode) {

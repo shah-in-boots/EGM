@@ -2,17 +2,19 @@
 
 #' Signal tables
 #'
-#' @description
+#' @description The `signal_table()` function modifies the `data.table` class to
+#'   work with electrical signal data. The input should be a data set of equal
+#'   number of rows. It will add a column of index positions called `sample` if
+#'   it does not already exist.
 #'
-#' `signal_table()` modifies the `data.table` class to work with electrical
-#' signal data. The input should be a data set of equal number of rows. It will
-#' add a column of index positions called `sample` if it does not already exist.
+#' @returns An object of class `signal_table`, which is an extension of the
+#'   `data.table` class. The `sample` column is *invariant* and will always be
+#'   present. The other columns represent additional channels.
 #'
-#' @param x `data.frame` A data frame
+#' @param x `data.frame` A data frame of signal data
 #'
 #' @param ... A `list` of equal lengths
 #'
-#' @import data.table
 #' @export
 signal_table <- function(...) {
 
@@ -136,7 +138,8 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' @inheritSection wfdb_annotations Annotation files
 #'
 #' @returns A `data.table` that has invariant columns that are compatible with
-#'   the WFDB library
+#'   the WFDB library. The key columns include the sample index, the type of
+#'   annotation (and its subtype and number qualifier), and the channel.
 #'
 #' @inheritParams wfdb
 #'
@@ -147,7 +150,7 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' @param time A `character` time stamp of the annotation, written in the format
 #'   of __HH:MM:SS.SSS__, starting at __00:00:00.000__. This is converted to the
 #'   appropriate time based on the header file (which records the actual start
-#'   time and sampling frequency). This is often an unnecessary variable and is
+#'   time and sampling frequency). This is often a missing variable and is
 #'   given for compatibility with the WFDB applications.
 #'
 #' @param sample An `integer` representing the sample number of the annotation
@@ -157,7 +160,8 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' @param subtype A `character` or string representing the subtype of the
 #'   annotation
 #'
-#' @param channel An `integer` representing the channel number of the annotation
+#' @param channel An `integer` representing the channel number of the
+#'   annotation, or a `character` representing the channel name
 #'
 #' @param number An additional `integer` value or number that classifies the
 #'   annotation (allows for compatibility with multiple annotation types)
@@ -350,23 +354,25 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 
 #' Header Table
 #'
-#' @description
-#' `header_table()` modifies the `data.table` class to work with header data.
-#' The header data is read in from a similar format as to that of WFDB files and
-#' should be compatible/interchangeable when writing out to disk. The details
-#' extensively cover the type of data that is input. Generally, this function is
-#' called by `read_*_header()` functions and will generally not be called by the
-#' end-user.
+#' @description `header_table()` modifies the `data.table` class to work with
+#' header data. The header data is read in from a similar format as to that of
+#' WFDB files and should be compatible/interchangeable when writing out to disk.
+#' The details extensively cover the type of data that is input. Generally, this
+#' function is called by `read_*_header()` functions and will generally not be
+#' called by the end-user.
 #'
-#' @details
+#'@details The `header_table` object is relatively complex in that it directly
+#'  deals with properties of the signal, and allows compatibility with WFDB
+#'  files and other raw header files for other signal objects. It can be written
+#'  out using [write_wfdb()].
 #'
-#' # Header file structure
+#'  # Header file structure
 #'
-#' There are three components to the header file
+#'  There are three components to the header file:
 #'
-#' 1. __Record line__ that contains the following information, in the order
-#' documented, however pieces may be missing based on different parameters. From
-#' left to right...
+#'  1. __Record line__ that contains the following information, in the order
+#'  documented, however pieces may be missing based on different parameters.
+#'  From left to right...
 #'
 #'		- Record name
 #'		- Number of signals: represents number of segments/channels
@@ -375,9 +381,9 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #'		- Time: in HH:MM:SS format (optional)
 #'		- Date: in DD/MM/YYYY (optional)
 #'
-#' 1. __Signal specification lines__ contains specifications for individual
-#' signals, and there must be as many signal lines as there are reported by the
-#' above record line. From left to right....
+#'  1. __Signal specification lines__ contains specifications for individual
+#'  signals, and there must be as many signal lines as there are reported by the
+#'  above record line. From left to right....
 #'
 #'		- File name: usually *.dat
 #'		- Format `integer`: represents storage type, e.g. 8-bit or 16-bit
@@ -391,9 +397,13 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #'		- Block size (optional)
 #'		- Description: text or label information (optional)
 #'
-#' 1. __Info strings__ are unstructured lines that contains information about
-#' the record. Usually are descriptive. Starts with initial '#' without
-#' preceding white space at beginning of line.
+#'  1. __Info strings__ are unstructured lines that contains information about
+#'  the record. Usually are descriptive. Starts with initial '#' without
+#'  preceding white space at beginning of line.
+#'
+#' @returns A `header_table` object that is an extension of the `data.table`
+#'   class. This contains an adaptation of the function arguments, allowing for
+#'   compatibility with the WFDB class.
 #'
 #' @param x A `data.table` object that serves as the header table
 #'

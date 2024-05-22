@@ -233,11 +233,11 @@ write_wfdb <- function(data,
 					args = c(hz, adc, ip, op, col0))
 
 	# Modify header file with more data
-		# Record line (first one) needs a date and time appended
-		# Then handle the signal specification files
+	# 	Record line (first one) needs a date and time appended
+	# 	Then handle the signal specification files
 	headLine <-
 		readLines(con = paste0(record, ".hea"), n = 1) |>
-		paste(format(attributes(header)$record_line$start_time, "%H:%M:%S %d/%m/%Y"))
+		paste(format(attributes(header)$record_line$start_time, "%H:%M:%OS %d/%m/%Y"))
 
 	# 10 columns:
 	# 	>= V9 and V10 are descriptive fields

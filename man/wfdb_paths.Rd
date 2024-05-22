@@ -19,6 +19,13 @@ directory}
 
 \item{.app}{The name of WFDB software command or application as a \code{character}}
 }
+\value{
+These functions are helper functions to work with the user-installed
+WFDB software. They do not always return an object, and are primarily used
+for their side effects. They are primarily developer functions, but are
+exposed to the user to help troubleshoot issues with their installation of
+WFDB.
+}
 \description{
 These functions are used to help find and locate commands from the
 installation of WFDB. They are helpful in setting and getting path options

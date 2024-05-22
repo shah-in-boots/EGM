@@ -28,7 +28,7 @@ further details.}
 \item{time}{A \code{character} time stamp of the annotation, written in the format
 of \strong{HH:MM:SS.SSS}, starting at \strong{00:00:00.000}. This is converted to the
 appropriate time based on the header file (which records the actual start
-time and sampling frequency). This is often an unnecessary variable and is
+time and sampling frequency). This is often a missing variable and is
 given for compatibility with the WFDB applications.}
 
 \item{sample}{An \code{integer} representing the sample number of the annotation}
@@ -40,7 +40,8 @@ given for compatibility with the WFDB applications.}
 \item{subtype}{A \code{character} or string representing the subtype of the
 annotation}
 
-\item{channel}{An \code{integer} representing the channel number of the annotation}
+\item{channel}{An \code{integer} representing the channel number of the
+annotation, or a \code{character} representing the channel name}
 
 \item{number}{An additional \code{integer} value or number that classifies the
 annotation (allows for compatibility with multiple annotation types)}
@@ -51,7 +52,8 @@ annotation (allows for compatibility with multiple annotation types)}
 }
 \value{
 A \code{data.table} that has invariant columns that are compatible with
-the WFDB library
+the WFDB library. The key columns include the sample index, the type of
+annotation (and its subtype and number qualifier), and the channel.
 }
 \description{
 \code{annotation_table()} modifies the \code{data.table} class to work

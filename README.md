@@ -11,7 +11,6 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 status](https://www.r-pkg.org/badges/version/EGM)](https://CRAN.R-project.org/package=EGM)
 [![R-CMD-check](https://github.com/shah-in-boots/EGM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/shah-in-boots/EGM/actions/workflows/R-CMD-check.yaml)
 [![test-coverage](https://github.com/shah-in-boots/EGM/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/shah-in-boots/EGM/actions/workflows/test-coverage.yaml)
-[![pkgdown](https://github.com/shah-in-boots/EGM/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/shah-in-boots/EGM/actions/workflows/pkgdown.yaml)
 <!-- badges: end -->
 
 The purpose of `{EGM}` is to work with electrophysiology (EP) signal
@@ -42,7 +41,7 @@ You can install the released version of `{EGM}` from
 [CRAN](https://CRAN.R-project.org) with:
 
 ``` r
-#install.packages("EGM")
+install.packages("EGM")
 ```
 
 And the development version from [GitHub](https://github.com/) with:
@@ -51,3 +50,8 @@ And the development version from [GitHub](https://github.com/) with:
 # install.packages("devtools")
 devtools::install_github("shah-in-boots/EGM")
 ```
+
+Notably, the package software utilizes the WFDB software if it is
+available. You can expect errors in calling commands until the software
+is appropriately installed. Further installation instructions are
+available on the [Github site](https://github.com/bemoody/wfdb).
