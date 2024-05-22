@@ -11,7 +11,7 @@ template:
     info: "#dee6e7"
     warning: "#f57634"
     danger: "#d11807"
-    light: "#f0e6e2"
+    light: "#f0e6b2"
     dark: "#125a56"
 
 url: https://shah-in-boots.github.io/EGM/
@@ -52,4 +52,4 @@ footer:
     left: developed_by
     right: [built_with, colors]
   components:
-    colors: Colorspace from the **OrYel** palette
+    colors: Colorspace from the **nightfall** palette
