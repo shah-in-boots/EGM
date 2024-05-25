@@ -1,0 +1,9 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "EGM: Evaluating Cardiac Electrophysiology Signals",
+  author   = "Anish S. Shah",
+  year     = "2024",
+  note     = "R package version 0.1.0",
+  url      = "https://cran.r-project.org/package=EGM"
+)
+
