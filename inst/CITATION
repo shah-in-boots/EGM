@@ -4,6 +4,7 @@ bibentry(
   author   = "Anish S. Shah",
   year     = "2024",
   note     = "R package version 0.1.0",
-  url      = "https://cran.r-project.org/package=EGM"
+  url      = "https://cran.r-project.org/package=EGM",
+  key      = "R-EGM-package"
 )
 
