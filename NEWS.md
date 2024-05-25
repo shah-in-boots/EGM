@@ -1,7 +1,5 @@
 # EGM (development version)
 
-# EGM (developmental version)
-
 * Updates to `{pkgdown}` settings for documentation organization
 
 # EGM 0.1.0
