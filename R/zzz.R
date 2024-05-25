@@ -19,12 +19,12 @@
 		packageStartupMessage("WFDB software detected and set as `options(wfdb_path = '", wp, "')`")
 
 		# Add path to options as default
-		op.shiva <- list(
+		op.EGM <- list(
 			wfdb_path = wp
 		)
 
-		toset <- !(names(op.shiva) %in% names(op))
-		if (any(toset)) options(op.shiva[toset])
+		toset <- !(names(op.EGM) %in% names(op))
+		if (any(toset)) options(op.EGM[toset])
 
 	}
 
