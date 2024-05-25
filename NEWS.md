@@ -1,3 +1,5 @@
+# EGM (development version)
+
 # EGM (developmental version)
 
 * Updates to `{pkgdown}` settings for documentation organization
