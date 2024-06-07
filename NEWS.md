@@ -1,6 +1,8 @@
 # EGM (development version)
 
 * Updates to `{pkgdown}` settings for documentation organization
+* Simplify and update visualizations using `ggm()` object
+* Debug the color issues when adding a color theme to `ggm()`
 
 # EGM 0.1.0
 

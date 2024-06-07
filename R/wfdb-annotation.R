@@ -297,3 +297,10 @@ annotate_wfdb <- function(record,
 	)
 }
 
+# Annotator Systems -----------------------------------------------------------
+
+#' Annotator systems for WFDB objects
+#'
+#' @description These functions create templates for annotation in R and extend the ability for developers to create their own annotation systems that are stable for WFDB objects. They are compatible with WFDB annotations and can be written out to a WFDB-compatible file. This also allows extensibility.
+#' @name annotators
+NULL
