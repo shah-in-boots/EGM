@@ -42,6 +42,10 @@
 #'   will be retained. Some models may not have a version, and thus may be
 #'   `NULL`
 #'
+#' @param model_format The format of the model that is being loaded. Currently,
+#'   only the `SavedModel` format is supported. This is the default format that
+#'   `{keras}` and `{tensorflow}` use to save models.
+#'
 #' @param ... Additional parameters to be passed to the function
 #'
 #' @returns A `SavedModel` format from `{keras}` and `{tensorflow}`
@@ -52,6 +56,7 @@ load_electrophysiology_models <- function(model_architecture,
 																					input_shape,
 																					output_distribution,
 																					output_type,
+                                          model_format = "SavedModel",
 																					version = NULL,
 																					...) {
 
