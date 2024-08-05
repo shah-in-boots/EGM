@@ -10,6 +10,7 @@ load_electrophysiology_models(
   input_shape,
   output_distribution,
   output_type,
+  model_format = "SavedModel",
   version = NULL,
   ...
 )
@@ -28,6 +29,10 @@ with 12 leads would be written as \emph{500x12}.}
 output type. For example, if doing an ECG classification into atrial
 fibrillation versus sinus (yes/no), the output type may be labeled as
 \emph{AF}}
+
+\item{model_format}{The format of the model that is being loaded. Currently,
+only the \code{SavedModel} format is supported. This is the default format that
+\code{{keras}} and \code{{tensorflow}} use to save models.}
 
 \item{version}{Some models may be have iterations that are stored. In any
 models that are associated with core functions in \code{{EGM}}, several versions
