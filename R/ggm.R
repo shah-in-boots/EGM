@@ -192,6 +192,18 @@ new_ggm <- function(object = ggplot(),
 	)
 }
 
+# Annotations ------------------------------------------------------------------
+
+#' Add annotations to a `ggm` object
+#'
+#' @description The `add_annotations()` adds annotations to a `ggm` object. It is
+#'   specific to this class as it requires the output of [ggm()] to included
+#'   data stored in [annotation_table()].
+#' @export
+add_annotations <- function(...) {
+
+}
+
 # Colors -----------------------------------------------------------------------
 
 #' Theming and color options for `ggm` objects
