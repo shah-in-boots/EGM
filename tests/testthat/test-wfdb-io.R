@@ -81,7 +81,6 @@ test_that('rdsamp can read in WFDB formatted files for signal data', {
 
 	expect_s3_class(y, 'data.frame')
 
-
 	# Read in a ECG file from PhysioNet
 	z <- read_signal(
 		record = '300',
