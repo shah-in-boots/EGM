@@ -6,17 +6,30 @@
 \title{Tensorflow-based electrophysiology models}
 \usage{
 load_electrophysiology_models(
-  model_architecture,
-  input_shape,
-  output_distribution,
-  output_type,
-  model_format = "SavedModel",
+  model_format,
+  model_name = NULL,
+  model_architecture = NULL,
+  input_shape = NULL,
+  output_distribution = NULL,
+  output_type = NULL,
   version = NULL,
+  .repository_root = NULL,
+  .repository_name = NULL,
   ...
 )
 }
 \arguments{
-\item{model_architecture}{Neural network structure, such as \emph{CNN}. The supported types currently are:
+\item{model_format}{The format of the model to be loaded. The supported
+formats are:
+\itemize{
+\item \code{SavedModel} = a model saved using \code{\link[keras:save_model_tf]{keras::save_model_tf()}}
+}}
+
+\item{model_name}{Full model name, regardless of parameters. Supersedes the
+other model calling parameter names.}
+
+\item{model_architecture}{Neural network structure, such as \emph{CNN}. The
+supported types currently are:
 \itemize{
 \item \emph{CNN} = convolutional neural network
 }}
@@ -30,10 +43,6 @@ output type. For example, if doing an ECG classification into atrial
 fibrillation versus sinus (yes/no), the output type may be labeled as
 \emph{AF}}
 
-\item{model_format}{The format of the model that is being loaded. Currently,
-only the \code{SavedModel} format is supported. This is the default format that
-\code{{keras}} and \code{{tensorflow}} use to save models.}
-
 \item{version}{Some models may be have iterations that are stored. In any
 models that are associated with core functions in \code{{EGM}}, several versions
 will be retained. Some models may not have a version, and thus may be
@@ -42,21 +51,30 @@ will be retained. Some models may not have a version, and thus may be
 \item{...}{Additional parameters to be passed to the function}
 }
 \value{
-A \code{SavedModel} format from \code{{keras}} and \code{{tensorflow}}
+Depending on the the model format, will return a \code{SavedModel} format
+from \code{{keras}} and \code{{tensorflow}}
 }
 \description{
 This function loads pre-trained electrophysiology signal
 processing models trained using \code{{keras}} and \code{{tensorflow}}. This function
-serves as a wrapper around \code{\link[keras:save_model_tf]{keras::load_model_tf()}}. The source for these
-do not contain any personal or protected health information. The models are
-generally public-domain, and can be used for research purposes.
-Importantly, this function requires an internet connection to work. If
-internet is not available, the function will return empty with a message.
+serves as a wrapper around \code{\link[keras:save_model_tf]{keras::load_model_tf()}}, and other loading
+functions. The default source for these do not contain any personal or
+protected health information. The models are generally public-domain, and
+can be used for research purposes. Importantly, this function requires an
+internet connection to work. If internet is not available, the function
+will return empty with a message.
+}
+\details{
+In an interactive mode, all models available based on the default
+repository will be listed. In a non-interactive (or scripted) mode, the
+user must define the model upfront. To select a model, please use the
+parameters which in turn help decide what model type is of interest. To
+allow for flexibility in the future, the model names have been
+parameterized.
 
-To select a model, please use the parameters which in turn help decide what
-model type is of interest. To allow for flexibility in the future, the
-model names have been parameterized. For example, a model may be named
-\emph{CNN_500x12_Binary_AF_v1}
-
-The model types are detailed below.
+For example, a model may be named "CNN_500x12_Binary_AF_v1", which
+represents the general model architecture, its input type, the output
+distribution, the general output type, followed by the version.
+Alternatively, the full model name can be used as a shortcut (and to help
+with models that don't follow this pattern).
 }
