@@ -16,6 +16,18 @@
 #'
 #' @param ... Additional arguments passed to methods
 #'
+#' @references
+#'
+#' Park, Junbeom, Chungkeun Lee, Eran Leshem, Ira Blau, Sungsoo Kim, Jung Myung
+#' Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. “Early
+#' Differentiation of Long-Standing Persistent Atrial Fibrillation Using the
+#' Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads.” Scientific
+#' Reports 9 (February 26, 2019): 2746.
+#' https://doi.org/10.1038/s41598-019-38928-6.
+#'
+#' Hyvarinen, A., and Oja, E. (2000). Independent component analysis: algorithms
+#' and applications. *Neural Networks*, 13(4-5), 411-430.
+#'
 #' @return A list containing F wave features for each processed lead
 #' @export
 extract_f_waves <- function(object,
@@ -111,27 +123,19 @@ upsample_signal <- function(signal, original_frequency, new_frequency) {
 
 # Ventricular signal removal
 remove_ventricular_signal <- function(signal, method = "adaptive_svd") {
-  if (method != "adaptive_svd") {
-    stop("Only 'adaptive_svd' method is currently implemented")
+  if (method == "adaptive_svd") {
+    return(adaptive_svd_removal(signal))
+  } else if (method == "ica") {
+    return(ica_removal(signal))
+  } else {
+    stop("Unsupported method. Choose 'adaptive_svd' or 'ica'")
   }
-
-  adaptive_svd_removal(signal)
-}
-
-adaptive_svd_removal <- function(signal, frequency = 1000, qrs_window = 0.12) {
-
-  # Step 1: Detect QRS complexes
-  qrsLoci <- detect_QRS(signal, frequency)
-
-  # Step 2: Perform adaptive SVD cancellation
-  atrialSignal <- perform_svd_cancellation(signal, frequency, qrsLoci)
-
-  # Step 3: return atrial activity
-  atrialSignal
 }
 
 # Helper function to perform adaptive SVD cancellation
-perform_svd_cancellation <- function(signal, frequency, qrs_loc = NULL) {
+adaptive_svd_removal <- function(signal, frequency = 1000, qrs_window = 0.12, qrs_loc = NULL) {
+
+  # Step 1: Detect QRS complexes
   if (is.null(qrs_loc)) {
     qrs_loc <- detect_QRS(signal, frequency)
   }
@@ -152,7 +156,7 @@ perform_svd_cancellation <- function(signal, frequency, qrs_loc = NULL) {
 
   qrstMatrix <- do.call(rbind, qrstSegments)
 
-  # Perform SVD
+  # Step 2: Perform SVD (adaptive)
   svdResult <- svd(qrstMatrix)
 
   # Determine number of components to keep (explaining 99% of variance)
@@ -177,6 +181,7 @@ perform_svd_cancellation <- function(signal, frequency, qrs_loc = NULL) {
 
   atrialSignal
 }
+
 
 # Atrial signal analysis ----
 
