@@ -12,6 +12,9 @@ test_that("extract_f_waves works with default parameters", {
 	expect_type(result$I, "list")
 	expect_named(result$I, "amplitude")
 
+	# Check on alternative characteristics
+	result <- extract_f_waves(mock_af, lead = "II", f_characteristics = "approximate_entropy")
+
 })
 
 test_that("extract_f_waves handles invalid input", {
@@ -55,13 +58,14 @@ test_that("detect_QRS finds peaks", {
 test_that("calculate_apen returns expected range", {
 	signal <- rnorm(1000)
 
-	# Defaults to R approach
-	apen <- calculate_apen(signal)
+	# Trial the R approach
+	apen <- calculate_apen(signal, implementation = "R")
 	expect_type(apen, "double")
 	expect_true(apen >= 0 && apen <= 2)  # ApEn is typically between 0 and 2
 
-	# Can also use C++ for speedup
-	apen <- calculate_apen(signal, implementation = "C++")
+	# Can also use C++ for speedup as the default
+	apen <- calculate_apen(signal)
+	expect_type(apen, "double")
 })
 
 test_that("calculate_dominant_frequency returns expected range", {

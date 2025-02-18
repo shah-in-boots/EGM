@@ -328,8 +328,8 @@ detect_QRS <- function(signal, frequency, window_size = 0.150) {
 #' @param x Numeric vector of the time series
 #' @param m Embedding dimension (sample size), default is 3
 #' @param r Tolerance (threshold), default is 3.5 * sd(x)
-#' @param implementation Method to use for calculation, default is "R", but can
-#'   also be done in "C++" for significant speed-up of looping functions.
+#' @param implementation Method to use for calculation, default is "C++", but can
+#'   also be done in "R". The C++ implementation is faster.
 #'
 #' @return Approximate Entropy value
 #'
@@ -344,11 +344,14 @@ detect_QRS <- function(signal, frequency, window_size = 0.150) {
 #' calculate_apen(x, m = 3, r = -1, implementation = "R")
 #'
 #' @export
-calculate_apen <- function(x, m = 3, r = NULL, implementation = "R") {
-  if (implementation == "R") {
-    apen <- calculate_apen_r(x, m, r)
-  } else if (implementation == "C++") {
+calculate_apen <- function(x, m = 3, r = NULL, implementation = "C++") {
+
+  x <- as.double(x)
+
+  if (implementation == "C++") {
     apen <- calculate_apen_cpp(x, m, r)
+  } else if (implementation == "R") {
+    apen <- calculate_apen_r(x, m, r)
   } else {
     stop("Invalid method specified. Choose 'R' or 'C++'")
   }

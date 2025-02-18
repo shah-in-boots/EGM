@@ -4,7 +4,7 @@
 \alias{calculate_apen}
 \title{Calculate Approximate Entropy (ApEn) of a time series}
 \usage{
-calculate_apen(x, m = 3, r = NULL, implementation = "R")
+calculate_apen(x, m = 3, r = NULL, implementation = "C++")
 }
 \arguments{
 \item{x}{Numeric vector of the time series}
@@ -13,8 +13,8 @@ calculate_apen(x, m = 3, r = NULL, implementation = "R")
 
 \item{r}{Tolerance (threshold), default is 3.5 * sd(x)}
 
-\item{implementation}{Method to use for calculation, default is "R", but can
-also be done in "C++" for significant speed-up of looping functions.}
+\item{implementation}{Method to use for calculation, default is "C++", but can
+also be done in "R". The C++ implementation is faster.}
 }
 \value{
 Approximate Entropy value
