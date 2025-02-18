@@ -18,5 +18,6 @@
 #' @importFrom data.table .SD
 #' @importFrom data.table data.table
 #' @importFrom rlang .data
+#' @useDynLib EGM, .registration = TRUE
 ## usethis namespace: end
 NULL

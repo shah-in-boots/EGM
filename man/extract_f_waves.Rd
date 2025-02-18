@@ -34,10 +34,13 @@ This function analyzes F waves in an ECG signal, extracting various
 characteristics.
 }
 \references{
-Park, Junbeom, Chungkeun Lee, Eran Leshem, Ira Blau, Sungsoo Kim,
-Jung Myung Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin
-Hwang. “Early Differentiation of Long-Standing Persistent Atrial
-Fibrillation Using the Characteristics of Fibrillatory Waves in Surface ECG
-Multi-Leads.” Scientific Reports 9 (February 26, 2019): 2746.
+Park, Junbeom, Chungkeun Lee, Eran Leshem, Ira Blau, Sungsoo Kim, Jung Myung
+Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. “Early
+Differentiation of Long-Standing Persistent Atrial Fibrillation Using the
+Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads.” Scientific
+Reports 9 (February 26, 2019): 2746.
 https://doi.org/10.1038/s41598-019-38928-6.
+
+Hyvarinen, A., and Oja, E. (2000). Independent component analysis: algorithms
+and applications. \emph{Neural Networks}, 13(4-5), 411-430.
 }

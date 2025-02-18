@@ -80,8 +80,10 @@ process_single_lead <- function(object, lead, qrs_method, f_characteristics) {
   signal <- object$signal[[lead]]
   hz <- attributes(object$header)$record_line$frequency
 
-  # Preprocess signal
-  upsampledSignal <- upsample_signal(signal, original_frequency = hz, new_frequency = 1000)
+  # Preprocess signal and apply band pass filter
+  upsampledSignal <-
+    upsample_signal(signal, original_frequency = hz, new_frequency = 1000) |>
+    filter_bandpass(signal = _, frequency = 1000)
 
   # Ventricular signal removal (QRST cancellation)
   atrialActivity <- remove_ventricular_signal(upsampledSignal, method = qrs_method)
@@ -97,27 +99,33 @@ process_single_lead <- function(object, lead, qrs_method, f_characteristics) {
   features
 }
 
-# Preprocessing
+
+#' Upsampling signal approach
+#' @noRd
 upsample_signal <- function(signal, original_frequency, new_frequency) {
   # Increase sampling rate if necessary (e.g., from 500 Hz to 1000 Hz)
   if (original_frequency < new_frequency) {
     originalLength <- length(signal)
     t <- seq(0, (originalLength - 1) / original_frequency, length.out = originalLength)
     tNew <- seq(0, (originalLength - 1) / original_frequency, length.out = originalLength * (new_frequency / original_frequency))
-    signal <- stats::approx(t, signal, xout = tNew, method = "linear")$y
+    upsampled <- stats::approx(t, signal, xout = tNew, method = "linear")$y
     frequency <- new_frequency
   }
 
-  # Apply bandpass filter (0.5-30 Hz)
-  nyquistFreq <- frequency / 2
-  low <- 0.5 / nyquistFreq
-  high <- 30 / nyquistFreq
-  bf <- signal::butter(3, c(low, high), type = "pass")
-  filteredSignal <- signal::filtfilt(bf, signal)
-
-  # Return new upsampled, and filtered signal
-  filteredSignal
+  # Return new upsampled signal
+  upsampled
 }
+
+#' Apply bandpass filter (0.5-30 Hz is the default)
+#' @noRd
+filter_bandpass <- function(signal, frequency, low = 0.5, high = 30) {
+  nyquistFreq <- frequency / 2
+  low <- low / nyquistFreq
+  high <- high / nyquistFreq
+  bf <- signal::butter(3, c(low, high), type = "pass")
+  signal::filtfilt(bf, signal)
+}
+
 
 # QRS Methods ----
 
@@ -132,10 +140,13 @@ remove_ventricular_signal <- function(signal, method = "adaptive_svd") {
   }
 }
 
-# Helper function to perform adaptive SVD cancellation
+#' Helper function to perform adaptive SVD cancellation
+#' Add protections to stop matrix conformation issues, ASS @2025-02-18
+#' @noRd
 adaptive_svd_removal <- function(signal, frequency = 1000, qrs_window = 0.12, qrs_loc = NULL) {
 
-  # Step 1: Detect QRS complexes
+  # Detect QRS complexes
+  # Standard Pan Tompkins algorithm
   if (is.null(qrs_loc)) {
     qrs_loc <- detect_QRS(signal, frequency)
   }
@@ -156,18 +167,18 @@ adaptive_svd_removal <- function(signal, frequency = 1000, qrs_window = 0.12, qr
 
   qrstMatrix <- do.call(rbind, qrstSegments)
 
-  # Step 2: Perform SVD (adaptive)
+  # Perform SVD (adaptive)
   svdResult <- svd(qrstMatrix)
 
   # Determine number of components to keep (explaining 99% of variance)
   cumulativeVariance <- cumsum(svdResult$d^2) / sum(svdResult$d^2)
-  nComponents <- which(cumulativeVariance > 0.99)[1]
+  nComponents <- max(which(cumulativeVariance > 0.99))
 
   # Reconstruct QRST template
   qrstTemplate <-
-    svdResult$u[, 1:nComponents] %*%
-    diag(svdResult$d[1:nComponents]) %*%
-    t(svdResult$v[, 1:nComponents])
+    svdResult$u[, 1:nComponents, drop = FALSE] %*%
+    diag(svdResult$d[1:nComponents, drop = FALSE]) %*%
+    t(svdResult$v[, 1:nComponents, drop = FALSE])
 
   # Subtract QRST template from original signal
   atrialSignal <- signal
@@ -285,17 +296,80 @@ detect_QRS <- function(signal, frequency, window_size = 0.150) {
 
 #' Calculate Approximate Entropy (ApEn) of a time series
 #'
+#' @description
+#' This function computes the approximate entropy (ApEn) of a time series using
+#' the method described by Pincus (1991). ApEn is a measure of the regularity
+#' and complexity of the time series. It is calculated by comparing vectors
+#' derived from the time series in an m-dimensional embedded space and in an
+#' (m+1)-dimensional space. The basic steps are:
+#'
+#' 1. **Embedding:** The time series is embedded into vectors of length m (and
+#' m+1) by taking successive elements. For a time series of length N, this
+#' produces (N - m + 1) (or (N - m) for m+1) vectors.
+#'
+#' 2. **Distance Calculation:** For each pair of embedded vectors, the Chebyshev
+#' distance (i.e., the maximum absolute difference among corresponding elements)
+#' is computed. If the distance between two vectors is less than or equal to a
+#' tolerance r, they are considered "similar."
+#'
+#' 3. **Counting and Averaging:** For each embedded vector, the function counts
+#' the number of similar vectors (including itself) and takes the natural
+#' logarithm of the ratio of this count to the total number of vectors. These
+#' log-values are then averaged to yield a statistic phi.
+#'
+#' 4. **ApEn Calculation:** The approximate entropy is the difference between
+#' the phi computed for dimension m and the phi computed for dimension m+1,
+#' i.e., ApEn = phi(m) - phi(m+1).
+#'
+#' The tolerance r is typically chosen as a multiple of the standard deviation
+#' of the time series (commonly 3.5 * sd(x)). If r is not provided (or is
+#' negative), it is calculated automatically.
+#'
 #' @param x Numeric vector of the time series
 #' @param m Embedding dimension (sample size), default is 3
 #' @param r Tolerance (threshold), default is 3.5 * sd(x)
+#' @param implementation Method to use for calculation, default is "R", but can
+#'   also be done in "C++" for significant speed-up of looping functions.
 #'
 #' @return Approximate Entropy value
 #'
 #' @references Pincus, S. M. (1991). Approximate entropy as a measure of system
 #'   complexity. Proceedings of the National Academy of Sciences, 88(6),
 #'   2297-2301.
+#'
+#' @examples
+#' # Example: Calculate approximate entropy for a random time series
+#' set.seed(123)
+#' x <- rnorm(1000)
+#' calculate_apen(x, m = 3, r = -1, implementation = "R")
+#'
 #' @export
-calculate_apen <- function(x, m = 3, r = NULL) {
+calculate_apen <- function(x, m = 3, r = NULL, implementation = "R") {
+  if (implementation == "R") {
+    apen <- calculate_apen_r(x, m, r)
+  } else if (implementation == "C++") {
+    apen <- calculate_apen_cpp(x, m, r)
+  } else {
+    stop("Invalid method specified. Choose 'R' or 'C++'")
+  }
+
+  # Return approx entropy
+  apen
+}
+
+#' C++ implementation of approximate entropy
+#' @noRd
+calculate_apen_cpp <- function(x, m, r) {
+  # Use -1 as a flag for C++ to compute r internally.
+  # Cannot pass NULL to C++
+  if (is.null(r)) r <- -1
+  # This is a C++ file, documented in src/approximate_entropy.cpp
+  apen <- calculate_approximate_entropy_cpp(x, m, r)
+}
+
+#' R implementation of approximate entropy
+#' @noRd
+calculate_apen_r <- function(x, m, r) {
   N <- length(x)
   r <- if (is.null(r)) 3.5 * sd(x) else r
   x <- as.vector(x)
@@ -318,6 +392,7 @@ calculate_apen <- function(x, m = 3, r = NULL) {
 
   phi_m - phi_m1
 }
+
 
 #' Calculate Dominant Frequency of a time series
 #'
