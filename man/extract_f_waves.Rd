@@ -21,8 +21,10 @@ NULL (default), all available leads will be processed.}
 \item{qrs_method}{Method for ventricular signal removal. Default is
 "adaptive_svd" for adaptive singular value decomposition.}
 
-\item{f_characteristics}{Vector of characteristics to analyze from ECG signal.
-Options: "amplitude", "irregularity", "dominant_frequency"}
+\item{f_characteristics}{Vector of characteristics to analyze from ECG
+signal. Options: "amplitude", "approximate_entropy", "dominant_frequency".
+Please see \code{\link[=calculate_approximate_entropy]{calculate_approximate_entropy()}} and
+\code{\link[=calculate_dominant_frequency]{calculate_dominant_frequency()}} for more details.}
 
 \item{...}{Additional arguments passed to methods}
 }

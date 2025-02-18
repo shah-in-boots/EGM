@@ -11,8 +11,10 @@
 #' @param qrs_method Method for ventricular signal removal. Default is
 #'   "adaptive_svd" for adaptive singular value decomposition.
 #'
-#' @param f_characteristics Vector of characteristics to analyze from ECG signal.
-#'   Options: "amplitude", "irregularity", "dominant_frequency"
+#' @param f_characteristics Vector of characteristics to analyze from ECG
+#'   signal. Options: "amplitude", "approximate_entropy", "dominant_frequency".
+#'   Please see [calculate_approximate_entropy()] and
+#'   [calculate_dominant_frequency()] for more details.
 #'
 #' @param ... Additional arguments passed to methods
 #'
@@ -341,10 +343,10 @@ detect_QRS <- function(signal, frequency, window_size = 0.150) {
 #' # Example: Calculate approximate entropy for a random time series
 #' set.seed(123)
 #' x <- rnorm(1000)
-#' calculate_apen(x, m = 3, r = -1, implementation = "R")
+#' calculate_approximate_entropy(x, m = 3, r = -1, implementation = "R")
 #'
 #' @export
-calculate_apen <- function(x, m = 3, r = NULL, implementation = "C++") {
+calculate_approximate_entropy <- function(x, m = 3, r = NULL, implementation = "C++") {
 
   x <- as.double(x)
 
