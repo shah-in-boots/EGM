@@ -2,7 +2,7 @@
 % Please edit documentation in R/fwave.R
 \name{calculate_approximate_entropy}
 \alias{calculate_approximate_entropy}
-\title{Calculate Approximate Entropy (ApEn) of a time series}
+\title{Calculate Approximate Entropy (Ap_en) of a time series}
 \usage{
 calculate_approximate_entropy(x, m = 3, r = NULL, implementation = "C++")
 }
@@ -20,8 +20,8 @@ also be done in "R". The C++ implementation is faster.}
 Approximate Entropy value
 }
 \description{
-This function computes the approximate entropy (ApEn) of a time series using
-the method described by Pincus (1991). ApEn is a measure of the regularity
+This function computes the approximate entropy (Ap_en) of a time series using
+the method described by Pincus (1991). Ap_en is a measure of the regularity
 and complexity of the time series. It is calculated by comparing vectors
 derived from the time series in an m-dimensional embedded space and in an
 (m+1)-dimensional space. The basic steps are:
@@ -37,9 +37,9 @@ tolerance r, they are considered "similar."
 the number of similar vectors (including itself) and takes the natural
 logarithm of the ratio of this count to the total number of vectors. These
 log-values are then averaged to yield a statistic phi.
-\item \strong{ApEn Calculation:} The approximate entropy is the difference between
+\item \strong{Ap_en Calculation:} The approximate entropy is the difference between
 the phi computed for dimension m and the phi computed for dimension m+1,
-i.e., ApEn = phi(m) - phi(m+1).
+i.e., Ap_en = phi(m) - phi(m+1).
 }
 
 The tolerance r is typically chosen as a multiple of the standard deviation

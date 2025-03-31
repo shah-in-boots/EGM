@@ -55,16 +55,16 @@ test_that("detect_QRS finds peaks", {
 	expect_true(all(diff(peaks) > 10))  # Check for minimum distance between peaks
 })
 
-test_that("calculate_apen returns expected range", {
+test_that("calculate_approximate_entropy returns expected range", {
 	signal <- rnorm(1000)
 
 	# Trial the R approach
-	apen <- calculate_apen(signal, implementation = "R")
+	apen <- calculate_approximate_entropy(signal, implementation = "R")
 	expect_type(apen, "double")
 	expect_true(apen >= 0 && apen <= 2)  # ApEn is typically between 0 and 2
 
 	# Can also use C++ for speedup as the default
-	apen <- calculate_apen(signal)
+	apen <- calculate_approximate_entropy(signal, implementation = "C++")
 	expect_type(apen, "double")
 })
 
