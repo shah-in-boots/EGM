@@ -188,8 +188,9 @@ read_muse <- function(file) {
 		)
 	)
 
-	# Return EGM data
-	egm(signal = sig, header = hea)
+	# Return EGM/ECG data
+	# Note that this subclasses `egm` into `ecg` class type
+	ecg(signal = sig, header = hea)
 
 }
 
