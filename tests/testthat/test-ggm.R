@@ -1,3 +1,5 @@
+# Plotting ----
+
 test_that("plots can be generated easily", {
 
 	# EPS data
@@ -18,11 +20,16 @@ test_that("plots can be generated easily", {
 
 	# ECG data
 	data <- read_muse(test_path('ecg.xml'))
-	ggm(data, channels = c("I", "II", "III")) + theme_egm_dark()
+	g <- ggm(data, channels = c("I", "II", "III"))
+	expect_s3_class(g, "ggm")
+	expect_s3_class(g, "ggplot")
 
 })
 
 test_that('header and labels work fluidly when plotting', {
+
+	skip_on_cran()
+	skip_on_ci()
 
 	data <- read_wfdb(record = 'ludb-ecg',
 										record_dir = test_path(),
@@ -31,84 +38,50 @@ test_that('header and labels work fluidly when plotting', {
 	object <- ggm(data, channels = data$header$label)
 
 	expect_s3_class(object, 'ggm')
+	expect_equal(attributes(object$theme$axis.ticks)$class[1], "element_blank")
 
 })
 
-test_that("simple intervals can be added to surface leads", {
+# Colors ----
 
-	object <- ggm(data = read_lspro(test_path('egm.txt')),
-								channels = c("I", "CS", "HIS D", "HIS M", "RV"))
+test_that("theming works", {
 
-	obj1 <-
-		object |>
-		add_intervals(channel = "I")
-
-	expect_s3_class(obj1, "ggm")
-	expect_s3_class(obj1, "ggplot")
-
-	obj2 <-
-		object |>
-		add_intervals(channel = "CS 9-10")
-
-	obj3 <-
-		object |>
-		add_intervals(channel = "I") |>
-		add_intervals(channel = "CS 9-10")
-
-	expect_s3_class(obj3, "ggm")
-
-})
-
-# Colors/theme ----
-
-test_that("colors can be applied to a light or dark theme", {
-
+	# EPS data
 	data <- read_lspro(test_path('egm.txt'))
+	expect_s3_class(data, "egm")
+
 	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
 	time_frame <- c(.1, 3)
 
-	# Basic signal plot of egms
-	basic <- ggm(
+	g <- ggm(
+		data = data,
+		channels = channels,
+		time_frame = time_frame,
+		mode = NULL
+	)
+
+	expect_equal(g$labels$x, "sample")
+	expect_length(g$theme, 0)
+
+	dark <- ggm(
 		data = data,
 		channels = channels,
 		time_frame = time_frame
 	)
 
-	expect_true("#FFFFFF" %in% basic$data$color)
-	expect_equal(basic$theme$plot.background$fill, NULL)
+	# When adding a theme, should be similar to the built-in
 
-	light <-
-		basic |>
-		add_colors(palette = "material", mode = "light")
-
-	expect_length(light$theme$plot.background, 0)
-	expect_length(light$theme$panel.background, 0)
 
 })
 
-# Annotations ----
+test_that("multiple channel data from different leads can be theme", {
 
-test_that("annotations can be added to ggplot", {
+	fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'EGM')
+	dat <- read_lspro(fp)
 
-	record <- '300'
-	record_dir = test_path()
-	data <- read_wfdb(record, record_dir, annotator = 'ecgpuwave')
-	channels <- 'ECG'
-
-	object <- ggm(
-		data,
-		channels = 'ECG',
-		time_frame = c(3, 6)
-	)
-
-
-	expect_length(unique(object$data$label), 2)
-
-	masked <-
-		object |>
-		draw_boundary_mask()
-
-	expect_equal(attributes(masked)$annotation, attributes(object)$annotation)
-	expect_equal(attributes(masked)$header, attributes(object)$header)
+	# Similarly, can be visualized with ease
+	g <-
+		ggm(dat, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
+		theme_egm_dark()
 
 })

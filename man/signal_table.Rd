@@ -3,16 +3,25 @@
 \name{signal_table}
 \alias{signal_table}
 \alias{is_signal_table}
-\title{Signal Table}
+\title{Signal tables}
 \usage{
 signal_table(...)
 
 is_signal_table(x)
 }
-\description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+\arguments{
+\item{...}{A \code{list} of equal lengths}
 
-\code{signal_table()} modifies the \code{data.table} class to work with electrical
-signal data. The input should be a data set of equal number of rows. It will
-add a column of index positions called \code{sample} if it does not already exist.
+\item{x}{\code{data.frame} A data frame of signal data}
+}
+\value{
+An object of class \code{signal_table}, which is an extension of the
+\code{data.table} class. The \code{sample} column is \emph{invariant} and will always be
+present. The other columns represent additional channels.
+}
+\description{
+The \code{signal_table()} function modifies the \code{data.table} class to
+work with electrical signal data. The input should be a data set of equal
+number of rows. It will add a column of index positions called \code{sample} if
+it does not already exist.
 }

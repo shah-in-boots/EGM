@@ -1,11 +1,11 @@
 #' Read in ECG and EGM data from LabSystem Pro
 #'
-#' @description
-#' This function allows for reading in LS Pro data based on their text export of
-#' signals. Signals can be exported directly from the LS Pro system.
+#' @description This function allows for reading in LS Pro data based on their
+#' text export of signals. Signals can be exported directly from the LS Pro
+#' system.
 #'
 #' The [LabSystem
-#' Pro](https://www.bostonscientific.com/en-US/products/capital-equipment--diagnotic/labsystem-pro.html)
+#' Pro](https://www.bostonscientific.com/en-EU/medical-specialties/electrophysiology/arrhythmias/cardiac-mapping-system/electrophysiology-recording-system.html)
 #' was acquired by Boston Scientific from the original company
 #' [Bard](https://news.bostonscientific.com/2013-06-28-Boston-Scientific-To-Acquire-C-R-Bard-Electrophysiology-Business).
 #' They are a common electrophysiology signal processing device for

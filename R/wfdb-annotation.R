@@ -2,12 +2,10 @@
 
 #' Read WFDB-compatible annotation file
 #'
-#' @description
-#'
-#' Individual annotation types are described as both a command-line tool for
-#' annotating WFDB-files, as well as the extension that is appended to the
-#' `record` name to notate the type. Generally, the types of annotations that
-#' are supported are described below:
+#' @description Individual annotation types are described as both a command-line
+#' tool for annotating WFDB-files, as well as the extension that is appended to
+#' the `record` name to notate the type. Generally, the types of annotations
+#' that are supported are described below:
 #'
 #'   * atr = manually reviewed and corrected reference annotation files
 #'
@@ -17,17 +15,17 @@
 #'
 #'   * sqrs/wqrs/gqrs = standard WFDB peak detection for R waves
 #'
-#' A more detailed explanation is given below.
-#'
-#' Additionally, files when being read in are converted from a binary format to
-#' a textual format. The raw data however may be inadequate, as the original
-#' annotation may be erroneous. In these cases, an empty `annotation_table`
-#' object will be returned.
+#' A more thorough explanation is given in the details. Additionally, files when
+#' being read in are converted from a binary format to a textual format. The raw
+#' data however may be inadequate, as the original annotation may be erroneous.
+#' In these cases, an empty `annotation_table` object will be returned.
 #'
 #' @details
 #' # Annotation files
 #'
 #' The following annotation file types are described below.
+#'
+#' ## `ecgpuwave`
 #'
 #' `ecgpuwave` analyzes an ECG signal from the specified record, detecting the
 #' QRS complexes and locating the beginning, peak, and end of the P, QRS, and
@@ -48,8 +46,24 @@
 #' (biphasic positive-negative). If the __type__ is an waveform onset or offset,
 #' then __number__ can be 0 (P wave), 1 (QRS complex), 2 (T wave).
 #'
+#' @returns This function will either read in an annotation using the [read_annotation()] function in the format of an `annotation_table` object, or write to file/disk an `annotation_table` to a WFDB-compatible annotation file using the [write_annotation()] function.
+#'
+#' __IMPORTANT__: as annotation files are created by annotators that were
+#' developed independently, there is a higher chance of an erroroneous file
+#' being created on disk. As such, this function will note an error an return an
+#' empty `annotation_table` at times.
+#'
 #' @inheritParams wfdb
+#'
 #' @inheritParams wfdb_io
+#'
+#' @param data An `annotation_table` containing the 6 invariant columns required
+#'   by the [annotation_table()] function
+#'
+#' @param begin,end A `character` in the format of *HH:MM:SS* that will be used
+#'   to help parse the time of the annotation. These parameters together create
+#'   the time range to extract. The default of *0* is a shortcut for *00:00:00*.
+#'   The *seconds* argument can include a decimal place.
 #'
 #' @name wfdb_annotations
 #' @export
@@ -57,8 +71,8 @@ read_annotation <- function(record,
 														record_dir = ".",
 														annotator,
 														wfdb_path = getOption("wfdb_path"),
-														begin = 0,
-														end = NULL,
+														begin = "00:00:00",
+														end = NA_character_,
 														...) {
 
 	# Validate:
@@ -90,7 +104,8 @@ read_annotation <- function(record,
 		wd <- getwd()
 	}
 
-	checkmate::assert_number(begin)
+	stopifnot("Expected `character`" = is.character(begin))
+	stopifnot("Expected `character`" = is.character(end))
 
 	# Create all the necessary parameters for rdann
 	#		-f			Start time
@@ -111,7 +126,7 @@ read_annotation <- function(record,
 		}() |>
 		{
 			\(.) {
-				if (!is.null(end)) {
+				if (!is.na(end)) {
 					paste(., "-t", end)
 				} else {
 					.
@@ -127,13 +142,40 @@ read_annotation <- function(record,
 			data.table::fread(cmd = cmd, header = FALSE)
 	})
 
-	# Rename and return as annotation table
-	names(dat) <- c('time', 'sample', 'type', 'subtype', 'channel', 'number')
+	# Rename annotation table
+	names(dat) <- c("time", "sample", "type", "subtype", "channel", "number")
+
+	# The time is raw, and converted to HH:MM:SS.SSS format, without a date
+	# 	This could be just M:S format or H:M:S format
+	# This is a discrepancy between `rdann` and this software
+	# Can temporarily convert this to a POSIX format here
+	hea <- read_header(record, record_dir)
+	start_time <- attributes(hea)$record_line$start_time
+
+	# Extract time appropriately
+	# Also make sure the type is appropriate
+	timeType <- stringr::str_count(dat$time, ":")
+	dat$time <- ifelse(timeType == 1, paste0("0:", dat$time), dat$time)
+
+	# Now split the strings by the position and check the times
+	datHMS <-
+		stringr::str_split(dat$time, ":", simplify = TRUE) |>
+		as.data.frame()
+	hours <- as.numeric(datHMS[[1]])
+	minutes <- as.numeric(datHMS[[2]])
+	seconds <- as.numeric(datHMS[[3]])
+
+	# Convert to characters
+	hours <- ifelse(hours < 10, paste0("0", hours), hours)
+	minutes <- ifelse(minutes < 10, paste0("0", minutes), minutes)
+	seconds <- ifelse(seconds < 10, paste0("0", seconds), seconds)
+
+	dat$time <- paste0(hours, ":", minutes, ":", seconds)
+
+	# Return
 	new_annotation_table(df_list(dat), annotator)
 }
 
-#' @param data A table containing 6 columns
-#' @return Outputs a WFDB with the provided extension
 #' @rdname wfdb_annotations
 #' @export
 write_annotation <- function(data,
@@ -142,7 +184,6 @@ write_annotation <- function(data,
 														 record_dir = ".",
 														 wfdb_path = getOption("wfdb_path"),
 														 ...) {
-
 
 	# Validate:
 	#		WFDB software command
@@ -156,7 +197,7 @@ write_annotation <- function(data,
 		wd <- getwd()
 	}
 
-	checkmate::assert_data_frame(data)
+	stopifnot("Expected `data.frame`" = inherits(data, "data.frame"))
 
 	# Take annotation data and write to temporary file
 	# 	This later is sent to `wrann` through `cat` with a pipe
@@ -178,9 +219,8 @@ write_annotation <- function(data,
 	withr::with_dir(new = wd, code = system(cmd))
 
 }
+
 #' @rdname wfdb_annotations
-#' @inheritParams wfdb
-#' @inheritParams wfdb_io
 #' @export
 annotate_wfdb <- function(record,
 													record_dir,
@@ -257,3 +297,10 @@ annotate_wfdb <- function(record,
 	)
 }
 
+# Annotator Systems -----------------------------------------------------------
+
+#' Annotator systems for WFDB objects
+#'
+#' @description These functions create templates for annotation in R and extend the ability for developers to create their own annotation systems that are stable for WFDB objects. They are compatible with WFDB annotations and can be written out to a WFDB-compatible file. This also allows extensibility.
+#' @name annotators
+NULL

@@ -5,7 +5,7 @@
 #' @author
 #' Original software: George Moody, Tom Pollard, Benjamin Moody \cr
 #' R implementation: Anish S. Shah \cr
-#' Last updated: 04/28/23 \cr
+#' Last updated: `r Sys.Date()` \cr
 #'
 #' @description
 #' This implementation of WFDB is a back-end for the WFDB using a combination of
@@ -56,9 +56,10 @@
 #'   further details.
 #'
 #' @param wfdb_path Path that leads to installed `wfdb` software package on
-#'   device. Unless directly set, will attempt to find local installation.
-#'   Obtained from the system options on loading of the package,
-#'   `getOption('wfdb_path')`
+#'   device. Needs to be directly set using `set_wfdb_path()`. Obtained from the
+#'   system options on loading of the package, `getOption('wfdb_path')`
+#'
+#' @param ... Additional arguments to be passed to the function
 #'
 #' @name wfdb
 NULL
@@ -91,30 +92,31 @@ NULL
 #'
 #'   * `egm` = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format
 #'
-#'   * `signal_table` = This is a custom `data.table` class that has an invariant column containing sample information.
+#'   * `signal_table` = This is a customized `data.table` class that has an invariant column containing sample information.
 #'
 #'   * `data.frame` or `data.table` = Must have a column that represents a time point or index, and columns that represent signal values (preferably integers)
 #'
-#' @param header A header file is an **optional** named list of parameters that
-#'   will be used to organize and describe the signal input from the `data`
-#'   argument. If the `type` is given, specific additional elements will be
+#' @param header A header file is an optional named list of parameters that
+#'   will be used to organize and describe the signal input from the __data__
+#'   argument. If the __type__ is given, specific additional elements will be
 #'   searched for, such as the low or high pass filters, colors, or other signal
 #'   attributes. At minimum, the following elements are required (as cannot be
 #'   calculated):
 #'
-#'   * frequency = sample frequency in Hertz <integer>
+#'   * frequency = sample frequency in Hertz as `integer`
 #'
-#'   * label = vector of names for each channel <character>
+#'   * label = vector of names for each channel as `character`
 #'
-#'   * start_time = date/time object <date>
+#'   * start_time = date/time object
 #'
-#' @param begin,end,interval Timepoint in seconds, which is converted to an
-#'   index position based on sampling frequency. The default is to start at the
-#'   beginning of the record. If `end` or `interval` are given, the earlier of
-#'   the two will be returned. The `end` argument gives a time index to read
-#'   until. The `interval` argument is the length of time past the start point.
+#' @param begin,end,interval Timepoint as an `integer` (representing seconds),
+#'   which is converted to an index position based on sampling frequency. The
+#'   default is to start at the beginning of the record. If `end` or `interval`
+#'   are given, the earlier of the two will be returned. The `end` argument
+#'   gives a time index to read until. The `interval` argument is the length of
+#'   time past the start point.
 #'
-#' @param units A string representing either `digital` (DEFAULT) or `physical`
+#' @param units A `character` string representing either *digital* (DEFAULT) or *physical*
 #'   units that should be used, if available.
 #'
 #'   * digital = Index in sample number, signal in integers (A/D units)
@@ -123,9 +125,18 @@ NULL
 #'   This will __include 1 additional row over the header/column names__ that
 #'   describes units
 #'
-#' @param channels Either the signal/channel in a vector as a name or number.
+#' @param channels Either the signal/channel in a `character` vector as a name or number.
 #'   Allows for duplication of signal or to re-order signal if needed. If
 #'   nothing is given, will default to all channels available.
+#'
+#' @param info_strings A `list` of strings that will be written as an appendix
+#'   to the header file, usually containing information about the channels,
+#'   (e.g. list of colors, extra labels, etc).
+#'
+#' @returns Depends on if it is a reading or writing function. For writing, will
+#'   output an WFDB-based object reflecting the function. For reading, will
+#'   output an extension of a `data.table` object reflecting the underlying
+#'   function (e.g. `signal_table()` will return an object of class).
 #'
 #' @name wfdb_io
 NULL
@@ -143,7 +154,6 @@ write_wfdb <- function(data,
 											 							label = character()),
 											 info_strings = list(),
 											 ...) {
-
 
 	# Options for `wrsamp`
 	# 	-F <numeric>		sampling frequency, default is 250
@@ -223,11 +233,11 @@ write_wfdb <- function(data,
 					args = c(hz, adc, ip, op, col0))
 
 	# Modify header file with more data
-		# Record line (first one) needs a date and time appended
-		# Then handle the signal specification files
+	# 	Record line (first one) needs a date and time appended
+	# 	Then handle the signal specification files
 	headLine <-
 		readLines(con = paste0(record, ".hea"), n = 1) |>
-		paste(format(attributes(header)$record_line$start_time, "%H:%M:%S %d/%m/%Y"))
+		paste(format(attributes(header)$record_line$start_time, "%H:%M:%OS %d/%m/%Y"))
 
 	# 10 columns:
 	# 	>= V9 and V10 are descriptive fields
@@ -237,7 +247,7 @@ write_wfdb <- function(data,
 	#			Can be appended with baseline value "(0)"
 	# 		Can be appended with "/mV" to specify units
 	headerFile <-
-		read.table(file = paste0(record, ".hea"),
+		utils::read.table(file = paste0(record, ".hea"),
 							 skip = 1)
 	headerFile[[3]] <- paste0(headerFile[[3]], "(0)", "/mV", sep = "")
 	headerFile <- headerFile[1:9]
@@ -247,7 +257,7 @@ write_wfdb <- function(data,
 	writeLines(text = headLine,
 						 con = paste0(record, ".hea"))
 
-	write.table(
+	utils::write.table(
 		headerFile,
 		file = paste0(record, ".hea"),
 		sep = "\t",
@@ -282,6 +292,7 @@ write_wfdb <- function(data,
 #' @describeIn wfdb_io Reads a multicomponent WFDB-formatted set of files
 #'   directly into an `egm` object. This serves to pull together
 #'   [read_signal()], [read_header()], and [read_annotation()] for simplicity.
+#'
 #' @export
 read_wfdb <- function(record,
 											record_dir = ".",
@@ -343,7 +354,7 @@ read_wfdb <- function(record,
 read_signal <- function(record,
 												record_dir = ".",
 												wfdb_path = getOption("wfdb_path"),
-												begin = 0,
+												begin = 0L,
 												end = NA_integer_,
 												interval = NA_integer_,
 												units = "digital",
@@ -363,10 +374,11 @@ read_signal <- function(record,
 		wd <- getwd()
 	}
 
-	checkmate::assert_number(begin)
-	checkmate::assert_number(end, na.ok = TRUE)
-	checkmate::assert_number(interval, na.ok = TRUE)
-	checkmate::assert_choice(units, choices = c("digital", "physical"))
+	stopifnot("Expected `integer`" = is.numeric(begin))
+	stopifnot("Expected `integer`" = is.numeric(end))
+	stopifnot("Expected `integer`" = is.numeric(interval))
+	stopifnot("Expected to be in c('digital', 'physical')"
+						= units %in% c("digital", "physical"))
 
 	# Create all the necessary parameters for rdsamp
 	#		-f			Start time
@@ -444,6 +456,7 @@ read_signal <- function(record,
 #' @describeIn wfdb_io Specifically reads the header data from the WFDB header
 #'   text format, returning a `header_table` object for evaluation in the R
 #'   environment
+#'
 #' @export
 read_header <- function(record,
 												record_dir = ".",

@@ -4,24 +4,66 @@
 \alias{ggm}
 \title{Visualization of EGMs using \code{ggplot}}
 \usage{
-ggm(data, channels = character(), time_frame = NULL, mode = "dark", ...)
+ggm(
+  data,
+  channels = character(),
+  time_frame = NULL,
+  palette = NULL,
+  mode = "dark",
+  ...
+)
 }
 \arguments{
-\item{data}{Data of the \code{egm} class, which inclues header (meta) and signal
+\item{data}{Data of the \code{egm} class, which includes header (meta) and signal
 information together.}
 
-\item{channels}{Character vector of which channels to use. Can give either
-the channel label (e.g "CS 1-2") or the recording device/catheter type (e.g
-"His" or "ECG"). If no channels are selected, the default is all channels.}
+\item{channels}{A \code{character} vector of which channels to use. Can give
+either the channel label (e.g "CS 1-2") or the recording device/catheter
+type (e.g "His" or "ECG"). If no channels are selected, the default is all
+channels.}
 
 \item{time_frame}{A time range that should be displaced given in the format
 of a vector with a length of 2. The left value is the start, and right
 value is the end time. This is given in seconds (decimals may be used).}
 
-\item{mode}{The base color scheme to be used. Defaults to the a "white on
-black" scheme, similar to that of \emph{LabSystem Pro} format (and most other
-high-contrast visualizations), for minimizing eye strain.}
+\item{palette}{A \code{character} choice from the below options that describe the
+color choices to be used for plotting. If set to the default, which is
+\code{NULL}, no changes to the colors for individual channels will be performed.
+If a positive choice is made, then the background \strong{mode} argument will be
+set to \emph{dark} as the default, unless otherwise specified. \emph{WARNING}: This is
+an experimental argument, and may be moved in future version.
+\itemize{
+\item \strong{NULL}: no changes to the colors will be made. DEFAULT.
+\item \strong{material}: a colorscheme based off of the \href{https://m3.material.io/styles/color/system/how-the-system-works}{Material Design} color scheme
+}}
+
+\item{mode}{A \code{character} string from \code{c("dark", "light")} to describe the
+base/background color settings to be used. If there are preset channel
+colors that were exported in the \code{egm} object, these colors will be used
+for the individual channels. If \strong{palette} is specified, then the \emph{dark}
+option will be set automatically (a palette choice cannot be made without
+understanding the background to plate it across). \emph{WARNING}: This is an
+experimental argument, and may be moved in future version.
+\itemize{
+\item The \emph{dark} theme mimics the "white on black" scheme seen in \emph{LabSystem Pro} format (and most other high-contrast visualizations), for minimizing eye strain. This calls the \code{\link[=theme_egm_dark]{theme_egm_dark()}} function. DEFAULT.
+\item The \emph{light} theme mimics the "black on white" colors seen in the \emph{Prucka} system.
+\item \code{NULL} removes any theme, and uses the default \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} settings
+}}
+
+\item{...}{Additional arguments to be passed to the function}
+}
+\value{
+An \code{{ggplot2}} compatible object with the \code{ggm} class, which
+contains additional elements about the header and annotations of the
+original data.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
+The \code{ggm()} function is used to plot objects of the \code{egm} class. This
+function however is more than just a plotting function - it serves as a
+visualization tool and confirmation of patterns, annotations, and underlying
+waveforms in the data. The power of this, instead of being a \verb{geom_*()}
+object, is that annotations, intervals, and measurements can be added
+incrementally.
 }

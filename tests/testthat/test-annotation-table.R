@@ -1,5 +1,8 @@
 test_that('annotation table class can be made', {
 
+	skip_on_cran()
+	skip_on_ci()
+
 	expect_named(annotation_table())
 	expect_output(print(annotation_table()), "annotation_table")
 

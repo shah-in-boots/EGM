@@ -1,33 +1,52 @@
-Package: shiva
-Title: Evaluating cardiac electrophysiology signals
-Version: 0.0.0.9000
+Package: EGM
+Title: Evaluating Cardiac Electrophysiology Signals
+Version: 0.1.0.9000
 Authors@R: 
     person(given = "Anish S.",
            family = "Shah",
-           role = c("aut", "cre"),
-           email = "ashah282@uic.edu",
+           role = c("aut", "cre", "cph"),
+           email = "shah.in.boots@gmail.com",
            comment = c(ORCID = "0000-0002-9729-1558"))
-Description: Importing rhythm and signal data and their analysis in R
-License: MIT + file LICENSE
+Description: A system for importing electrophysiological signal, based
+    on the 'Waveform Database (WFDB)' software package, written by Moody et al 
+    2022 <doi:10.13026/gjvw-1m31>. A wrapper for utilizing 'WFDB' functions for
+    reading and writing signal data, as well as functions for visualization and
+    analysis are provided. A stable and broadly compatible class for working
+    with signal data, supporting the reading in of cardiac electrophysiogical
+    files such as intracardiac electrograms, is introduced.
+License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 Depends: 
-    R (>= 2.10),
-    vctrs
+    R (>= 4.0),
+    vctrs (>= 0.5.0),
+    data.table (>= 1.15.0)
+Imports: 
+    stats,
+    fs,
+    ggplot2,
+    lifecycle,
+    rlang,
+    utils,
+    xml2,
+    base64enc,
+    checkmate,
+    stringr,
+    signal,
+    cpp11,
 Suggests: 
     covr,
     knitr,
     rmarkdown,
-    testthat (>= 3.0.0)
-Imports: 
-    data.table,
-    fs,
-    ggplot2,
-    gsignal,
-    lifecycle
+    testthat (>= 3.0.0),
+    withr,
+    fastICA,
+    moments
 Config/testthat/edition: 3
-URL: https://github.com/asshah4/shiva, https://asshah4.github.io/shiva/
-BugReports: https://github.com/asshah4/shiva/issues
+URL: https://shah-in-boots.github.io/EGM/
+BugReports: https://github.com/shah-in-boots/EGM/issues
 VignetteBuilder: knitr
+LinkingTo: 
+    cpp11

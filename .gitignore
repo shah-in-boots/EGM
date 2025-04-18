@@ -39,8 +39,9 @@ vignettes/*.pdf
 .Renviron
 .Rproj.user
 
-# User protected items
+# User protected items (including reprex examples)
 sandbox.R
+
 
 # Temp files
 .DS_Store

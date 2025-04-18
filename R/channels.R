@@ -1,4 +1,4 @@
-#' @export
+#' @keywords internal
 identify_channel_source <- function(x) {
 
 	# Intakes character vector and identifies the source
@@ -15,19 +15,23 @@ identify_channel_source <- function(x) {
 	y
 }
 
-#' Modify channel colors
+#' Identify the color for a channel based on palettes
 #'
-#' @param palette Color palette options for leads as below:
+#' This primarily restricts the colors to color-space safe options. It is
+#' intended to be used with [add_colors()] to provide a color scheme for the
+#' `ggm` object. It has been exposed to users for custom or advanced theming
+#' options.
 #'
-#'   * __material__ - material color theme
+#' @return Vector of hex code colors as `character` based on the selected
+#'   palette and light/dark mode
 #'
-#'   * __bw__ - black or white color theme based on light/dark mode
+#' @inheritParams ggm
 #'
-#' @param mode Adjust color settings for either light or dark mode
-#' @return Character vector of hex code colors based on the selected palette and
-#'   light/dark mode
+#' @param x Vector of `character` names of requested ECG or EGM leads
+#'
+#'
 #' @export
-color_channels <- function(x, palette, mode = "light") {
+color_channels <- function(x, palette, mode = "dark") {
 
 	# Requires a character/factor that has appropriate ECG lead types
 	stopifnot("Requires a `character` or `factor` input" =
@@ -201,5 +205,53 @@ color_channels <- function(x, palette, mode = "light") {
 
 	# Return
 	newColors
+
+}
+
+#' Add color scheme to a `ggm` object
+#'
+#' @description Using `add_colors()` is part of the theme process for a `ggm`
+#'   object, which in turn is a visual representation of an `egm` object. Often,
+#'   the `egm` dataset will contain default colors based on where the signal
+#'   data was brought in from. `add_colors()` can allow customization of those
+#'   features to some degree based on *opinionated* color palettes.
+#'
+#' @details Currently, the color choices are individual decided based on the
+#'   channel source (e.g. lead) and are inspired by some modern palettes. The
+#'   eventual goal for this function is to accept a multitude of palette options
+#'   using heuristics similar to what is found in `{ggplot2}` or other graphing
+#'   packages.
+#'
+#' @return Returns an updated `ggm` object
+#'
+#' @inheritParams ggm
+#'
+#' @param object A `ggm` object
+#'
+#' @export
+add_colors <- function(object, palette, mode) {
+
+	stopifnot("Requires `ggm` class" = inherits(object, "ggm"))
+
+	if (!is.null(palette)) {
+		# Extract data from ggplot
+		dt <- object$data
+		dt$color <- color_channels(dt$label, palette = palette, mode = mode)
+		object$data <- dt
+	}
+
+	if (!is.null(mode)) {
+		# Depends on mode to add or update theme
+		if (mode == "light") {
+			object + theme_egm_light()
+		} else if (mode == "dark") {
+			object + theme_egm_dark()
+		} else {
+			message("Not an acceptable `mode`, returning `ggm` object")
+			object
+		}
+	} else {
+		object
+	}
 
 }

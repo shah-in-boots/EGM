@@ -1,0 +1,69 @@
+---
+title: "Getting Started"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(EGM)
+```
+
+# Reading in Data
+
+Thie software supports reading in certain types of raw cardiac electric signal currently. 
+This includes both intracardiac and extracardiac data.
+Please see `read_muse()` and `read_lspro()` as examples.
+If additional formats are requested, please [file an issue](https://github.com/shah-in-boots/EGM/issues) and provide a sample file (which primarily requires signal, in whatever format, and meta-information about the individual channels).
+
+Here is a simple example of taking a MUSE XML file and converting it to digital signal.
+This was tested against the 9th version of the MUSE XML format.
+
+```{r}
+# Read in data
+fp <- system.file('extdata', 'muse-sinus.xml', package = 'EGM')
+xml <- readLines(fp)
+head(xml)
+
+# Instead, can read this in as a MUSE XML file
+# Now as an `egm` class
+ecg <- read_muse(fp)
+ecg
+
+# Can now plot this easily
+ggm(ecg) + 
+  theme_egm_light()
+```
+
+Similarly, intracardiac recordings obtained through LSPro can be read in as well. The function itself documents how this generally work.
+
+```{r}
+# Read in data
+fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'EGM')
+lspro <- readLines(fp)
+head(lspro, n = 20)
+
+# Instead, read this as signal, breaking apart header and signal data
+# Presented as an `egm` class object
+egram <- read_lspro(fp)
+egram
+
+# Similarly, can be visualized with ease
+ggm(egram, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
+	theme_egm_dark() 
+```
+
+# Class Introduction
+
+The `{EGM}` package introduces a specific data-oriented class called `egm` (note the *lower-case* spelling compared to the package name). 
+This class is the primary data structure, and allows for compatibility within multiple signal types, including when reading in WFDB-formatted data.
+Once in this class, everything can be written out as well - with the preferred option being for the stated `WFDB` format.

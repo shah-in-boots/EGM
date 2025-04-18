@@ -1,27 +1,34 @@
-url: https://asshah4.github.io/shiva/
-
-development:
-  mode: auto
+url: https://shah-in-boots.github.io/EGM/
 
 template:
   bootstrap: 5
   bootswatch: flatly
   theme: solarized-light
   bslib:
-    primary: "#0a3d72"
-    secondary: "#008083"
-    success: "#faab36"
-    info: "#249ea0"
-    warnings: "#9b2226"
-    danger: "#f78104"
-    light: "#e9d8a6"
-    dark: "#001219"
+    bg: "#ffffff"
+    fg: "#000000"
+    primary: "#fd9a44"
+    secondary: "#238f9d"
+    success: "#42a7c6"
+    info: "#dee6e7"
+    warning: "#f57634"
+    danger: "#d11807"
+    light: "#f0e6b2"
+    dark: "#125a56"
 
 destination: docs
 
 home:
-  title: Evaluating cardiac electrophysiological signals
-  description: Electrophysiological signal and waveform tools
+  title: Evaluating Cardiac Electrophysiological Signals
+  description: >
+    A system for importing electrophysiological signal into R, based
+    on the Waveform Database(WFDB) software package, written by Moody et al
+    2022 <doi:10.13026/gjvw-1m31>. This package provides a wrapper for
+    utilizing WFDB functions for reading and writing signal data in R, as well
+    as functions for visualization and analysis. This package introduces a
+    stable and compatible class for working with signal data, and supports
+    reading in of specific, electrophysiogical file formats, including
+    intracardiac electrograms.
   sidebar:
     structure: [links, license, community, citation, authors, dev]
 
@@ -32,10 +39,17 @@ navbar:
   components:
     home:
       icon: fas fa-home fa-lg
-      href: https://asshah4.github.io/
+      href: https://shah-in-boots.github.io/
     reference:
       text: Reference
       href: reference/index.html
     github:
       icon: fab fa-github fa-lg
-      href: https://github.com/asshah4/shiva/
+      href: https://github.com/shah-in-boots/EGM/
+
+footer:
+  structure:
+    left: developed_by
+    right: [built_with, colors]
+  components:
+    colors: Colorspace from the **nightfall** palette

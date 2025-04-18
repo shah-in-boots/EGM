@@ -1,4 +1,5 @@
-^rhythm\.Rproj$
+^R\/dev\.R$
+^egm\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^_pkgdown\.yml$
@@ -11,3 +12,5 @@
 ^data-raw$
 ^sandbox\.R$
 ^vignettes/articles$
+^cran-comments\.md$
+^CRAN-SUBMISSION$

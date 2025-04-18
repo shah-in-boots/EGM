@@ -1,4 +1,5 @@
 library(testthat)
-library(shiva)
+library(EGM)
+EGM::set_wfdb_path("/usr/local/bin")
 
-test_check("shiva")
+test_check("EGM")

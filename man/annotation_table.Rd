@@ -7,19 +7,85 @@
 \usage{
 annotation_table(
   annotator = character(),
-  time = numeric(),
+  time = character(),
   sample = integer(),
+  frequency = integer(),
   type = character(),
   subtype = character(),
   channel = integer(),
-  number = integer()
+  number = integer(),
+  ...
 )
 
 is_annotation_table(x)
 }
-\description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+\arguments{
+\item{annotator}{String that is the name of a WFDB-compatible annotation
+type, serving as the extension for the file that is written containing that
+annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
+further details.}
 
-\code{annotation_table()} modifies the \code{data.table} class to work with annotation
-data.
+\item{time}{A \code{character} time stamp of the annotation, written in the format
+of \strong{HH:MM:SS.SSS}, starting at \strong{00:00:00.000}. This is converted to the
+appropriate time based on the header file (which records the actual start
+time and sampling frequency). This is often a missing variable and is
+given for compatibility with the WFDB applications.}
+
+\item{sample}{An \code{integer} representing the sample number of the annotation}
+
+\item{frequency}{An \code{integer} that represents the sampling frequency in Hertz}
+
+\item{type}{A \code{character} or string representing the type of the annotation}
+
+\item{subtype}{A \code{character} or string representing the subtype of the
+annotation}
+
+\item{channel}{An \code{integer} representing the channel number of the
+annotation, or a \code{character} representing the channel name}
+
+\item{number}{An additional \code{integer} value or number that classifies the
+annotation (allows for compatibility with multiple annotation types)}
+
+\item{...}{Additional arguments to be passed to the function}
+
+\item{x}{A \code{data.table} object that represents an annotation table}
 }
+\value{
+A \code{data.table} that has invariant columns that are compatible with
+the WFDB library. The key columns include the sample index, the type of
+annotation (and its subtype and number qualifier), and the channel.
+}
+\description{
+\code{annotation_table()} modifies the \code{data.table} class to work
+with annotation data. The columns are of all equal length, and each row
+describes a single annotation (although there may be duplicate time points).
+}
+\details{
+The \code{annotation_table()} function creates a compatible table that
+can be used with \code{\link[=write_annotation]{write_annotation()}} and \code{\link[=read_annotation]{read_annotation()}} functions.
+}
+\section{Annotation files}{
+The following annotation file types are described below.
+\subsection{\code{ecgpuwave}}{
+
+\code{ecgpuwave} analyzes an ECG signal from the specified record, detecting the
+QRS complexes and locating the beginning, peak, and end of the P, QRS, and
+ST-T waveforms. The output of ecgpuwave is written as a standard WFDB-format
+annotation file (the extension is "*.ecgpuwave", as would be expected). This
+file can be converted into text format using \code{rdann}. Further details are
+given at the \href{https://physionet.org/content/ecgpuwave/1.3.4/}{ECGPUWAVE}
+page.
+
+The \strong{type} column can be \emph{p}, \emph{t}, or \emph{N} for the peak of the P wave, T
+wave, and QRS (R peak) directly. The output notation also includes waveform
+onset XXX and waveform offset XXX. The \strong{number} column gives further
+information about each of these \strong{type} labels.
+
+The \strong{number} column gives modifier information. If the \strong{type} classifier
+is a T wave annotation, the \strong{number} column can be 0 (normal), 1
+(inverted), 2 (positive), 3 (negative), 4 (biphasic negative-positive), 5
+(biphasic positive-negative). If the \strong{type} is an waveform onset or offset,
+then \strong{number} can be 0 (P wave), 1 (QRS complex), 2 (T wave).
+}
+}
+
