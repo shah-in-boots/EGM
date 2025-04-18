@@ -4,6 +4,8 @@
 * Simplify and update visualizations using `ggm()` object
 * Debug the color issues when adding a color theme to `ggm()`
 
+* Creation of subclass of `egm` objects called `ecg` to identify 12-lead ECG subtypes
+
 # EGM 0.1.0
 
 This is the first *CRAN* release for this package. 
