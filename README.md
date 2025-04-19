@@ -17,6 +17,7 @@ status](https://www.r-pkg.org/badges/version/EGM)](https://CRAN.R-project.org/pa
 coverage](https://codecov.io/gh/shah-in-boots/egm/branch/main/graph/badge.svg)](https://app.codecov.io/gh/shah-in-boots/egm?branch=main)
 [![Github commit
 frequency](https://img.shields.io/github/commit-activity/w/shah-in-boots/EGM)](https://github.com/shah-in-boots/EGM/graphs/commit-activity)
+[![DOI](https://zenodo.org/badge/405145024.svg)](https://doi.org/10.5281/zenodo.15244228)
 <!-- badges: end -->
 
 The purpose of `{EGM}` is to work with electrophysiology (EP) signal
