@@ -3,10 +3,10 @@
 #' This function analyzes F waves in an ECG signal, extracting various
 #' characteristics.
 #'
-#' @param object An object of class `egm`
+#' @param object An object of class `egm` or of subclass `ecg`
 #'
 #' @param lead Optional. A character string specifying the lead to analyze. If
-#'   NULL (default), all available leads will be processed.
+#'   NULL (default), all available surface leads will be processed.
 #'
 #' @param qrs_method Method for ventricular signal removal. Default is
 #'   "adaptive_svd" for adaptive singular value decomposition.
@@ -16,14 +16,21 @@
 #'   Please see [calculate_approximate_entropy()] and
 #'   [calculate_dominant_frequency()] for more details.
 #'
+#' @param verbose Logical. If TRUE, print information about which leads will be
+#'   analyzed. Default is TRUE.
+#'
+#' @param .force_all Logical. If FALSE (default), only process surface ECG leads.
+#'   If TRUE, process all available leads. This parameter is ignored if the object
+#'   is of class 'ecg', in which case all leads are processed.
+#'
 #' @param ... Additional arguments passed to methods
 #'
 #' @references
 #'
 #' Park, Junbeom, Chungkeun Lee, Eran Leshem, Ira Blau, Sungsoo Kim, Jung Myung
-#' Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. “Early
+#' Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. "Early
 #' Differentiation of Long-Standing Persistent Atrial Fibrillation Using the
-#' Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads.” Scientific
+#' Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads." Scientific
 #' Reports 9 (February 26, 2019): 2746.
 #' https://doi.org/10.1038/s41598-019-38928-6.
 #'
@@ -33,45 +40,97 @@
 #' @return A list containing F wave features for each processed lead
 #' @export
 extract_f_waves <- function(object,
-                            lead = NULL,
-                            qrs_method = "adaptive_svd",
-                            f_characteristics = "amplitude",
-                            ...) {
-  # Validate input
-  if (!inherits(object, "egm")) {
-    stop("Input must be of class 'egm'")
-  }
+														lead = NULL,
+														qrs_method = "adaptive_svd",
+														f_characteristics = "amplitude",
+														verbose = TRUE,
+														.force_all = FALSE,
+														...) {
+	# Validate input
+	if (!inherits(object, "egm")) {
+		stop("Input must be of class 'egm'")
+	}
 
-  # Validate atrial / F wave characteristics
-  valid_characteristics <- c(
-    "amplitude",
-    "approximate_entropy",
-    "dominant_frequency"
-  )
-  if (!all(f_characteristics %in% valid_characteristics)) {
-    stop(
-      "Invalid characteristic specified. Choose from: ",
-      paste(valid_characteristics, collapse = ", ")
-    )
-  }
+	# Validate atrial / F wave characteristics
+	valid_characteristics <- c(
+		"amplitude",
+		"approximate_entropy",
+		"dominant_frequency"
+	)
+	if (!all(f_characteristics %in% valid_characteristics)) {
+		stop(
+			"Invalid characteristic specified. Choose from: ",
+			paste(valid_characteristics, collapse = ", ")
+		)
+	}
 
-  # Get available leads (assuming first column is 'sample')
-  available_leads <- names(object$signal)[-1]
+	# Get available leads (assuming first column is 'sample')
+	available_leads <- names(object$signal)[-1]
 
-  # Determine which leads to process
-  leads_to_process <- if (is.null(lead)) available_leads else lead
-  if (!all(leads_to_process %in% available_leads)) {
-    stop("Specified lead not found in the signal data")
-  }
+	# If lead is specified, validate and use it
+	if (!is.null(lead)) {
+		if (!lead %in% available_leads) {
+			stop("Specified lead not found in the signal data")
+		}
+		leads_to_process <- lead
+		if (verbose) {
+			message("Analyzing specified lead: ", lead)
+		}
+	} else {
+		# Check if object is ecg class (which would already only have surface leads)
+		is_ecg_object <- inherits(object, "ecg")
 
-  # Process each lead
-  results <- lapply(leads_to_process, function(l) {
-    process_single_lead(object, l, qrs_method, f_characteristics)
-  })
+		# If it's an ECG object or .force_all is TRUE, process all available leads
+		if (is_ecg_object || .force_all) {
+			leads_to_process <- available_leads
 
-  # Name the results
-  names(results) <- leads_to_process
-  results
+			if (verbose) {
+				if (is_ecg_object) {
+					message("Object is of class 'ecg'. Analyzing all ", length(leads_to_process), " leads.")
+				} else {
+					message("Analyzing all ", length(leads_to_process), " available leads.")
+				}
+			}
+		} else {
+			# Standard ECG lead names (case-insensitive matching)
+			std_leads <- .leads$ECG
+
+			# Normalize lead names for comparison
+			normalized_available <- toupper(gsub("[_\\s-]", "", available_leads))
+			normalized_std <- toupper(gsub("[_\\s-]", "", std_leads))
+
+			# Find which available leads match standard ECG leads
+			surface_indices <- which(normalized_available %in% normalized_std)
+			surface_leads <- available_leads[surface_indices]
+			non_surface_leads <- available_leads[-surface_indices]
+
+			if (length(surface_leads) == 0) {
+				warning("No surface leads found in the signal data")
+				return(list())
+			}
+
+			leads_to_process <- surface_leads
+
+			if (verbose) {
+				message("Analyzing ", length(leads_to_process), " surface leads: ",
+								paste(leads_to_process, collapse = ", "))
+
+				if (length(non_surface_leads) > 0) {
+					message("Skipping ", length(non_surface_leads), " non-surface leads: ",
+									paste(non_surface_leads, collapse = ", "))
+				}
+			}
+		}
+	}
+
+	# Process each lead
+	results <- lapply(leads_to_process, function(l) {
+		process_single_lead(object, l, qrs_method, f_characteristics)
+	})
+
+	# Name the results
+	names(results) <- leads_to_process
+	results
 }
 
 # Signal cleaning ----
