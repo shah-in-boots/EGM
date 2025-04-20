@@ -1,3 +1,188 @@
+# Class definition for `windowed` objects -------------------------------------
+
+#' Create a windowed object containing a list of egm segments
+#'
+#' @description
+#' `windowed` objects are lists of `egm` objects that represent segments or windows
+#' of the original signal. This allows for specialized methods to be applied to
+#' collections of signal windows.
+#'
+#' @param x A list of `egm` objects
+#' @param method The windowing method used to create the list
+#' @param source_record The name of the original record
+#' @param ... Additional arguments passed to methods
+#'
+#' @return An object of class `windowed` which inherits from `list`
+#'
+#' @export
+windowed <- function(x = list(),
+										 method = "rhythm",
+										 source_record = character(),
+										 ...) {
+	# Validate input
+	if (!is.list(x)) {
+		stop("x must be a list")
+	}
+
+	if (length(x) > 0) {
+		# Check that all elements are egm objects
+		is_egm_list <- all(sapply(x, inherits, "egm"))
+		if (!is_egm_list) {
+			stop("All elements of x must be of class 'egm'")
+		}
+	}
+
+	# Create the windowed object
+	structure(
+		x,
+		class = c("windowed", "list"),
+		method = method,
+		source_record = source_record,
+		window_count = length(x),
+		creation_time = Sys.time()
+	)
+}
+
+#' Test if an object is a windowed object
+#'
+#' @param x An object to test
+#'
+#' @return TRUE if x is a windowed object, FALSE otherwise
+#'
+#' @export
+is_windowed <- function(x) {
+	inherits(x, "windowed")
+}
+
+#' Format a windowed object for printing
+#'
+#' @param x A windowed object
+#' @param ... Additional arguments passed to methods
+#'
+#' @return Invisibly returns x
+#'
+#' @export
+format.windowed <- function(x, ...) {
+	cat("<windowed: ", length(x), " EGM segments>\n", sep = "")
+	cat("Method: ", attr(x, "method"), "\n", sep = "")
+	cat("Source: ", attr(x, "source_record"), "\n", sep = "")
+	cat("Created: ", format(attr(x, "creation_time")), "\n", sep = "")
+
+	invisible(x)
+}
+
+#' Print a windowed object
+#'
+#' @param x A windowed object
+#' @param ... Additional arguments passed to methods
+#'
+#' @return Invisibly returns x
+#'
+#' @export
+print.windowed <- function(x, ...) {
+	format(x, ...)
+	invisible(x)
+}
+
+#' Subset a windowed object
+#'
+#' @param x A windowed object
+#' @param i Index to subset
+#' @param ... Additional arguments passed to methods
+#'
+#' @return A windowed object with the specified subset of elements
+#'
+#' @export
+`[.windowed` <- function(x, i, ...) {
+	# Get original attributes
+	attrs <- attributes(x)
+	class_val <- attrs$class
+	method_val <- attrs$method
+	source_record_val <- attrs$source_record
+	creation_time_val <- attrs$creation_time
+
+	# Subset the list
+	result <- NextMethod()
+
+	# Restore the windowed class and update attributes
+	structure(
+		result,
+		class = class_val,
+		method = method_val,
+		source_record = source_record_val,
+		window_count = length(result),
+		creation_time = creation_time_val
+	)
+}
+
+#' Concatenate windowed objects
+#'
+#' @param ... windowed objects to concatenate
+#'
+#' @return A windowed object containing all the elements of the input objects
+#'
+#' @export
+c.windowed <- function(...) {
+	args <- list(...)
+
+	# Check that all arguments are windowed objects
+	if (!all(sapply(args, is_windowed))) {
+		stop("All arguments must be `windowed` objects")
+	}
+
+	# Get the first non-empty object's attributes
+	first_non_empty <- which(sapply(args, length) > 0)[1]
+	if (is.na(first_non_empty)) {
+		first_non_empty <- 1  # All objects are empty, use first object's attributes
+	}
+
+	method_val <- attr(args[[first_non_empty]], "method")
+	source_record_val <- attr(args[[first_non_empty]], "source_record")
+
+	# Concatenate the lists
+	result <- do.call(c, lapply(args, unclass))
+
+	# Create the windowed object
+	structure(
+		result,
+		class = c("windowed", "list"),
+		method = method_val,
+		source_record = source_record_val,
+		window_count = length(result),
+		creation_time = Sys.time()
+	)
+}
+
+#' Apply a function to each element of a windowed object
+#'
+#' @param X A windowed object
+#' @param FUN A function to apply to each element
+#' @param ... Additional arguments passed to FUN
+#'
+#' @return A list of the results of applying FUN to each element of X,
+#'   or a new windowed object if all results are egm objects
+#'
+#' @export
+lapply.windowed <- function(X, FUN, ...) {
+	# Apply the function to each element
+	results <- NextMethod()
+
+	# Check if results are all egm objects
+	if (all(sapply(results, inherits, "egm"))) {
+		# Return a new windowed object
+		return(windowed(
+			results,
+			method = attr(X, "method"),
+			source_record = attr(X, "source_record")
+		))
+	} else {
+		# Return the results as a regular list
+		return(results)
+	}
+}
+
+# Windowing function(s) --------------------------------------------------------
+
 #' Window signal data based on different methods
 #'
 #' @description
@@ -47,10 +232,22 @@ window_signal <- function(object,
 	method <- match.arg(method)
 
 	# Dispatch to the appropriate method handler
-	switch(method,
-				 rhythm = window_by_rhythm(object, ...),
-				 # Add additional methods here in the future
-				 stop("Unsupported windowing method: ", method))
+	windows <- switch(method,
+										rhythm = window_by_rhythm(object, ...),
+										# Add additional methods here in the future
+										stop("Unsupported windowing method: ", method))
+
+	# Extract source record name
+	source_record <- if (!is.null(object$header$record_name)) {
+		object$header$record_name
+	} else if (!is.null(attributes(object$header)$record_line$record_name)) {
+		attributes(object$header)$record_line$record_name
+	} else {
+		"unknown"
+	}
+
+	# Return as windowed object
+	windowed(windows, method = method, source_record = source_record)
 }
 
 #' Window signal by rhythm patterns
