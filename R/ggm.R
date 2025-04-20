@@ -182,7 +182,7 @@ new_ggm <- function(object = ggplot(),
 										header = list(),
 										annotation = annotation_table()) {
 
-	stopifnot(is.ggplot(object))
+	stopifnot(is_ggplot(object))
 
 	structure(
 		object,

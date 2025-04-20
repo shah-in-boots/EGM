@@ -3,10 +3,10 @@
 #' This function analyzes F waves in an ECG signal, extracting various
 #' characteristics.
 #'
-#' @param object An object of class `egm`
+#' @param object An object of class `egm` or of subclass `ecg`
 #'
 #' @param lead Optional. A character string specifying the lead to analyze. If
-#'   NULL (default), all available leads will be processed.
+#'   NULL (default), all available surface leads will be processed.
 #'
 #' @param qrs_method Method for ventricular signal removal. Default is
 #'   "adaptive_svd" for adaptive singular value decomposition.
@@ -16,14 +16,21 @@
 #'   Please see [calculate_approximate_entropy()] and
 #'   [calculate_dominant_frequency()] for more details.
 #'
+#' @param verbose Logical. If TRUE, print information about which leads will be
+#'   analyzed. Default is TRUE.
+#'
+#' @param .force_all Logical. If FALSE (default), only process surface ECG leads.
+#'   If TRUE, process all available leads. This parameter is ignored if the object
+#'   is of class 'ecg', in which case all leads are processed.
+#'
 #' @param ... Additional arguments passed to methods
 #'
 #' @references
 #'
 #' Park, Junbeom, Chungkeun Lee, Eran Leshem, Ira Blau, Sungsoo Kim, Jung Myung
-#' Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. “Early
+#' Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. "Early
 #' Differentiation of Long-Standing Persistent Atrial Fibrillation Using the
-#' Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads.” Scientific
+#' Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads." Scientific
 #' Reports 9 (February 26, 2019): 2746.
 #' https://doi.org/10.1038/s41598-019-38928-6.
 #'
@@ -33,45 +40,97 @@
 #' @return A list containing F wave features for each processed lead
 #' @export
 extract_f_waves <- function(object,
-                            lead = NULL,
-                            qrs_method = "adaptive_svd",
-                            f_characteristics = "amplitude",
-                            ...) {
-  # Validate input
-  if (!inherits(object, "egm")) {
-    stop("Input must be of class 'egm'")
-  }
+														lead = NULL,
+														qrs_method = "adaptive_svd",
+														f_characteristics = "amplitude",
+														verbose = TRUE,
+														.force_all = FALSE,
+														...) {
+	# Validate input
+	if (!inherits(object, "egm")) {
+		stop("Input must be of class 'egm'")
+	}
 
-  # Validate atrial / F wave characteristics
-  valid_characteristics <- c(
-    "amplitude",
-    "approximate_entropy",
-    "dominant_frequency"
-  )
-  if (!all(f_characteristics %in% valid_characteristics)) {
-    stop(
-      "Invalid characteristic specified. Choose from: ",
-      paste(valid_characteristics, collapse = ", ")
-    )
-  }
+	# Validate atrial / F wave characteristics
+	valid_characteristics <- c(
+		"amplitude",
+		"approximate_entropy",
+		"dominant_frequency"
+	)
+	if (!all(f_characteristics %in% valid_characteristics)) {
+		stop(
+			"Invalid characteristic specified. Choose from: ",
+			paste(valid_characteristics, collapse = ", ")
+		)
+	}
 
-  # Get available leads (assuming first column is 'sample')
-  available_leads <- names(object$signal)[-1]
+	# Get available leads (assuming first column is 'sample')
+	available_leads <- names(object$signal)[-1]
 
-  # Determine which leads to process
-  leads_to_process <- if (is.null(lead)) available_leads else lead
-  if (!all(leads_to_process %in% available_leads)) {
-    stop("Specified lead not found in the signal data")
-  }
+	# If lead is specified, validate and use it
+	if (!is.null(lead)) {
+		if (!lead %in% available_leads) {
+			stop("Specified lead not found in the signal data")
+		}
+		leads_to_process <- lead
+		if (verbose) {
+			message("Analyzing specified lead: ", lead)
+		}
+	} else {
+		# Check if object is ecg class (which would already only have surface leads)
+		is_ecg_object <- inherits(object, "ecg")
 
-  # Process each lead
-  results <- lapply(leads_to_process, function(l) {
-    process_single_lead(object, l, qrs_method, f_characteristics)
-  })
+		# If it's an ECG object or .force_all is TRUE, process all available leads
+		if (is_ecg_object || .force_all) {
+			leads_to_process <- available_leads
 
-  # Name the results
-  names(results) <- leads_to_process
-  results
+			if (verbose) {
+				if (is_ecg_object) {
+					message("Object is of class 'ecg'. Analyzing all ", length(leads_to_process), " leads.")
+				} else {
+					message("Analyzing all ", length(leads_to_process), " available leads.")
+				}
+			}
+		} else {
+			# Standard ECG lead names (case-insensitive matching)
+			std_leads <- .leads$ECG
+
+			# Normalize lead names for comparison
+			normalized_available <- toupper(gsub("[_\\s-]", "", available_leads))
+			normalized_std <- toupper(gsub("[_\\s-]", "", std_leads))
+
+			# Find which available leads match standard ECG leads
+			surface_indices <- which(normalized_available %in% normalized_std)
+			surface_leads <- available_leads[surface_indices]
+			non_surface_leads <- available_leads[-surface_indices]
+
+			if (length(surface_leads) == 0) {
+				warning("No surface leads found in the signal data")
+				return(list())
+			}
+
+			leads_to_process <- surface_leads
+
+			if (verbose) {
+				message("Analyzing ", length(leads_to_process), " surface leads: ",
+								paste(leads_to_process, collapse = ", "))
+
+				if (length(non_surface_leads) > 0) {
+					message("Skipping ", length(non_surface_leads), " non-surface leads: ",
+									paste(non_surface_leads, collapse = ", "))
+				}
+			}
+		}
+	}
+
+	# Process each lead
+	results <- lapply(leads_to_process, function(l) {
+		process_single_lead(object, l, qrs_method, f_characteristics)
+	})
+
+	# Name the results
+	names(results) <- leads_to_process
+	results
 }
 
 # Signal cleaning ----
@@ -137,7 +196,7 @@ remove_ventricular_signal <- function(signal, method = "adaptive_svd") {
   if (method == "adaptive_svd") {
     return(remove_qrs_with_adaptive_svd(signal))
   } else if (method == "ica") {
-    return(ica_removal(signal))
+    return(remove_qrs_with_ica(signal))
   } else {
     stop("Unsupported method. Choose 'adaptive_svd' or 'ica'")
   }
@@ -386,59 +445,537 @@ remove_qrs_with_adaptive_svd <- function(signal,
   atrial_signal
 }
 
+#' Remove ventricular activity (QRS complexes) using Independent Component Analysis (ICA)
+#'
+#' @description
+#' This function implements ICA-based QRS removal for extracting atrial activity
+#' from ECG signals, particularly useful in atrial fibrillation analysis.
+#'
+#' @details
+#' Independent Component Analysis (ICA) separates a multivariate signal into
+#' statistically independent components. In ECG signals, this can help isolate
+#' atrial activity from ventricular activity (QRS complexes).
+#'
+#' @param signal Numeric vector of the ECG signal
+#' @param frequency Sampling frequency in Hz (default 1000)
+#' @param qrs_loc Optional vector of QRS complex locations (sample indices)
+#' @param num_lags Number of delayed signals to use (default 7)
+#' @param lag_ms Maximum lag in milliseconds (default 200)
+#'
+#' @return A numeric vector containing the atrial activity signal
+#'
+#' @noRd
+ica_removal <- function(signal,
+												frequency = 1000,
+												qrs_loc = NULL,
+												num_lags = 7,
+												lag_ms = 200) {
 
-# Old version that will be tossed later
-remove_qrs_with_adaptive_svd_old <- function(signal,
-																				 frequency = 1000,
-																				 qrs_window = 0.12,
-																				 qrs_loc = NULL) {
+	# Check for fastICA package
+	if (!requireNamespace("fastICA", quietly = TRUE)) {
+		stop("The fastICA package is required for ICA removal.")
+	}
 
-  # Detect QRS complexes
-  # Standard Pan Tompkins algorithm
-  if (is.null(qrs_loc)) {
-    qrs_loc <- detect_QRS(signal, frequency)
-  }
+	# Detect QRS complexes if not provided
+	if (is.null(qrs_loc)) {
+		qrs_loc <- detect_QRS(signal, frequency)
+	}
 
-  window_size <- round(0.5 * frequency)
-  half_window <- floor(window_size / 2)
+	# Handle the case of no QRS complexes detected
+	if (length(qrs_loc) < 3) {
+		warning("Too few QRS complexes detected for ICA. Returning original signal.")
+		return(signal)
+	}
 
-  # Extract QRST segments
-  qrst_segments <- lapply(qrs_loc, function(idx) {
-    start_idx <- max(1, idx - half_window)
-    end_idx <- min(length(signal), idx + half_window - 1)
-    segment <- signal[start_idx:end_idx]
-    if (length(segment) < window_size) {
-      segment <- c(segment, rep(0, window_size - length(segment)))
-    }
-    segment
-  })
+	# Create a multivariate signal using delayed versions
+	signal_length <- length(signal)
 
-  qrst_matrix <- do.call(rbind, qrst_segments)
+	# Calculate lag samples from lag_ms
+	max_lag_samples <- round(lag_ms * frequency / 1000)
 
-  # Perform SVD (adaptive)
-  svd_result <- svd(qrst_matrix)
+	# Create evenly spaced lags from 0 to max_lag_samples
+	lags <- round(seq(0, max_lag_samples, length.out = num_lags))
 
-  # Determine number of components to keep (explaining 99% of variance)
-  cumulative_variance <- cumsum(svd_result$d^2) / sum(svd_result$d^2)
-  n_components <- max(which(cumulative_variance > 0.99))
+	# Create the multivariate signal matrix
+	X <- matrix(0, nrow = signal_length - max(lags), ncol = length(lags))
 
-  # Reconstruct QRST template
-  qrst_template <-
-    svd_result$u[, 1:n_components, drop = FALSE] %*%
-    diag(svd_result$d[1:n_components, drop = FALSE]) %*%
-    t(svd_result$v[, 1:n_components, drop = FALSE])
+	for (i in seq_along(lags)) {
+		X[, i] <- signal[(max(lags) - lags[i] + 1):(signal_length - lags[i])]
+	}
 
-  # Subtract QRST template from original signal
-  atrial_signal <- signal
-  for (i in seq_along(qrs_loc)) {
-    idx <- qrs_loc[i]
-    start_idx <- max(1, idx - half_window)
-    end_idx <- min(length(signal), idx + half_window - 1)
-    segment_length <- end_idx - start_idx + 1
-    atrial_signal[start_idx:end_idx] <- atrial_signal[start_idx:end_idx] - qrst_template[i, 1:segment_length]
-  }
+	# Center the data (important for ICA)
+	X_mean <- colMeans(X)
+	X_centered <- scale(X, center = TRUE, scale = FALSE)
 
-  atrial_signal
+	# Apply FastICA
+	n_components <- min(ncol(X), 5)  # Use at most 5 components
+
+	# Try FastICA with different parameters if needed
+	ica_result <- NULL
+	for (alg in c("parallel", "deflation")) {
+		ica_attempt <- try(fastICA::fastICA(X_centered, n.comp = n_components,
+																				alg.typ = alg, fun = "logcosh",
+																				alpha = 1, method = "R",
+																				maxit = 200, tol = 0.0001, verbose = FALSE),
+											 silent = TRUE)
+
+		if (!inherits(ica_attempt, "try-error")) {
+			ica_result <- ica_attempt
+			break
+		}
+	}
+
+	if (is.null(ica_result)) {
+		warning("ICA algorithm failed to converge. Returning original signal.")
+		return(signal)
+	}
+
+	# Extract the components from the ICA result
+	# In FastICA:
+	# X = IC * K, where:
+	# - X is the centered data
+	# - IC (S) are the independent components
+	# - K is the unmixing matrix
+
+	S <- ica_result$S              # Independent components (n samples × q components)
+	K <- ica_result$K              # Projection/Unmixing matrix (q components × p variables)
+	A <- ica_result$A              # Mixing matrix (p variables × q components)
+	W <- ica_result$W              # Estimated unmixing matrix (q components × p variables)
+
+	# Create QRS reference signal based on known QRS locations
+	qrs_sparse <- numeric(nrow(X))
+	valid_qrs <- qrs_loc[qrs_loc >= max(lags) & qrs_loc <= signal_length]
+	valid_indices <- valid_qrs - max(lags) + 1
+	valid_indices <- valid_indices[valid_indices > 0 & valid_indices <= length(qrs_sparse)]
+
+	if (length(valid_indices) > 0) {
+		qrs_sparse[valid_indices] <- 1
+
+		# Smooth QRS reference signal
+		qrs_width <- round(0.1 * frequency)  # Typical QRS width in samples
+		if (qrs_width > 2) {
+			qrs_kernel <- exp(-((-(qrs_width):qrs_width)^2) / (2 * (qrs_width/3)^2))
+			qrs_kernel <- qrs_kernel / sum(qrs_kernel)
+			qrs_smooth <- stats::filter(qrs_sparse, qrs_kernel, sides = 2)
+			qrs_smooth[is.na(qrs_smooth)] <- 0
+		} else {
+			qrs_smooth <- qrs_sparse
+		}
+	} else {
+		qrs_smooth <- numeric(nrow(X))
+	}
+
+	# Identify ventricular components using correlations with QRS reference
+	component_qrs_corr <- apply(S, 2, function(x) {
+		abs(cor(x^2, qrs_smooth))  # Square to focus on high amplitude segments
+	})
+
+	# Find components with high correlation to QRS
+	threshold <- max(0.3, max(component_qrs_corr) * 0.7)
+	ventricular_idx <- which(component_qrs_corr >= threshold)
+
+	# If no components exceeded threshold, take the highest correlated one
+	if (length(ventricular_idx) == 0) {
+		ventricular_idx <- which.max(component_qrs_corr)
+	}
+
+	# Create filtered version of S with ventricular components zeroed out
+	S_filtered <- S
+	S_filtered[, ventricular_idx] <- 0
+
+	# Reconstruct the signal WITHOUT ventricular components
+	# Using FastICA model: X = S %*% t(W)
+	X_filtered <- S_filtered %*% t(W)
+
+	# Add back the mean
+	for (i in 1:ncol(X_filtered)) {
+		X_filtered[, i] <- X_filtered[, i] + X_mean[i]
+	}
+
+	# Use the first column as our atrial signal
+	atrial_signal <- X_filtered[, 1]
+
+	# Ensure the output has the same length as the original signal
+	atrial_full <- numeric(signal_length)
+	start_idx <- max(lags) + 1
+	end_idx <- min(signal_length, start_idx + length(atrial_signal) - 1)
+	segment_length <- end_idx - start_idx + 1
+
+	# Place the processed segment in the full signal
+	atrial_full[start_idx:end_idx] <- atrial_signal[1:segment_length]
+
+	# Fill in the start of the signal (which we couldn't process due to lag)
+	if (start_idx > 1) {
+		# Linear fade from original to processed signal
+		fade_length <- min(round(0.1 * frequency), start_idx - 1)
+		fade_start <- max(1, start_idx - fade_length)
+		fade_weights <- seq(0, 1, length.out = start_idx - fade_start + 1)
+
+		# Mix original and processed at the boundary
+		for (i in fade_start:(start_idx-1)) {
+			weight_idx <- i - fade_start + 1
+			# Use nearest processed sample as reference
+			atrial_full[i] <- (1 - fade_weights[weight_idx]) * signal[i] +
+				fade_weights[weight_idx] * atrial_full[start_idx]
+		}
+
+		# Direct copy for very beginning
+		if (fade_start > 1) {
+			atrial_full[1:(fade_start-1)] <- signal[1:(fade_start-1)]
+		}
+	}
+
+	# Fill in the end of the signal if needed
+	if (end_idx < signal_length) {
+		atrial_full[(end_idx+1):signal_length] <- signal[(end_idx+1):signal_length]
+	}
+
+	# Apply final smoothing to reduce artifacts
+	smooth_window <- round(0.01 * frequency)  # 10ms window
+	if (smooth_window > 2) {
+		if (requireNamespace("signal", quietly = TRUE)) {
+			if (smooth_window %% 2 == 0) smooth_window <- smooth_window + 1  # Ensure odd window
+			kern <- signal::sgolay(p = 3, n = smooth_window, m = 0)
+			atrial_full <- signal::filter(kern, atrial_full)
+
+			# Replace NA values from filtering
+			na_indices <- which(is.na(atrial_full))
+			if (length(na_indices) > 0) {
+				atrial_full[na_indices] <- signal[na_indices]
+			}
+		}
+	}
+
+	# Ensure the mean and standard deviation match the original signal
+	# This helps maintain consistency with the original scale
+	atrial_full <- atrial_full - mean(atrial_full) + mean(signal)
+	atrial_full <- atrial_full * (sd(signal) / sd(atrial_full))
+
+	return(atrial_full)
+}
+
+#' Remove QRST using Independent Component Analysis (ICA)
+#'
+#' A single‑lead signal is first embedded (time‑delay, default = 5 taps) to
+#' create a pseudo‑multichannel matrix, then decomposed with *FastICA* algorithm
+#' from [fastICA::fastICA()]] Components whose high‑frequency energy (20–50 Hz)
+#' rises ≥ `threshold`‑fold inside a ±30 ms window around detected QRS peaks are
+#' presumed ventricular and zeroed before back‑projection.
+#'
+#' @param signal Numeric vector, usually upsampled, bandpass‑filtered lead
+#' @param frequency Sampling rate (Hz).  DEFAULT = 1000
+#' @param embedding_dim Number of lags for the delay‑embedding (≥3). This is
+#'   equivalent to the number of components for ICA. DEFAULT = 5
+#' @param qrs_loc Optional integer vector of QRS indices.  If NULL (DEFAULT),
+#'   the internal `detect_QRS()` is called.
+#' @param threshold Energy‑ratio threshold for classifying a component as
+#'   QRST‑dominant. DEFAULT = 3.
+#' @param post_blanking Duration of time in ms that is used to help provide some
+#'   blanking and spline interpolation through residual QRS complexes. As the
+#'   number increases the interpolation increases. Lower values decrease the
+#'   interpolation. When 0, no blanking will occur. DEFAULT = 40 ms
+#'
+#' @return Numeric vector, same length as `signal`, with ventricular activity
+#'   suppressed.
+#'
+#' @noRd
+remove_qrs_with_ica <- function(signal,
+																frequency = 1000,
+																embedding_dim = 5,
+																qrs_loc = NULL,
+																threshold = 3,
+																post_blanking = 40) {
+
+	# Argument management and checks ----
+	signal <- as.numeric(signal)
+	N <- length(signal)
+
+	if (!requireNamespace("fastICA", quietly = TRUE)) {
+		warning("fastICA not installed – falling back to adaptive SVD.")
+		return(remove_qrs_with_adaptive_svd(signal, frequency = frequency))
+	}
+
+	if (is.null(qrs_loc)) qrs_loc <- detect_QRS(signal, frequency)
+	if (length(qrs_loc) < 3L) {
+		warning("Too few QRS complexes for ICA – returning original signal.")
+		return(signal)
+	}
+
+	embedding_dim <- max(3, min(embedding_dim, length(qrs_loc) - 1))
+
+	# Build the embedding matrix with lags
+	X <- stats::embed(signal, embedding_dim) # (N‑L+1) × L
+	X <- scale(X, center = TRUE, scale = FALSE) # Scale and center
+
+	# ICA ----
+
+	# Try multiple ICA algorithms to increase chances of success
+	ica_result <- NULL
+
+	# List of algorithm combinations to try
+	methods <- list(
+		list(alg = "parallel", fun = "logcosh"),
+		list(alg = "deflation", fun = "logcosh"),
+		list(alg = "parallel", fun = "exp"),
+		list(alg = "deflation", fun = "exp")
+	)
+
+	for (m in methods) {
+		result <- tryCatch({
+			fastICA::fastICA(
+				X,
+				n.comp = embedding_dim,
+				alg.typ = m$alg,
+				fun = m$fun,
+				verbose = FALSE
+			)
+		}, error = function(e) {
+			NULL
+		})
+
+		if (!is.null(result)) {
+			ica_result <- result
+			break
+		}
+	}
+
+	# Check if ICA failed completely
+	if (is.null(ica_result)) {
+		warning("ICA decomposition failed with all methods. Falling back to adaptive SVD method.")
+		return(remove_qrs_with_adaptive_svd(signal, frequency = frequency))
+	}
+
+	# These are the relevant ICA components
+	# S are the sources
+	# A are the mixing matrix
+	S <- ica_result$S
+	A <- ica_result$A
+
+	# QRS sources ----
+
+	# Setup filtering
+	ny  <- frequency / 2
+	bf  <- signal::butter(3, c(20, 50) / ny, type = "pass")
+	win <- round(0.03 * frequency) # Small window to identify QRS
+
+	# Compare energy levels - internal function
+	comp_energy <- function(comp) {
+		mean(comp^2)
+	}
+
+	# Get the high energy areas - internal function
+	hf_energy   <- function(comp, idx) {
+		comp_hf <- signal::filtfilt(bf, comp)
+		mean(comp_hf[idx]^2)
+	}
+
+	# Adjust peak locations for shorter S (lost first L‑1 samples)
+	# Need to document this area better
+	# Not even sure if this is helping
+	shift <- embedding_dim - 1L
+	keep  <- qrs_loc[qrs_loc > win & qrs_loc <= N - win] - shift
+	idx_qrs <- unlist(lapply(keep, function(p) (p - win):(p + win)))
+
+	total_energy <- apply(S, 2, comp_energy)
+	qrs_energy   <- apply(S, 2, hf_energy, idx = idx_qrs)
+
+	qrs_comps <-
+		which(qrs_energy / pmax(total_energy, .Machine$double.eps) > threshold)
+
+	# Signal reconstruction ----
+
+	# Adjust for QRS comparisons
+	# The matrix multiplication is essentially "(N - L + 1) x L"
+	if (length(qrs_comps)) S[, qrs_comps] <- 0
+	X_clean <- S %*% t(A)
+	X_mean <- rowMeans(X_clean)
+
+	# Pad to original length
+	padded_signal <- rep(X_mean[1L], embedding_dim - 1L)
+	cleaned_signal <- c(padded_signal, X_mean)
+	len_diff <- N - length(cleaned_signal)
+	if (len_diff > 0) cleaned_signal <-
+		c(cleaned_signal, rep(cleaned_signal[length(cleaned_signal)], len_diff))
+
+	# Post-blanking splines ----
+
+	# This is helpful to remove the residual QRS complexes
+	if (post_blanking > 0 && length(qrs_loc)) {
+		win <- round((post_blanking / 1000) * frequency)
+		for (p in qrs_loc) {
+			i1 <- max(2, p - win)          # keep one point for interpolation
+			i2 <- min(N - 1, p + win)
+			cleaned_signal[i1:i2] <- stats::approx(
+				x = c(i1 - 1, i2 + 1),
+				y = cleaned_signal[c(i1 - 1, i2 + 1)],
+				xout = i1:i2,
+				method = "linear",
+				rule = 2
+			)$y
+		}
+	}
+
+	# Return finally cleaned signal
+	atrial_signal <- cleaned_signal[seq_len(N)]
+	atrial_signal
+
+}
+
+
+#' Ventricular signal removal using Independent Component Analysis
+#'
+#' @description Removes QRST complexes using Independent Component Analysis (ICA).
+#' The method creates a pseudo-multichannel signal using time-delay embedding,
+#' then decomposes it with FastICA. Components with high-frequency energy around
+#' QRS complexes are identified as ventricular activity and removed.
+#'
+#' @param signal Numeric vector of the preprocessed (upsampled and filtered) signal
+#' @param frequency Sampling rate in Hz (default is 1000)
+#' @param qrs_loc Optional integer vector of QRS indices. If NULL, will be detected
+#' @param thresh Energy ratio threshold for classifying ventricular components (default 3)
+#' @param post_blanking Time in ms to apply additional smoothing after ICA (default 40ms)
+#'
+#' @return Numeric vector with ventricular activity suppressed
+#' @noRd
+ica_removal <- function(signal,
+												frequency = 1000,
+												qrs_loc = NULL,
+												threshold = 3,
+												post_blanking = 40) {
+
+	# Basic validation
+	signal <- as.numeric(signal)
+	N <- length(signal)
+
+	# Fixed embedding dimension to avoid errors
+	# Seems to be an issue with fastICA when embedding dimensions are high
+	embedding_dim <- 5
+
+	# Check for required package
+	if (!requireNamespace("fastICA", quietly = TRUE)) {
+		warning("Package 'fastICA' not available. Falling back to adaptive SVD method.")
+		return(remove_qrs_with_adaptive_svd(signal, frequency = frequency))
+	}
+
+	# Detect QRS complexes if not provided
+	if (is.null(qrs_loc)) {
+		qrs_loc <- detect_QRS(signal, frequency)
+	}
+
+	# Insufficient QRS complexes for ICA
+	if (length(qrs_loc) < 3) {
+		warning("Too few QRS complexes detected for ICA. Returning original signal.")
+		return(signal)
+	}
+
+	# Build delay-embedding matrix for pseudo-multichannel signal
+	X <- stats::embed(signal, embedding_dim)  # Creates (N-embedding_dim+1) × embedding_dim matrix
+	X <- scale(X, center = TRUE, scale = FALSE)  # Center but don't scale
+
+	# Try multiple ICA algorithms to increase chances of success
+	ica_result <- NULL
+	# List of algorithm combinations to try
+	methods <- list(
+		list(alg = "parallel", fun = "logcosh"),
+		list(alg = "deflation", fun = "logcosh"),
+		list(alg = "parallel", fun = "exp"),
+		list(alg = "deflation", fun = "exp")
+	)
+
+	for (method in methods) {
+		result <- tryCatch({
+			fastICA::fastICA(
+				X,
+				n.comp = embedding_dim,
+				alg.typ = method$alg,
+				fun = method$fun,
+				verbose = FALSE
+			)
+		}, error = function(e) {
+			NULL
+		})
+
+		if (!is.null(result)) {
+			ica_result <- result
+			break
+		}
+	}
+
+	# Check if ICA failed completely
+	if (is.null(ica_result)) {
+		warning("ICA decomposition failed with all methods. Falling back to adaptive SVD method.")
+		return(remove_qrs_with_adaptive_svd(signal, frequency = frequency))
+	}
+
+	# Extract components and mixing matrix
+	S <- ica_result$S  # Sources (rows = samples, cols = components)
+	A <- ica_result$A  # Mixing matrix
+
+	# Identify QRST-dominated components based on high-frequency energy
+	# Setup bandpass filter (20-50 Hz) to highlight QRS components
+	nyquist <- frequency / 2
+	bandpass_filter <- signal::butter(3, c(20, 50) / nyquist, type = "pass")
+	window_size <- round(0.03 * frequency)  # ±30 ms around QRS
+
+	# Helper functions for energy calculations
+	component_energy <- function(comp) mean(comp^2)
+	hf_energy <- function(comp, idx) {
+		comp_hf <- signal::filtfilt(bandpass_filter, comp)
+		mean(comp_hf[idx]^2)
+	}
+
+	# Adjust peak locations for the shorter matrix (lost first embedding_dim-1 samples)
+	shift <- embedding_dim - 1
+	valid_peaks <- qrs_loc[qrs_loc > window_size & qrs_loc <= N - window_size] - shift
+
+	# Create window indices around QRS peaks
+	qrs_indices <- unlist(lapply(valid_peaks, function(p) {
+		(p - window_size):(p + window_size)
+	}))
+
+	# Calculate energy ratios and identify ventricular components
+	total_energy <- apply(S, 2, component_energy)
+	qrs_energy <- apply(S, 2, hf_energy, idx = qrs_indices)
+	qrs_components <- which(qrs_energy / pmax(total_energy, .Machine$double.eps) > threshold)
+
+	# Remove ventricular components and reconstruct signal
+	if (length(qrs_components) > 0) {
+		S[, qrs_components] <- 0
+	}
+
+	# Reconstruct cleaned signal
+	X_clean <- S %*% t(A)
+	clean_signal <- rowMeans(X_clean)
+
+	# Pad to original length
+	padded_signal <- c(rep(clean_signal[1], embedding_dim - 1), clean_signal)
+	len_diff <- N - length(padded_signal)
+	if (len_diff > 0) {
+		padded_signal <- c(padded_signal, rep(padded_signal[length(padded_signal)], len_diff))
+	}
+
+	# Apply post-processing to smooth transitions around QRS complexes
+	if (post_blanking > 0 && length(qrs_loc) > 0) {
+		blanking_window <- round((post_blanking / 1000) * frequency)
+
+		for (peak in qrs_loc) {
+			# Determine interpolation range (keeping one point for interpolation)
+			start_idx <- max(2, peak - blanking_window)
+			end_idx <- min(N - 1, peak + blanking_window)
+
+			# Linear interpolation across the blanked region
+			padded_signal[start_idx:end_idx] <- stats::approx(
+				x = c(start_idx - 1, end_idx + 1),
+				y = padded_signal[c(start_idx - 1, end_idx + 1)],
+				xout = start_idx:end_idx,
+				method = "linear",
+				rule = 2
+			)$y
+		}
+	}
+
+	# Return final atrial signal
+	padded_signal[seq_len(N)]
 }
 
 # Atrial signal analysis ----
@@ -495,49 +1032,99 @@ analyze_dominant_frequency <- function(signal, frequency, ...) {
 
 # Utility functions ----
 
-# Helper function to detect QRS complexes using Pan-Tompkins algorithm
+#' Detect QRS complexes in ECG signals
+#'
+#' @description `detect_QRS()` implements a modified Pan-Tompkins algorithm to
+#' detect QRS complexes in ECG signals. The function applies a sequence of
+#' processing steps including bandpass filtering, differentiation, squaring, and
+#' moving window integration to identify R peaks in the signal.
+#'
+#' @details The Pan-Tompkins algorithm is a widely-used method for QRS detection
+#' in ECG signals. This implementation follows these steps:
+#'
+#' 1. Bandpass filtering (5-15 Hz) to reduce noise and emphasize QRS complexes
+#' 2. Differentiation to highlight the steep slopes of QRS complexes 3. Squaring
+#' to amplify high-frequency components 4. Moving window integration to consider
+#' the overall QRS morphology 5. Adaptive thresholding to identify peaks 6.
+#' Application of a refractory period to prevent multiple detections of the same
+#' QRS complex
+#'
+#' The function is designed to work with single-lead ECG signals, typically
+#' sampled at 250-1000 Hz.
+#'
+#' @param signal Numeric vector representing the ECG signal
+#' @param frequency Sampling frequency of the signal in Hz
+#' @param window_size Width of the integration window in seconds, default is
+#'   0.150 seconds
+#'
+#' @return Integer vector containing the sample indices of detected QRS
+#'   complexes
+#'
+#' @references Pan, J., & Tompkins, W. J. (1985). A real-time QRS detection
+#' algorithm. IEEE Transactions on Biomedical Engineering, (3), 230-236.
+#' \doi{10.1109/TBME.1985.325532}
+#'
+#' @examples
+#' \dontrun{
+#' # Load ECG data
+#' ecg_data <- read_muse(system.file("extdata", "muse-sinus.xml", package = "EGM"))
+#'
+#' # Extract lead II signal
+#' signal <- ecg_data$signal$II
+#'
+#' # Get sampling frequency from header
+#' freq <- attributes(ecg_data$header)$record_line$frequency
+#'
+#' # Detect QRS complexes
+#' qrs_locations <- detect_QRS(signal, freq)
+#'
+#' # Plot ECG with detected QRS complexes
+#' plot(signal, type = "l", xlab = "Sample", ylab = "Amplitude")
+#' points(qrs_locations, signal[qrs_locations], col = "red", pch = 19)
+#' }
+#'
 #' @export
 detect_QRS <- function(signal, frequency, window_size = 0.150) {
-  # Step 1: Bandpass Filtering (5-15 Hz)
-  nyquist_freq <- frequency / 2
-  low_cutoff <- 5 / nyquist_freq
-  high_cutoff <- 15 / nyquist_freq
+	# Step 1: Bandpass Filtering (5-15 Hz)
+	nyquist_freq <- frequency / 2
+	low_cutoff <- 5 / nyquist_freq
+	high_cutoff <- 15 / nyquist_freq
 
-  bp_filter <- signal::butter(n = 4, W = c(low_cutoff, high_cutoff), type = "pass")
-  filtered_signal <- signal::filtfilt(bp_filter, signal)
+	bp_filter <- signal::butter(n = 4, W = c(low_cutoff, high_cutoff), type = "pass")
+	filtered_signal <- signal::filtfilt(bp_filter, signal)
 
-  # Step 2: Differentiation to highlight QRS slopes
-  derivative_filter <- c(-1, -2, 0, 2, 1) * (frequency / 8)
-  differentiated_signal <- signal::filter(derivative_filter, 1, filtered_signal)
+	# Step 2: Differentiation to highlight QRS slopes
+	derivative_filter <- c(-1, -2, 0, 2, 1) * (frequency / 8)
+	differentiated_signal <- signal::filter(derivative_filter, 1, filtered_signal)
 
-  # Step 3: Squaring to amplify high-frequency components
-  squared_signal <- differentiated_signal^2
+	# Step 3: Squaring to amplify high-frequency components
+	squared_signal <- differentiated_signal^2
 
-  # Step 4: Moving Window Integration
-  window_size <- round(window_size * frequency)
-  integration_filter <- rep(1 / window_size, window_size)
-  integrated_signal <- signal::filter(integration_filter, 1, squared_signal)
+	# Step 4: Moving Window Integration
+	window_size <- round(window_size * frequency)
+	integration_filter <- rep(1 / window_size, window_size)
+	integrated_signal <- signal::filter(integration_filter, 1, squared_signal)
 
-  # Step 5: Thresholding and Peak Detection
-  threshold <- mean(integrated_signal) + 0.5 * sd(integrated_signal)
-  is_peak <- (integrated_signal > threshold) &
-    (c(FALSE, integrated_signal[-length(integrated_signal)] < integrated_signal[-1])) &
-    (c(integrated_signal[-1] > integrated_signal[-length(integrated_signal)], FALSE))
-  peak_indices <- which(is_peak)
+	# Step 5: Thresholding and Peak Detection
+	threshold <- mean(integrated_signal) + 0.5 * sd(integrated_signal)
+	is_peak <- (integrated_signal > threshold) &
+		(c(FALSE, integrated_signal[-length(integrated_signal)] < integrated_signal[-1])) &
+		(c(integrated_signal[-1] > integrated_signal[-length(integrated_signal)], FALSE))
+	peak_indices <- which(is_peak)
 
-  # Apply a refractory period of 200 ms
-  refractory_period <- round(0.200 * frequency)
-  final_peak_indices <- c()
-  last_peak <- -Inf
+	# Apply a refractory period of 200 ms
+	refractory_period <- round(0.200 * frequency)
+	final_peak_indices <- c()
+	last_peak <- -Inf
 
-  for (idx in peak_indices) {
-    if ((idx - last_peak) > refractory_period) {
-      final_peak_indices <- c(final_peak_indices, idx)
-      last_peak <- idx
-    }
-  }
+	for (idx in peak_indices) {
+		if ((idx - last_peak) > refractory_period) {
+			final_peak_indices <- c(final_peak_indices, idx)
+			last_peak <- idx
+		}
+	}
 
-  final_peak_indices
+	final_peak_indices
 }
 
 

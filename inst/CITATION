@@ -1,8 +1,11 @@
 bibentry(
-  bibtype  = "Software",
+  bibtype  = "Article",
   title    = "EGM: Evaluating Cardiac Electrophysiology Signals",
   author   = "Anish S. Shah",
+  journal  = ,
   year     = 2024,
-  url      = "https://cran.r-project.org/package=EGM",
+  volume   = ,
+  number   = ,
+  pages    = ,
   doi      = "10.5281/zenodo.15244229"
 )

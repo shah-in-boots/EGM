@@ -9,14 +9,16 @@ extract_f_waves(
   lead = NULL,
   qrs_method = "adaptive_svd",
   f_characteristics = "amplitude",
+  verbose = TRUE,
+  .force_all = FALSE,
   ...
 )
 }
 \arguments{
-\item{object}{An object of class \code{egm}}
+\item{object}{An object of class \code{egm} or of subclass \code{ecg}}
 
 \item{lead}{Optional. A character string specifying the lead to analyze. If
-NULL (default), all available leads will be processed.}
+NULL (default), all available surface leads will be processed.}
 
 \item{qrs_method}{Method for ventricular signal removal. Default is
 "adaptive_svd" for adaptive singular value decomposition.}
@@ -25,6 +27,13 @@ NULL (default), all available leads will be processed.}
 signal. Options: "amplitude", "approximate_entropy", "dominant_frequency".
 Please see \code{\link[=calculate_approximate_entropy]{calculate_approximate_entropy()}} and
 \code{\link[=calculate_dominant_frequency]{calculate_dominant_frequency()}} for more details.}
+
+\item{verbose}{Logical. If TRUE, print information about which leads will be
+analyzed. Default is TRUE.}
+
+\item{.force_all}{Logical. If FALSE (default), only process surface ECG leads.
+If TRUE, process all available leads. This parameter is ignored if the object
+is of class 'ecg', in which case all leads are processed.}
 
 \item{...}{Additional arguments passed to methods}
 }
@@ -37,9 +46,9 @@ characteristics.
 }
 \references{
 Park, Junbeom, Chungkeun Lee, Eran Leshem, Ira Blau, Sungsoo Kim, Jung Myung
-Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. “Early
+Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. "Early
 Differentiation of Long-Standing Persistent Atrial Fibrillation Using the
-Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads.” Scientific
+Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads." Scientific
 Reports 9 (February 26, 2019): 2746.
 https://doi.org/10.1038/s41598-019-38928-6.
 
