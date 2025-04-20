@@ -55,6 +55,24 @@ test_that("detect_QRS finds peaks", {
 	expect_true(all(diff(peaks) > 10))  # Check for minimum distance between peaks
 })
 
+test_that("QRS removal functions work appropriately", {
+
+	mock_af <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
+
+	expect_message({
+		out_svd <-
+				extract_f_waves(mock_af, lead = "V1", qrs_method = "adaptive_svd")
+	})
+	expect_type(unlist(out_svd), "double")
+
+	expect_message({
+		out_ica <-
+				extract_f_waves(mock_af, lead = "V1", qrs_method = "ica")
+	})
+	expect_type(unlist(out_ica), "double")
+
+})
+
 test_that("calculate_approximate_entropy returns expected range", {
 	signal <- rnorm(1000)
 
