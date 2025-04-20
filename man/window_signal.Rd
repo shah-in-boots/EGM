@@ -4,16 +4,7 @@
 \alias{window_signal}
 \title{Window signal data based on different methods}
 \usage{
-window_signal(
-  object,
-  method = c("rhythm"),
-  rhythm_type = "sinus",
-  onset_criteria = list(),
-  offset_criteria = list(),
-  reference_criteria = NULL,
-  adjust_sample_indices = TRUE,
-  ...
-)
+window_signal(object, method = c("rhythm"), ...)
 }
 \arguments{
 \item{object}{Object of the \code{egm} class, which includes header, signal
@@ -23,6 +14,8 @@ information, and annotation information.}
 \itemize{
 \item "rhythm" - Windows based on rhythm patterns (requires rhythm_type and criteria)
 }}
+
+\item{...}{Additional arguments passed to specific windowing methods.}
 
 \item{rhythm_type}{A \code{character} string specifying the rhythm type (e.g., "sinus").
 Currently supported: "sinus" (requires reference check).}
@@ -38,8 +31,6 @@ that must exist between onset and offset. Set to NULL to skip reference validati
 
 \item{adjust_sample_indices}{Logical, whether to adjust annotation sample indices
 in the returned windows to be relative to the window start. Default is TRUE.}
-
-\item{...}{Additional arguments passed to specific windowing methods.}
 }
 \value{
 A list of \code{egm} objects, each representing a window of the original signal.
