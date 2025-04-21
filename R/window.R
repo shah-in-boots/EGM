@@ -16,7 +16,7 @@
 #'
 #' @export
 windowed <- function(x = list(),
-										 method = "rhythm",
+										 window_method = "rhythm",
 										 source_record = character(),
 										 ...) {
 	# Validate input
@@ -36,7 +36,7 @@ windowed <- function(x = list(),
 	structure(
 		x,
 		class = c("windowed", "list"),
-		method = method,
+		window_method = window_method,
 		source_record = source_record,
 		window_count = length(x),
 		creation_time = Sys.time()
@@ -226,20 +226,20 @@ lapply.windowed <- function(X, FUN, ...) {
 #'   signal.
 #'
 #' @export
-window <- function(object, method = c("rhythm"), ...) {
+window <- function(object, window_method = c("rhythm"), ...) {
 
 	# Validate input
 	stopifnot("Requires object of <egm> class for evaluation" = inherits(object, 'egm'))
 
 	# Match the method argument
-	method <- match.arg(method)
+	window_method <- match.arg(window_method)
 
 	# Dispatch to the appropriate method handler
 	windows <-
 		# Can add specific methods here in the future
-		switch(method,
+		switch(window_method,
 					 rhythm = window_by_rhythm(object, ...),
-					 stop("Unsupported windowing method: ", method))
+					 stop("Unsupported windowing method: ", window_method))
 
 	# Extract source record name
 	source_record <-
@@ -253,7 +253,7 @@ window <- function(object, method = c("rhythm"), ...) {
 
 	# Return as `windowed` object
 	# This is an internal class to allow for lists of `egm` objects
-	windowed(windows, method = method, source_record = source_record)
+	windowed(windows, window_method = window_method, source_record = source_record)
 }
 
 #' Window signal by rhythm patterns
@@ -520,7 +520,7 @@ window_by_rhythm <- function(object,
 #'
 #' @export
 standardize_windows <- function(x,
-																method = c("time_normalize"),
+																standardization_method = c("time_normalize"),
 																target_samples = 500,
 																target_ms = NULL,
 																interpolation_method = c("linear", "spline", "step"),
@@ -534,12 +534,14 @@ standardize_windows <- function(x,
 	}
 
 	# Match the method argument
-	method <- match.arg(method)
+	# Allows for multiple matches if we want to expand this in future
+	standardization_method <- match.arg(standardization_method)
 	interpolation_method <- match.arg(interpolation_method)
 
 	# Dispatch to the appropriate standardization method
+	# Keep the dots to pass additional features in the future
 	standardized <- switch(
-		method,
+		standardization_method,
 		time_normalize = time_normalize_windows(
 			x,
 			target_samples = target_samples,
@@ -694,10 +696,10 @@ time_normalize_windows <- function(x,
 					original_values <- signal_data[[col]]
 
 					# Apply interpolation method
-					resampled_values <- do_interpolation(original_samples,
-																							 original_values,
-																							 new_samples,
-																							 interpolation_method)
+					resampled_values <- interpolate_signal(original_samples,
+																								 original_values,
+																								 new_samples,
+																								 interpolation_method)
 
 					# Add the resampled column to the output data frame
 					resampled_data[[col_name]] <- resampled_values
@@ -713,7 +715,7 @@ time_normalize_windows <- function(x,
 				original_values <- signal_data[[col]]
 
 				# Apply interpolation method
-				resampled_values <- do_interpolation(original_samples,
+				resampled_values <- interpolate_signal(original_samples,
 																						 original_values,
 																						 new_samples,
 																						 interpolation_method)
@@ -733,9 +735,8 @@ time_normalize_windows <- function(x,
 				# Rescale to match original amplitude range
 				if (diff(resampled_range) != 0) {
 					# Avoid division by zero
-					resampled_data[[col_name]] <- ((resampled_data[[col_name]] - resampled_range[1]) /
-																				 	diff(resampled_range)) * diff(original_range) +
-						original_range[1]
+					resampled_data[[col_name]] <-
+						((resampled_data[[col_name]] - resampled_range[1]) / diff(resampled_range)) * diff(original_range) +  original_range[1]
 				}
 			}
 		}
@@ -750,7 +751,7 @@ time_normalize_windows <- function(x,
 
 #' Helper function to apply interpolation
 #' @keywords internal
-do_interpolation <- function(original_samples,
+interpolate_signal <- function(original_samples,
 														 original_values,
 														 new_samples,
 														 method) {
