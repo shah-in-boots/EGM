@@ -198,11 +198,13 @@ lapply.windowed <- function(X, FUN, ...) {
 #' @param object Object of the `egm` class, which includes header, signal
 #'   information, and annotation information.
 #'
-#' @param method A `character` string specifying the windowing method. Options include:
-#'   * "rhythm" - Windows based on rhythm patterns (requires rhythm_type and criteria)
+#' @param method A `character` string specifying the windowing method. Options
+#'   include:
 #'
-#' @param rhythm_type A `character` string specifying the rhythm type (e.g., "sinus").
-#'   Currently supported: "sinus" (requires reference check).
+#'   - **rhythm** - Windows based on rhythm patterns (requires rhythm_type and criteria)
+#'
+#' @param rhythm_type A `character` string specifying the rhythm type (e.g.,
+#'   "sinus"). Currently supported: "sinus" (requires reference check).
 #'
 #' @param onset_criteria A named list of criteria to identify onset points.
 #'   Names should match column names in the annotation table.
@@ -210,20 +212,21 @@ lapply.windowed <- function(X, FUN, ...) {
 #' @param offset_criteria A named list of criteria to identify offset points.
 #'   Names should match column names in the annotation table.
 #'
-#' @param reference_criteria A named list of criteria to identify reference points
-#'   that must exist between onset and offset. Set to NULL to skip reference validation.
+#' @param reference_criteria A named list of criteria to identify reference
+#'   points that must exist between onset and offset. Set to NULL to skip
+#'   reference validation.
 #'
-#' @param adjust_sample_indices Logical, whether to adjust annotation sample indices
-#'   in the returned windows to be relative to the window start. Default is TRUE.
+#' @param adjust_sample_indices Logical, whether to adjust annotation sample
+#'   indices in the returned windows to be relative to the window start. Default
+#'   is TRUE.
 #'
 #' @param ... Additional arguments passed to specific windowing methods.
 #'
-#' @return A list of `egm` objects, each representing a window of the original signal.
+#' @return A list of `egm` objects, each representing a window of the original
+#'   signal.
 #'
 #' @export
-window_signal <- function(object,
-													method = c("rhythm"),
-													...) {
+window <- function(object, method = c("rhythm"), ...) {
 
 	# Validate input
 	stopifnot("Requires object of <egm> class for evaluation" = inherits(object, 'egm'))
@@ -232,21 +235,24 @@ window_signal <- function(object,
 	method <- match.arg(method)
 
 	# Dispatch to the appropriate method handler
-	windows <- switch(method,
-										rhythm = window_by_rhythm(object, ...),
-										# Add additional methods here in the future
-										stop("Unsupported windowing method: ", method))
+	windows <-
+		# Can add specific methods here in the future
+		switch(method,
+					 rhythm = window_by_rhythm(object, ...),
+					 stop("Unsupported windowing method: ", method))
 
 	# Extract source record name
-	source_record <- if (!is.null(object$header$record_name)) {
-		object$header$record_name
-	} else if (!is.null(attributes(object$header)$record_line$record_name)) {
-		attributes(object$header)$record_line$record_name
-	} else {
-		"unknown"
-	}
+	source_record <-
+		if (!is.null(object$header$record_name)) {
+			object$header$record_name
+		} else if (!is.null(attributes(object$header)$record_line$record_name)) {
+			attributes(object$header)$record_line$record_name
+		} else {
+			"unknown"
+		}
 
-	# Return as windowed object
+	# Return as `windowed` object
+	# This is an internal class to allow for lists of `egm` objects
 	windowed(windows, method = method, source_record = source_record)
 }
 
@@ -260,7 +266,6 @@ window_by_rhythm <- function(object,
 														 reference_criteria = NULL,
 														 adjust_sample_indices = TRUE,
 														 ...) {
-
 	# Validate required parameters
 	if (missing(onset_criteria)) {
 		stop("onset_criteria is required for rhythm-based windowing")
@@ -372,24 +377,31 @@ window_by_rhythm <- function(object,
 		window_signal <- sig[sample >= onset & sample <= offset, ]
 
 		# Create header for this window
-		info_string <- paste0(rhythm_type, " window ", window_count,
-													", onset: ", onset,
-													", offset: ", offset)
+		info_string <- paste0(rhythm_type,
+													" window ",
+													window_count,
+													", onset: ",
+													onset,
+													", offset: ",
+													offset)
 
 		if (rhythm_type == "sinus") {
 			info_string <- paste0(info_string, ", QRS: ", qrs)
 		}
 
 		window_header <- header_table(
-			record_name = paste0(attributes(hea)$record_line$record_name, "_",
-													 rhythm_type, window_count),
+			record_name = paste0(
+				attributes(hea)$record_line$record_name,
+				"_",
+				rhythm_type,
+				window_count
+			),
 			number_of_channels = attributes(hea)$record_line$number_of_channels,
 			frequency = attributes(hea)$record_line$frequency,
 			samples = nrow(window_signal),
 			ADC_gain = hea$gain,
 			label = hea$label,
-			info_strings = c(attributes(hea)$info_strings,
-											 window_info = info_string)
+			info_strings = c(attributes(hea)$info_strings, window_info = info_string)
 		)
 
 		# Create annotation for this window
@@ -401,18 +413,377 @@ window_by_rhythm <- function(object,
 		}
 
 		# Add to list of windows
-		windows[[window_count]] <- egm(
-			signal = window_signal,
-			header = window_header,
-			annotation = window_annotation
-		)
+		windows[[window_count]] <- egm(signal = window_signal,
+																	 header = window_header,
+																	 annotation = window_annotation)
 	}
 
 	if (length(windows) == 0) {
-		warning("No complete ", rhythm_type, " windows found with the specified criteria")
+		warning("No complete ",
+						rhythm_type,
+						" windows found with the specified criteria")
 		return(list())
 	}
 
 	# Return list of windows
 	windows
+}
+
+# Standardization and normalization of windows ---------------------------------
+
+#' Standardize windows of signal data
+#'
+#' @description Standardizes `windowed` objects by applying various
+#' transformations to each window. This function converts each `egm` object in a
+#' `windowed` list to a standardized data frame with uniform properties,
+#' facilitating comparison and analysis.
+#'
+#' @details Currently supported standardization methods:
+#'
+#' * `time_normalize` - Resamples each window to a standard length by either
+#' dilating or contracting the signal. The result is a signal with a consistent
+#' number of samples regardless of the original window duration.
+#'
+#' Additional options:
+#'
+#' * `align_feature` - If provided, windows will be aligned to center around this
+#' feature (e.g., a specific annotation type like "N" for R-peak). Can be a
+#' character string matching an annotation type or a list of criteria for
+#' annotation matching.
+#'
+#' * `preserve_amplitude` - If TRUE (default), maintains the original amplitude
+#' range after resampling. If FALSE, the amplitudes may change due to
+#' interpolation.
+#'
+#' @param x A `windowed` object to standardize
+#' @param method A `character` string specifying the standardization method.
+#'   Currently supported: "time_normalize".
+#' @param target_samples The desired number of samples for each standardized
+#'   window. Default is 500 samples. This parameter takes precedence if both
+#'   target_samples and target_ms are provided.
+#' @param target_ms Alternative specification in milliseconds. If provided and
+#'   target_samples is NULL, the function will convert this to samples based on
+#'   the signal's sampling frequency.
+#' @param interpolation_method The method used for interpolation when
+#'   resampling. Options are "linear" (default), "spline", or "step".
+#' @param align_feature Feature to align windows around, either a character
+#'   string matching an annotation type or a list of criteria for finding a
+#'   specific annotation. Default is NULL (no alignment).
+#' @param preserve_amplitude Logical. If TRUE (default), maintains original
+#'   amplitude range after resampling.
+#' @param preserve_class Logical. If TRUE, returns a `windowed` object with
+#'   standardized data frames. If FALSE (default), returns a plain list of data
+#'   frames.
+#' @param ... Additional arguments passed to specific standardization methods.
+#'
+#' @return If `preserve_class=TRUE`, a `windowed` object containing standardized
+#'   data frames. If `preserve_class=FALSE`, a plain list of standardized data
+#'   frames.
+#'
+#' @examples
+#' \dontrun{
+#' # Read in ECG data
+#' ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
+#'
+#' # Create windows based on sinus rhythm
+#' windows <- window_signal(
+#'   ecg,
+#'   method = "rhythm",
+#'   rhythm_type = "sinus",
+#'   onset_criteria = list(type = "(", number = 0),
+#'   offset_criteria = list(type = ")", number = 2),
+#'   reference_criteria = list(type = "N")
+#' )
+#'
+#' # Standardize windows to exactly 500 samples
+#' std_windows <- standardize_windows(
+#'   windows,
+#'   method = "time_normalize",
+#'   target_samples = 500
+#' )
+#'
+#' # Alternatively, standardize to 500 milliseconds (depends on sampling frequency)
+#' std_windows_ms <- standardize_windows(
+#'   windows,
+#'   method = "time_normalize",
+#'   target_ms = 500
+#' )
+#'
+#' # Standardize windows with QRS alignment
+#' aligned_windows <- standardize_windows(
+#'   windows,
+#'   method = "time_normalize",
+#'   target_samples = 500,
+#'   align_feature = "N"  # Align on QRS complexes
+#' )
+#' }
+#'
+#' @export
+standardize_windows <- function(x,
+																method = c("time_normalize"),
+																target_samples = 500,
+																target_ms = NULL,
+																interpolation_method = c("linear", "spline", "step"),
+																align_feature = NULL,
+																preserve_amplitude = TRUE,
+																preserve_class = FALSE,
+																...) {
+	# Validate input
+	if (!is_windowed(x)) {
+		stop("Input must be a windowed object")
+	}
+
+	# Match the method argument
+	method <- match.arg(method)
+	interpolation_method <- match.arg(interpolation_method)
+
+	# Dispatch to the appropriate standardization method
+	standardized <- switch(
+		method,
+		time_normalize = time_normalize_windows(
+			x,
+			target_samples = target_samples,
+			target_ms = target_ms,
+			interpolation_method = interpolation_method,
+			align_feature = align_feature,
+			preserve_amplitude = preserve_amplitude,
+			...
+		),
+		# Add additional methods here in the future
+		stop("Unsupported standardization method: ", method)
+	)
+
+	# Return as appropriate class
+	if (preserve_class) {
+		return(windowed(
+			standardized,
+			method = paste0("standardized_", method),
+			source_record = attr(x, "source_record")
+		))
+	} else {
+		return(standardized)
+	}
+}
+
+#' Time normalize windows to a standard length
+#' @keywords internal
+time_normalize_windows <- function(x,
+																	 target_samples = 500,
+																	 target_ms = NULL,
+																	 interpolation_method = "linear",
+																	 align_feature = NULL,
+																	 preserve_amplitude = TRUE,
+																	 ...) {
+	if (length(x) == 0) {
+		return(list())
+	}
+
+	# Get the sampling frequency from the first window
+	first_window <- x[[1]]
+	if (!inherits(first_window, "egm")) {
+		stop("Windows must be egm objects")
+	}
+
+	frequency <- attributes(first_window$header)$record_line$frequency
+
+	# Determine target samples - either directly specified or converted from ms
+	if (is.null(target_samples) && !is.null(target_ms)) {
+		target_samples <- ceiling((target_ms / 1000) * frequency)
+	} else if (is.null(target_samples)) {
+		target_samples <- 500  # Default fallback
+	}
+
+	# Process each window
+	standardized <- lapply(x, function(window) {
+		# Extract the signal data
+		signal_data <- window$signal
+
+		# Find the sample column index
+		sample_col_idx <- which(names(signal_data) == "sample")
+		signal_cols <- setdiff(1:ncol(signal_data), sample_col_idx)
+
+		# Create a data frame to store the resampled data
+		resampled_data <- data.frame(sample = 1:target_samples)
+
+		# Feature alignment (if requested)
+		if (!is.null(align_feature) && !is.null(window$annotation)) {
+			# Find the feature in the annotations
+			feature_idx <- NULL
+
+			if (is.list(align_feature)) {
+				# Filter annotations by criteria
+				filtered_ann <- window$annotation
+				for (col_name in names(align_feature)) {
+					if (col_name %in% names(filtered_ann)) {
+						filtered_ann <- filtered_ann[filtered_ann[[col_name]] == align_feature[[col_name]], ]
+					}
+				}
+
+				if (nrow(filtered_ann) > 0) {
+					feature_idx <- filtered_ann$sample[1]
+				}
+			} else if (is.character(align_feature)) {
+				# Check for a specific annotation type
+				if ("type" %in% names(window$annotation)) {
+					type_match <- window$annotation[window$annotation$type == align_feature, ]
+					if (nrow(type_match) > 0) {
+						feature_idx <- type_match$sample[1]
+					}
+				}
+			}
+
+			if (!is.null(feature_idx)) {
+				# Normalize around the feature - center it in the window
+				center_point <- ceiling(target_samples / 2)
+				original_samples <- nrow(signal_data)
+
+				# Calculate shift needed to center the feature
+				shift_samples <- center_point - feature_idx
+
+				# Create new sample indices that center the feature
+				original_indices <- 1:original_samples
+				shifted_indices <- original_indices + shift_samples
+
+				# Create new sample sequence that's centered on the feature
+				new_samples <- seq(shifted_indices[1], shifted_indices[length(shifted_indices)], length.out = target_samples)
+
+				# Proceed with interpolation
+				for (col in signal_cols) {
+					col_name <- names(signal_data)[col]
+					original_values <- signal_data[[col]]
+
+					# Use the specified interpolation method
+					if (interpolation_method == "linear") {
+						resampled_values <- stats::approx(
+							x = original_indices,
+							y = original_values,
+							xout = new_samples,
+							method = "linear",
+							rule = 2
+						)$y
+					} else if (interpolation_method == "spline") {
+						resampled_values <- stats::spline(
+							x = original_indices,
+							y = original_values,
+							xout = new_samples,
+							method = "natural"
+						)$y
+					} else if (interpolation_method == "step") {
+						resampled_values <- stats::approx(
+							x = original_indices,
+							y = original_values,
+							xout = new_samples,
+							method = "constant",
+							rule = 2
+						)$y
+					}
+
+					# Add to output
+					resampled_data[[col_name]] <- resampled_values
+				}
+			} else {
+				# Feature not found, fall back to regular resampling
+				warning(
+					"Specified alignment feature not found in annotations, using standard resampling"
+				)
+				original_samples <- nrow(signal_data)
+				new_samples <- seq(1, original_samples, length.out = target_samples)
+
+				for (col in signal_cols) {
+					col_name <- names(signal_data)[col]
+					original_values <- signal_data[[col]]
+
+					# Apply interpolation method
+					resampled_values <- do_interpolation(original_samples,
+																							 original_values,
+																							 new_samples,
+																							 interpolation_method)
+
+					# Add the resampled column to the output data frame
+					resampled_data[[col_name]] <- resampled_values
+				}
+			}
+		} else {
+			# No feature alignment, standard resampling
+			original_samples <- nrow(signal_data)
+			new_samples <- seq(1, original_samples, length.out = target_samples)
+
+			for (col in signal_cols) {
+				col_name <- names(signal_data)[col]
+				original_values <- signal_data[[col]]
+
+				# Apply interpolation method
+				resampled_values <- do_interpolation(original_samples,
+																						 original_values,
+																						 new_samples,
+																						 interpolation_method)
+
+				# Add the resampled column to the output data frame
+				resampled_data[[col_name]] <- resampled_values
+			}
+		}
+
+		# Preserve amplitude scale if requested
+		if (preserve_amplitude) {
+			for (col in signal_cols) {
+				col_name <- names(signal_data)[col]
+				original_range <- range(signal_data[[col]], na.rm = TRUE)
+				resampled_range <- range(resampled_data[[col_name]], na.rm = TRUE)
+
+				# Rescale to match original amplitude range
+				if (diff(resampled_range) != 0) {
+					# Avoid division by zero
+					resampled_data[[col_name]] <- ((resampled_data[[col_name]] - resampled_range[1]) /
+																				 	diff(resampled_range)) * diff(original_range) +
+						original_range[1]
+				}
+			}
+		}
+
+		# Return the resampled data frame
+		resampled_data
+	})
+
+	# Return the list of standardized windows
+	standardized
+}
+
+#' Helper function to apply interpolation
+#' @keywords internal
+do_interpolation <- function(original_samples,
+														 original_values,
+														 new_samples,
+														 method) {
+	original_indices <- 1:original_samples
+
+	if (method == "linear") {
+		return(
+			stats::approx(
+				x = original_indices,
+				y = original_values,
+				xout = new_samples,
+				method = "linear",
+				rule = 2
+			)$y
+		)
+	} else if (method == "spline") {
+		return(
+			stats::spline(
+				x = original_indices,
+				y = original_values,
+				xout = new_samples,
+				method = "natural"
+			)$y
+		)
+	} else if (method == "step") {
+		return(
+			stats::approx(
+				x = original_indices,
+				y = original_values,
+				xout = new_samples,
+				method = "constant",
+				rule = 2
+			)$y
+		)
+	}
 }
