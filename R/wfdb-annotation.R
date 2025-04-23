@@ -247,7 +247,7 @@ annotate_wfdb <- function(record,
  	# Change working directory for writing purposes
  	# This should change back at end of writing process
 	switch(annotator,
-				 ecpugwave = {
+				 ecgpuwave = {
 				 	withr::with_dir(new = wd,
 				 									code = {
 				 										# System call to beat detector/annotator
