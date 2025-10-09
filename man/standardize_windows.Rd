@@ -6,7 +6,7 @@
 \usage{
 standardize_windows(
   x,
-  method = c("time_normalize"),
+  standardization_method = c("time_normalize"),
   target_samples = 500,
   target_ms = NULL,
   interpolation_method = c("linear", "spline", "step"),
@@ -18,9 +18,6 @@ standardize_windows(
 }
 \arguments{
 \item{x}{A \code{windowed} object to standardize}
-
-\item{method}{A \code{character} string specifying the standardization method.
-Currently supported: "time_normalize".}
 
 \item{target_samples}{The desired number of samples for each standardized
 window. Default is 500 samples. This parameter takes precedence if both
@@ -45,6 +42,9 @@ standardized data frames. If FALSE (default), returns a plain list of data
 frames.}
 
 \item{...}{Additional arguments passed to specific standardization methods.}
+
+\item{method}{A \code{character} string specifying the standardization method.
+Currently supported: "time_normalize".}
 }
 \value{
 If \code{preserve_class=TRUE}, a \code{windowed} object containing standardized

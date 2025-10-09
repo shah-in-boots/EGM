@@ -4,19 +4,19 @@
 \alias{window}
 \title{Window signal data based on different methods}
 \usage{
-window(object, method = c("rhythm"), ...)
+window(object, window_method = c("rhythm"), ...)
 }
 \arguments{
 \item{object}{Object of the \code{egm} class, which includes header, signal
 information, and annotation information.}
+
+\item{...}{Additional arguments passed to specific windowing methods.}
 
 \item{method}{A \code{character} string specifying the windowing method. Options
 include:
 \itemize{
 \item \strong{rhythm} - Windows based on rhythm patterns (requires rhythm_type and criteria)
 }}
-
-\item{...}{Additional arguments passed to specific windowing methods.}
 
 \item{rhythm_type}{A \code{character} string specifying the rhythm type (e.g.,
 "sinus"). Currently supported: "sinus" (requires reference check).}

@@ -198,8 +198,8 @@ lapply.windowed <- function(X, FUN, ...) {
 #' @param object Object of the `egm` class, which includes header, signal
 #'   information, and annotation information.
 #'
-#' @param method A `character` string specifying the windowing method. Options
-#'   include:
+#' @param window_method A `character` string specifying the windowing method.
+#'   Options include:
 #'
 #'   - **rhythm** - Windows based on rhythm patterns (requires rhythm_type and criteria)
 #'
@@ -456,7 +456,7 @@ window_by_rhythm <- function(object,
 #' interpolation.
 #'
 #' @param x A `windowed` object to standardize
-#' @param method A `character` string specifying the standardization method.
+#' @param standardization_method A `character` string specifying the standardization method.
 #'   Currently supported: "time_normalize".
 #' @param target_samples The desired number of samples for each standardized
 #'   window. Default is 500 samples. This parameter takes precedence if both

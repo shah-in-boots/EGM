@@ -4,16 +4,21 @@
 \alias{windowed}
 \title{Create a windowed object containing a list of egm segments}
 \usage{
-windowed(x = list(), method = "rhythm", source_record = character(), ...)
+windowed(
+  x = list(),
+  window_method = "rhythm",
+  source_record = character(),
+  ...
+)
 }
 \arguments{
 \item{x}{A list of \code{egm} objects}
 
-\item{method}{The windowing method used to create the list}
-
 \item{source_record}{The name of the original record}
 
 \item{...}{Additional arguments passed to methods}
+
+\item{method}{The windowing method used to create the list}
 }
 \value{
 An object of class \code{windowed} which inherits from \code{list}
