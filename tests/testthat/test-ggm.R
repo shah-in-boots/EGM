@@ -60,7 +60,13 @@ test_that("theming works", {
 		mode = NULL
 	)
 
-	expect_equal(g$labels$x, "sample")
+	labels <- if ("get_labs" %in% getNamespaceExports("ggplot2")) {
+		ggplot2::get_labs(g)
+	} else {
+		g$labels
+	}
+
+	expect_equal(labels$x, "sample")
 	expect_length(g$theme, 0)
 
 	dark <- ggm(
