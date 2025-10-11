@@ -1,6 +1,6 @@
 Package: EGM
-Title: Evaluating Cardiac Electrophysiology Signals
-Version: 0.1.0.9000
+Title: Intracardiac Electrograms
+Version: 0.1.1
 Authors@R: 
     person(given = "Anish S.",
            family = "Shah",
@@ -14,7 +14,7 @@ Description: A system for importing electrophysiological signal, based
     analysis are provided. A stable and broadly compatible class for working
     with signal data, supporting the reading in of cardiac electrophysiogical
     files such as intracardiac electrograms, is introduced.
-License: LICENSE
+License: LICENSE.md
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)

@@ -19,7 +19,7 @@ template:
 destination: docs
 
 home:
-  title: Evaluating Cardiac Electrophysiological Signals
+  title: Evaluating Intracardiac Electrogram Data
   description: >
     A system for importing electrophysiological signal into R, based
     on the Waveform Database(WFDB) software package, written by Moody et al
