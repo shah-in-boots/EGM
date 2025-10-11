@@ -19,6 +19,9 @@ standardize_windows(
 \arguments{
 \item{x}{A \code{windowed} object to standardize}
 
+\item{standardization_method}{A \code{character} string specifying the standardization method.
+Currently supported: "time_normalize".}
+
 \item{target_samples}{The desired number of samples for each standardized
 window. Default is 500 samples. This parameter takes precedence if both
 target_samples and target_ms are provided.}
@@ -42,9 +45,6 @@ standardized data frames. If FALSE (default), returns a plain list of data
 frames.}
 
 \item{...}{Additional arguments passed to specific standardization methods.}
-
-\item{method}{A \code{character} string specifying the standardization method.
-Currently supported: "time_normalize".}
 }
 \value{
 If \code{preserve_class=TRUE}, a \code{windowed} object containing standardized

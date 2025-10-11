@@ -1,14 +1,19 @@
 # Class definition for `windowed` objects -------------------------------------
 
-#' Create a windowed object containing a list of egm segments
+#' Create a `windowed` object containing a list of egm segments
 #'
 #' @description
-#' `windowed` objects are lists of `egm` objects that represent segments or windows
-#' of the original signal. This allows for specialized methods to be applied to
-#' collections of signal windows.
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' `windowed` objects are lists of `egm` objects that represent segments or
+#' windows of the original signal. This allows for specialized methods to be
+#' applied to collections of signal windows. This function primarily serves as
+#' the class generation function, and only applies class attributes. It is used
+#' by the [window()] function to ensure appropriate class and properties.
 #'
 #' @param x A list of `egm` objects
-#' @param method The windowing method used to create the list
+#' @param window_method The windowing method used to create the list
 #' @param source_record The name of the original record
 #' @param ... Additional arguments passed to methods
 #'
@@ -130,6 +135,9 @@ c.windowed <- function(...) {
 		stop("All arguments must be `windowed` objects")
 	}
 
+	# TODO
+	# Consider additional validation methods for making sure windows are similar
+
 	# Get the first non-empty object's attributes
 	first_non_empty <- which(sapply(args, length) > 0)[1]
 	if (is.na(first_non_empty)) {
@@ -186,6 +194,9 @@ lapply.windowed <- function(X, FUN, ...) {
 #' Window signal data based on different methods
 #'
 #' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
 #' Creates windows of signal data using various methods, such as rhythm patterns,
 #' time intervals, or reference points. Each window is returned as an individual
 #' `egm` object for further analysis.
@@ -256,9 +267,8 @@ window <- function(object, window_method = c("rhythm"), ...) {
 	windowed(windows, window_method = window_method, source_record = source_record)
 }
 
-#' Window signal by rhythm patterns
-#' Creates windows around rhythm patterns using flexible annotation criteria.
-#' @keywords internal
+#' @rdname window
+#' @export
 window_by_rhythm <- function(object,
 														 rhythm_type = "sinus",
 														 onset_criteria,
@@ -552,14 +562,14 @@ standardize_windows <- function(x,
 			...
 		),
 		# Add additional methods here in the future
-		stop("Unsupported standardization method: ", method)
+		stop("Unsupported standardization method: ", standardization_method)
 	)
 
 	# Return as appropriate class
 	if (preserve_class) {
 		return(windowed(
 			standardized,
-			method = paste0("standardized_", method),
+			window_method = paste0("standardized_", standardization_method),
 			source_record = attr(x, "source_record")
 		))
 	} else {
@@ -752,12 +762,12 @@ time_normalize_windows <- function(x,
 #' Helper function to apply interpolation
 #' @keywords internal
 interpolate_signal <- function(original_samples,
-														 original_values,
-														 new_samples,
-														 method) {
+															 original_values,
+															 new_samples,
+															 interpolation_method) {
 	original_indices <- 1:original_samples
 
-	if (method == "linear") {
+	if (interpolation_method == "linear") {
 		return(
 			stats::approx(
 				x = original_indices,
@@ -767,7 +777,7 @@ interpolate_signal <- function(original_samples,
 				rule = 2
 			)$y
 		)
-	} else if (method == "spline") {
+	} else if (interpolation_method == "spline") {
 		return(
 			stats::spline(
 				x = original_indices,
@@ -776,7 +786,7 @@ interpolate_signal <- function(original_samples,
 				method = "natural"
 			)$y
 		)
-	} else if (method == "step") {
+	} else if (interpolation_method == "step") {
 		return(
 			stats::approx(
 				x = original_indices,

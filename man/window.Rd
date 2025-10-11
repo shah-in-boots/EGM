@@ -2,21 +2,32 @@
 % Please edit documentation in R/window.R
 \name{window}
 \alias{window}
+\alias{window_by_rhythm}
 \title{Window signal data based on different methods}
 \usage{
 window(object, window_method = c("rhythm"), ...)
+
+window_by_rhythm(
+  object,
+  rhythm_type = "sinus",
+  onset_criteria,
+  offset_criteria,
+  reference_criteria = NULL,
+  adjust_sample_indices = TRUE,
+  ...
+)
 }
 \arguments{
 \item{object}{Object of the \code{egm} class, which includes header, signal
 information, and annotation information.}
 
-\item{...}{Additional arguments passed to specific windowing methods.}
-
-\item{method}{A \code{character} string specifying the windowing method. Options
-include:
+\item{window_method}{A \code{character} string specifying the windowing method.
+Options include:
 \itemize{
 \item \strong{rhythm} - Windows based on rhythm patterns (requires rhythm_type and criteria)
 }}
+
+\item{...}{Additional arguments passed to specific windowing methods.}
 
 \item{rhythm_type}{A \code{character} string specifying the rhythm type (e.g.,
 "sinus"). Currently supported: "sinus" (requires reference check).}
@@ -40,6 +51,8 @@ A list of \code{egm} objects, each representing a window of the original
 signal.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Creates windows of signal data using various methods, such as rhythm patterns,
 time intervals, or reference points. Each window is returned as an individual
 \code{egm} object for further analysis.

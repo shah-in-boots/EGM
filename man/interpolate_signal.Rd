@@ -4,7 +4,12 @@
 \alias{interpolate_signal}
 \title{Helper function to apply interpolation}
 \usage{
-interpolate_signal(original_samples, original_values, new_samples, method)
+interpolate_signal(
+  original_samples,
+  original_values,
+  new_samples,
+  interpolation_method
+)
 }
 \description{
 Helper function to apply interpolation
