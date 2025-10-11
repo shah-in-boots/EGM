@@ -59,5 +59,5 @@ labels or alarm triggers
 \author{
 Original software: George Moody, Tom Pollard, Benjamin Moody \cr
 R implementation: Anish S. Shah \cr
-Last updated: 2025-03-29 \cr
+Last updated: 2025-10-11 \cr
 }
