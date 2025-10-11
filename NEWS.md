@@ -3,8 +3,16 @@
 * Updates to `{pkgdown}` settings for documentation organization
 * Simplify and update visualizations using `ggm()` object
 * Debug the color issues when adding a color theme to `ggm()`
-
 * Creation of subclass of `egm` objects called `ecg` to identify 12-lead ECG subtypes
+
+# EGM 0.1.1
+
+This is an updated release to *CRAN* for this package.
+The minor changes to this version are as follows.
+
+* Update to `ggm()` function to allow for appropriate theming for dark and light color themes (removes issues with importing colors)
+
+* Update to code and testing suite to assess compatibility with the `{ggplot2}` __v4.0.0__ release
 
 # EGM 0.1.0
 
