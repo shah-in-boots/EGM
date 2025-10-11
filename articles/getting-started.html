@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">EGM</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,7 +59,7 @@
       <h1>Getting Started</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/shah-in-boots/EGM/blob/v0.1.0/vignettes/getting-started.Rmd" class="external-link"><code>vignettes/getting-started.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/shah-in-boots/EGM/blob/main/vignettes/getting-started.Rmd" class="external-link"><code>vignettes/getting-started.Rmd</code></a></small>
       <div class="d-none name"><code>getting-started.Rmd</code></div>
     </div>
 
@@ -67,8 +67,11 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shah-in-boots.github.io/EGM/">EGM</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Loading required package: vctrs</span></span>
-<span><span class="co">#&gt; Loading required package: data.table</span></span></code></pre></div>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Attaching package: 'EGM'</span></span>
+<span><span class="co">#&gt; The following object is masked from 'package:stats':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     window</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="reading-in-data">Reading in Data<a class="anchor" aria-label="anchor" href="#reading-in-data"></a>
 </h2>
@@ -98,17 +101,22 @@ XML format.</p>
 <span><span class="co"># Now as an `egm` class</span></span>
 <span><span class="va">ecg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/muse.html">read_muse</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
 <span><span class="va">ecg</span></span>
-<span><span class="co">#&gt; &lt;Electrical Signal&gt;</span></span>
+<span><span class="co">#&gt; &lt;Electrogram&gt;</span></span>
 <span><span class="co">#&gt; -------------------</span></span>
 <span><span class="co">#&gt; Recording Duration:  10 seconds</span></span>
 <span><span class="co">#&gt; Recording frequency  500  hz</span></span>
 <span><span class="co">#&gt; Number of channels:  12 </span></span>
 <span><span class="co">#&gt; Channel Names:  I II III AVF AVL AVR V1 V2 V3 V4 V5 V6 </span></span>
-<span><span class="co">#&gt; Annotation:</span></span>
+<span><span class="co">#&gt; Annotation:   </span></span>
+<span><span class="co">#&gt; Type: Standard 12-lead ECG</span></span>
 <span></span>
 <span><span class="co"># Can now plot this easily</span></span>
 <span><span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">ecg</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="../reference/colors.html">theme_egm_light</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="../reference/colors.html">theme_egm_light</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Scale for <span style="color: #00BB00;">colour</span> is already present.</span></span>
+<span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">colour</span>, which will replace the existing scale.</span></span>
+<span><span class="co">#&gt; Scale for <span style="color: #00BB00;">colour</span> is already present.</span></span>
+<span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">colour</span>, which will replace the existing scale.</span></span></code></pre></div>
 <p><img src="getting-started_files/figure-html/unnamed-chunk-2-1.png" width="700"></p>
 <p>Similarly, intracardiac recordings obtained through LSPro can be read
 in as well. The function itself documents how this generally work.</p>
@@ -132,7 +140,7 @@ in as well. The function itself documents how this generally work.</p>
 <span><span class="co"># Presented as an `egm` class object</span></span>
 <span><span class="va">egram</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lspro.html">read_lspro</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
 <span><span class="va">egram</span></span>
-<span><span class="co">#&gt; &lt;Electrical Signal&gt;</span></span>
+<span><span class="co">#&gt; &lt;Electrogram&gt;</span></span>
 <span><span class="co">#&gt; -------------------</span></span>
 <span><span class="co">#&gt; Recording Duration:  3.522 seconds</span></span>
 <span><span class="co">#&gt; Recording frequency  1000  hz</span></span>
@@ -142,7 +150,9 @@ in as well. The function itself documents how this generally work.</p>
 <span></span>
 <span><span class="co"># Similarly, can be visualized with ease</span></span>
 <span><span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">egram</span>, channels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">'HIS'</span>, <span class="st">'CS'</span>, <span class="st">'RV'</span><span class="op">)</span>, mode <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="../reference/colors.html">theme_egm_dark</a></span><span class="op">(</span><span class="op">)</span> </span></code></pre></div>
+<span>    <span class="fu"><a href="../reference/colors.html">theme_egm_dark</a></span><span class="op">(</span><span class="op">)</span> </span>
+<span><span class="co">#&gt; Scale for <span style="color: #00BB00;">colour</span> is already present.</span></span>
+<span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">colour</span>, which will replace the existing scale.</span></span></code></pre></div>
 <p><img src="getting-started_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
 </div>
 <div class="section level2">
@@ -163,11 +173,11 @@ be written out as well - with the preferred option being for the stated
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Anish S. Shah.</p>
+  <p>Developed by Anish S. Shah, Darren Seaney.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1. Colorspace from the <strong>OrYel</strong> palette</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3. Colorspace from the <strong>nightfall</strong> palette</p>
 </div>
 
     </footer>

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">EGM</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,16 +49,58 @@
 
       <dl><dt>
 
+          <code><a href="add_annotations.html">add_annotations()</a></code>
+
+        </dt>
+        <dd>Add annotations to a <code>ggm</code> object</dd>
+      </dl><dl><dt>
+
           <code><a href="add_colors.html">add_colors()</a></code>
 
         </dt>
         <dd>Add color scheme to a <code>ggm</code> object</dd>
       </dl><dl><dt>
 
+          <code><a href="analyze_atrial_signal.html">analyze_atrial_signal()</a></code>
+
+        </dt>
+        <dd>Analyze F waves in atrial fibrillation ECG</dd>
+      </dl><dl><dt>
+
           <code><a href="annotation_table.html">annotation_table()</a></code> <code><a href="annotation_table.html">is_annotation_table()</a></code>
 
         </dt>
         <dd>Annotation Table</dd>
+      </dl><dl><dt>
+
+          <code><a href="annotators.html">annotators</a></code>
+
+        </dt>
+        <dd>Annotator systems for WFDB objects</dd>
+      </dl><dl><dt>
+
+          <code><a href="as_ecg.html">as_ecg()</a></code>
+
+        </dt>
+        <dd>Convert an egm object to an ecg object</dd>
+      </dl><dl><dt>
+
+          <code><a href="c.windowed.html">c(<i>&lt;windowed&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Concatenate windowed objects</dd>
+      </dl><dl><dt>
+
+          <code><a href="calculate_approximate_entropy.html">calculate_approximate_entropy()</a></code>
+
+        </dt>
+        <dd>Calculate Approximate Entropy (Ap_en) of a time series</dd>
+      </dl><dl><dt>
+
+          <code><a href="calculate_dominant_frequency.html">calculate_dominant_frequency()</a></code>
+
+        </dt>
+        <dd>Calculate Dominant Frequency of a time series</dd>
       </dl><dl><dt>
 
           <code><a href="color_channels.html">color_channels()</a></code>
@@ -73,16 +115,40 @@
         <dd>Theming and color options for <code>ggm</code> objects</dd>
       </dl><dl><dt>
 
+          <code><a href="detect_QRS.html">detect_QRS()</a></code>
+
+        </dt>
+        <dd>Detect QRS complexes in ECG signals</dd>
+      </dl><dl><dt>
+
+          <code><a href="ecg.html">ecg()</a></code> <code><a href="ecg.html">is_ecg()</a></code>
+
+        </dt>
+        <dd>Electrocardiogram data class for 12-lead ECG studies</dd>
+      </dl><dl><dt>
+
           <code><a href="egm.html">egm()</a></code> <code><a href="egm.html">is_egm()</a></code>
 
         </dt>
         <dd>Electrogram data class from electrophysiology studies</dd>
       </dl><dl><dt>
 
+          <code><a href="extract_f_waves.html">extract_f_waves()</a></code>
+
+        </dt>
+        <dd>Extract F wave features from ECG</dd>
+      </dl><dl><dt>
+
           <code><a href="extract_signal.html">extract_signal()</a></code>
 
         </dt>
         <dd>Extract raw signal data from an <code>egm</code> object</dd>
+      </dl><dl><dt>
+
+          <code><a href="format.windowed.html">format(<i>&lt;windowed&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Format a windowed object for printing</dd>
       </dl><dl><dt>
 
           <code><a href="ggm.html">ggm()</a></code>
@@ -97,6 +163,18 @@
         <dd>Header Table</dd>
       </dl><dl><dt>
 
+          <code><a href="is_windowed.html">is_windowed()</a></code>
+
+        </dt>
+        <dd>Test if an object is a windowed object</dd>
+      </dl><dl><dt>
+
+          <code><a href="lapply.windowed.html">lapply.windowed()</a></code>
+
+        </dt>
+        <dd>Apply a function to each element of a windowed object</dd>
+      </dl><dl><dt>
+
           <code><a href="lspro.html">read_lspro()</a></code> <code><a href="lspro.html">read_lspro_header()</a></code> <code><a href="lspro.html">read_lspro_signal()</a></code>
 
         </dt>
@@ -109,6 +187,12 @@
         <dd>Read in ECG data from MUSE</dd>
       </dl><dl><dt>
 
+          <code><a href="print.windowed.html">print(<i>&lt;windowed&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Print a windowed object</dd>
+      </dl><dl><dt>
+
           <code><a href="segmentation.html">segmentation()</a></code> <code><a href="segmentation.html">segment_by_sinus()</a></code> <code><a href="segmentation.html">pad_sequence()</a></code> <code><a href="segmentation.html">center_sequence()</a></code>
 
         </dt>
@@ -119,6 +203,18 @@
 
         </dt>
         <dd>Signal tables</dd>
+      </dl><dl><dt>
+
+          <code><a href="standardize_windows.html">standardize_windows()</a></code>
+
+        </dt>
+        <dd>Standardize windows of signal data</dd>
+      </dl><dl><dt>
+
+          <code><a href="sub-.windowed.html">`[`(<i>&lt;windowed&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Subset a windowed object</dd>
       </dl><dl><dt>
 
           <code><a href="wfdb.html">wfdb</a></code>
@@ -143,16 +239,28 @@
 
         </dt>
         <dd>WFDB path utilities</dd>
+      </dl><dl><dt>
+
+          <code><a href="window.html">window()</a></code> <code><a href="window.html">window_by_rhythm()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Window signal data based on different methods</dd>
+      </dl><dl><dt>
+
+          <code><a href="windowed.html">windowed()</a></code>
+          <span class="badge lifecycle lifecycle-experimental">experimental</span>
+        </dt>
+        <dd>Create a <code>windowed</code> object containing a list of egm segments</dd>
       </dl></div>
   </main></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Anish S. Shah.</p>
+  <p>Developed by Anish S. Shah, Darren Seaney.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1. Colorspace from the <strong>OrYel</strong> palette</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3. Colorspace from the <strong>nightfall</strong> palette</p>
 </div>
 
     </footer></div>

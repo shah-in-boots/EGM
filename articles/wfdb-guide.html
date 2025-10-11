@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">EGM</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,7 +59,7 @@
       <h1>WFDB: An Introduction to the Waveform Database Software Package</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/shah-in-boots/EGM/blob/v0.1.0/vignettes/wfdb-guide.Rmd" class="external-link"><code>vignettes/wfdb-guide.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/shah-in-boots/EGM/blob/main/vignettes/wfdb-guide.Rmd" class="external-link"><code>vignettes/wfdb-guide.Rmd</code></a></small>
       <div class="d-none name"><code>wfdb-guide.Rmd</code></div>
     </div>
 
@@ -67,8 +67,11 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shah-in-boots.github.io/EGM/">EGM</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Loading required package: vctrs</span></span>
-<span><span class="co">#&gt; Loading required package: data.table</span></span></code></pre></div>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Attaching package: 'EGM'</span></span>
+<span><span class="co">#&gt; The following object is masked from 'package:stats':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     window</span></span></code></pre></div>
 <p>The package relies and is augmented heavily by the <a href="https://physionet.org/content/wfdb/10.7.0/" class="external-link">Waveform Database
 (WFDB) software package</a>, which is a well-documented and
 well-developed ecosystem of software applications, primarily written in
@@ -120,6 +123,10 @@ included in the package, and can be accessed as below.</p>
 <code class="sourceCode R"><span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'muse-sinus.xml'</span>, package <span class="op">=</span> <span class="st">'EGM'</span><span class="op">)</span></span>
 <span><span class="va">ecg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/muse.html">read_muse</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
 <span><span class="va">fig</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">ecg</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/colors.html">theme_egm_light</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Scale for <span style="color: #00BB00;">colour</span> is already present.</span></span>
+<span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">colour</span>, which will replace the existing scale.</span></span>
+<span><span class="co">#&gt; Scale for <span style="color: #00BB00;">colour</span> is already present.</span></span>
+<span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">colour</span>, which will replace the existing scale.</span></span>
 <span><span class="va">fig</span></span></code></pre></div>
 <p><img src="wfdb-guide_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
 <p>We may have customized software, manual approaches, or machine
@@ -237,13 +244,14 @@ arguments, which are displayed below, include:</p>
 <span><span class="co"># Then, add this back to the original signal</span></span>
 <span><span class="va">ecg</span><span class="op">$</span><span class="va">annotation</span> <span class="op">&lt;-</span> <span class="va">ann</span></span>
 <span><span class="va">ecg</span></span>
-<span><span class="co">#&gt; &lt;Electrical Signal&gt;</span></span>
+<span><span class="co">#&gt; &lt;Electrogram&gt;</span></span>
 <span><span class="co">#&gt; -------------------</span></span>
 <span><span class="co">#&gt; Recording Duration:  10 seconds</span></span>
 <span><span class="co">#&gt; Recording frequency  500  hz</span></span>
 <span><span class="co">#&gt; Number of channels:  12 </span></span>
 <span><span class="co">#&gt; Channel Names:  I II III AVF AVL AVR V1 V2 V3 V4 V5 V6 </span></span>
-<span><span class="co">#&gt; Annotation:  our_pks</span></span></code></pre></div>
+<span><span class="co">#&gt; Annotation:  our_pks </span></span>
+<span><span class="co">#&gt; Type: Standard 12-lead ECG</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -252,11 +260,11 @@ arguments, which are displayed below, include:</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Anish S. Shah.</p>
+  <p>Developed by Anish S. Shah, Darren Seaney.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1. Colorspace from the <strong>OrYel</strong> palette</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3. Colorspace from the <strong>nightfall</strong> palette</p>
 </div>
 
     </footer>

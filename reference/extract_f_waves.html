@@ -9,7 +9,7 @@ characteristics."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">EGM</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,6 +52,8 @@ characteristics.</p>
 <span>  lead <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  qrs_method <span class="op">=</span> <span class="st">"adaptive_svd"</span>,</span>
 <span>  f_characteristics <span class="op">=</span> <span class="st">"amplitude"</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  .force_all <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -61,12 +63,12 @@ characteristics.</p>
 
 
 <dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
-<dd><p>An object of class <code>egm</code></p></dd>
+<dd><p>An object of class <code>egm</code> or of subclass <code>ecg</code></p></dd>
 
 
 <dt id="arg-lead">lead<a class="anchor" aria-label="anchor" href="#arg-lead"></a></dt>
 <dd><p>Optional. A character string specifying the lead to analyze. If
-NULL (default), all available leads will be processed.</p></dd>
+NULL (default), all available surface leads will be processed.</p></dd>
 
 
 <dt id="arg-qrs-method">qrs_method<a class="anchor" aria-label="anchor" href="#arg-qrs-method"></a></dt>
@@ -81,6 +83,17 @@ Please see <code><a href="calculate_approximate_entropy.html">calculate_approxim
 <code><a href="calculate_dominant_frequency.html">calculate_dominant_frequency()</a></code> for more details.</p></dd>
 
 
+<dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
+<dd><p>Logical. If TRUE, print information about which leads will be
+analyzed. Default is TRUE.</p></dd>
+
+
+<dt id="arg--force-all">.force_all<a class="anchor" aria-label="anchor" href="#arg--force-all"></a></dt>
+<dd><p>Logical. If FALSE (default), only process surface ECG leads.
+If TRUE, process all available leads. This parameter is ignored if the object
+is of class 'ecg', in which case all leads are processed.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional arguments passed to methods</p></dd>
 
@@ -92,9 +105,9 @@ Please see <code><a href="calculate_approximate_entropy.html">calculate_approxim
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Park, Junbeom, Chungkeun Lee, Eran Leshem, Ira Blau, Sungsoo Kim, Jung Myung
-Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. “Early
+Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. "Early
 Differentiation of Long-Standing Persistent Atrial Fibrillation Using the
-Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads.” Scientific
+Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads." Scientific
 Reports 9 (February 26, 2019): 2746.
 https://doi.org/10.1038/s41598-019-38928-6.</p>
 <p>Hyvarinen, A., and Oja, E. (2000). Independent component analysis: algorithms
@@ -106,11 +119,11 @@ and applications. <em>Neural Networks</em>, 13(4-5), 411-430.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Anish S. Shah.</p>
+  <p>Developed by Anish S. Shah, Darren Seaney.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1. Colorspace from the <strong>nightfall</strong> palette</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3. Colorspace from the <strong>nightfall</strong> palette</p>
 </div>
 
     </footer></div>

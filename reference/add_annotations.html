@@ -11,7 +11,7 @@ data stored in annotation_table()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">EGM</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,16 +53,63 @@ data stored in <code><a href="annotation_table.html">annotation_table()</a></cod
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">add_annotations</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
-  </main></div>
+
+<dl><dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Arguments passed on to <code><a href="ggm.html">ggm</a></code></p><dl><dt><code>data</code></dt>
+<dd><p>Data of the <code>egm</code> class, which includes header (meta) and signal
+information together.</p></dd>
+
+    <dt><code>channels</code></dt>
+<dd><p>A <code>character</code> vector of which channels to use. Can give
+either the channel label (e.g "CS 1-2") or the recording device/catheter
+type (e.g "His" or "ECG"). If no channels are selected, the default is all
+channels.</p></dd>
+
+    <dt><code>time_frame</code></dt>
+<dd><p>A time range that should be displaced given in the format
+of a vector with a length of 2. The left value is the start, and right
+value is the end time. This is given in seconds (decimals may be used).</p></dd>
+
+    <dt><code>palette</code></dt>
+<dd><p>A <code>character</code> choice from the below options that describe the
+color choices to be used for plotting. If set to the default, which is
+<code>NULL</code>, no changes to the colors for individual channels will be performed.
+If a positive choice is made, then the background <strong>mode</strong> argument will be
+set to <em>dark</em> as the default, unless otherwise specified. <em>WARNING</em>: This is
+an experimental argument, and may be moved in future version.</p><ul><li><p><strong>NULL</strong>: no changes to the colors will be made. DEFAULT.</p></li>
+<li><p><strong>material</strong>: a colorscheme based off of the <a href="https://m3.material.io/styles/color/system/how-the-system-works" class="external-link">Material Design</a> color scheme</p></li>
+</ul></dd>
+
+    <dt><code>mode</code></dt>
+<dd><p>A <code>character</code> string from <code>c("dark", "light")</code> to describe the
+base/background color settings to be used. If there are preset channel
+colors that were exported in the <code>egm</code> object, these colors will be used
+for the individual channels. If <strong>palette</strong> is specified, then the <em>dark</em>
+option will be set automatically (a palette choice cannot be made without
+understanding the background to plate it across). <em>WARNING</em>: This is an
+experimental argument, and may be moved in future version.</p><ul><li><p>The <em>dark</em> theme mimics the "white on black" scheme seen in <em>LabSystem Pro</em> format (and most other high-contrast visualizations), for minimizing eye strain. This calls the <code><a href="colors.html">theme_egm_dark()</a></code> function. DEFAULT.</p></li>
+<li><p>The <em>light</em> theme mimics the "black on white" colors seen in the <em>Prucka</em> system.</p></li>
+<li><p><code>NULL</code> removes any theme, and uses the default <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot2::ggplot()</a></code> settings</p></li>
+</ul></dd>
+
+
+</dl></dd>
+
+</dl></div>
+
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Anish S. Shah.</p>
+  <p>Developed by Anish S. Shah, Darren Seaney.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1. Colorspace from the <strong>nightfall</strong> palette</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3. Colorspace from the <strong>nightfall</strong> palette</p>
 </div>
 
     </footer></div>
