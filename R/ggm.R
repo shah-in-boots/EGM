@@ -58,14 +58,12 @@
 #'
 #' @import ggplot2 data.table
 #' @export
-ggm <- function(
-	data,
-	channels = character(),
-	time_frame = NULL,
-	palette = NULL,
-	mode = "dark",
-	...
-) {
+ggm <- function(data,
+								channels = character(),
+								time_frame = NULL,
+								palette = NULL,
+								mode = "dark",
+								...) {
 	# Global variables (used in data.table)
 	. <- color <- mV <- label <- NULL
 
@@ -92,12 +90,10 @@ ggm <- function(
 	if (is.null(time_frame)) {
 		time_frame <- c(min(sig$time, na.rm = TRUE), max(sig$time, na.rm = TRUE))
 	}
-	stopifnot(
-		"`time_frame` must be within available data" = all(
-			min(time_frame) + 1 / hz >= min(sig$time) &
-				max(time_frame) - 1 / hz <= max(sig$time)
-		)
-	)
+	stopifnot("`time_frame` must be within available data" = all(
+		min(time_frame) + 1 / hz >= min(sig$time) &
+			max(time_frame) - 1 / hz <= max(sig$time)
+	))
 
 	# Filter time appropriately based on samples
 	sampleStart <- sig$sample[sig$time == time_frame[1]]
@@ -112,20 +108,13 @@ ggm <- function(
 	exactChannels <- channels[channels %in% .labels]
 	fuzzyChannels <- channels[!(channels %in% .labels)]
 	channelGrep <-
-		paste0(
-			c(paste0("^", exactChannels, "$", collapse = "|"), fuzzyChannels),
-			collapse = "|"
-		)
+		paste0(c(paste0("^", exactChannels, "$", collapse = "|"), fuzzyChannels), collapse = "|")
 	selectedChannels <- grep(channelGrep, availableChannels, value = TRUE)
 	if (length(channels) == 0) {
 		selectedChannels <- availableChannels
 	}
-	stopifnot(
-		"The requested channels do not exist within the signal data" = length(
-			selectedChannels
-		) >
-			0
-	)
+	stopifnot("The requested channels do not exist within the signal data" = length(selectedChannels) >
+							0)
 
 	# Get channel data from individual signals
 	# Need to make sure all that information is present from header
@@ -157,11 +146,9 @@ ggm <- function(
 	# But only do this if the labels are... "official" and not custom labels
 	if (all(selectedChannels %in% .labels)) {
 		dt$label <-
-			factor(
-				dt$label,
-				levels = intersect(.labels, selectedChannels),
-				ordered = TRUE
-			)
+			factor(dt$label,
+						 levels = intersect(.labels, selectedChannels),
+						 ordered = TRUE)
 	} else {
 		dt$label <- factor(dt$label)
 	}
@@ -170,12 +157,13 @@ ggm <- function(
 	g <-
 		ggplot(dt, aes(x = sample, y = mV, colour = color)) +
 		geom_line() +
-		facet_wrap(~label, ncol = 1, scales = "free_y", strip.position = "left") +
+		facet_wrap( ~ label,
+								ncol = 1,
+								scales = "free_y",
+								strip.position = "left") +
 		scale_colour_identity() +
-		scale_x_continuous(
-			breaks = seq(sampleStart, sampleEnd, by = hz),
-			labels = NULL
-		)
+		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz),
+											 labels = NULL)
 
 	# Update class
 	g <- new_ggm(g, header = hea, annotation = ann)
@@ -187,11 +175,9 @@ ggm <- function(
 	g
 }
 
-new_ggm <- function(
-	object = ggplot(),
-	header = list(),
-	annotation = annotation_table()
-) {
+new_ggm <- function(object = ggplot(),
+										header = list(),
+										annotation = annotation_table()) {
 	stopifnot(is_ggplot(object))
 
 	structure(
@@ -209,8 +195,11 @@ new_ggm <- function(
 #' @description The `add_annotations()` adds annotations to a `ggm` object. It is
 #'   specific to this class as it requires the output of [ggm()] to included
 #'   data stored in [annotation_table()].
+#'
+#' @inheritDotParams ggm
 #' @export
-add_annotations <- function(...) {}
+add_annotations <- function(...) {
+}
 
 # Colors -----------------------------------------------------------------------
 
@@ -323,7 +312,11 @@ theme_egm_dark <- function() {
 
 				# Facets
 				panel.spacing = unit(0, units = "npc"),
-				strip.text.y.left = element_text(angle = 0, hjust = 1, color = "white"),
+				strip.text.y.left = element_text(
+					angle = 0,
+					hjust = 1,
+					color = "white"
+				),
 
 				# Legend
 				legend.position = "none"

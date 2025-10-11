@@ -2,7 +2,7 @@
 % Please edit documentation in R/window.R
 \name{windowed}
 \alias{windowed}
-\title{Create a windowed object containing a list of egm segments}
+\title{Create a \code{windowed} object containing a list of egm segments}
 \usage{
 windowed(
   x = list(),
@@ -14,17 +14,21 @@ windowed(
 \arguments{
 \item{x}{A list of \code{egm} objects}
 
+\item{window_method}{The windowing method used to create the list}
+
 \item{source_record}{The name of the original record}
 
 \item{...}{Additional arguments passed to methods}
-
-\item{method}{The windowing method used to create the list}
 }
 \value{
 An object of class \code{windowed} which inherits from \code{list}
 }
 \description{
-\code{windowed} objects are lists of \code{egm} objects that represent segments or windows
-of the original signal. This allows for specialized methods to be applied to
-collections of signal windows.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
+\code{windowed} objects are lists of \code{egm} objects that represent segments or
+windows of the original signal. This allows for specialized methods to be
+applied to collections of signal windows. This function primarily serves as
+the class generation function, and only applies class attributes. It is used
+by the \code{\link[=window]{window()}} function to ensure appropriate class and properties.
 }

@@ -537,10 +537,10 @@ ica_removal <- function(signal,
 	# - IC (S) are the independent components
 	# - K is the unmixing matrix
 
-	S <- ica_result$S              # Independent components (n samples × q components)
-	K <- ica_result$K              # Projection/Unmixing matrix (q components × p variables)
-	A <- ica_result$A              # Mixing matrix (p variables × q components)
-	W <- ica_result$W              # Estimated unmixing matrix (q components × p variables)
+	S <- ica_result$S # Independent components (n samples * q components)
+	K <- ica_result$K # Projection/Unmixing matrix (q components * p variables)
+	A <- ica_result$A # Mixing matrix (p variables * q components)
+	W <- ica_result$W # Estimated unmixing matrix (q components * p variables)
 
 	# Create QRS reference signal based on known QRS locations
 	qrs_sparse <- numeric(nrow(X))
@@ -656,20 +656,20 @@ ica_removal <- function(signal,
 
 #' Remove QRST using Independent Component Analysis (ICA)
 #'
-#' A single‑lead signal is first embedded (time‑delay, default = 5 taps) to
-#' create a pseudo‑multichannel matrix, then decomposed with *FastICA* algorithm
-#' from [fastICA::fastICA()]] Components whose high‑frequency energy (20–50 Hz)
-#' rises ≥ `threshold`‑fold inside a ±30 ms window around detected QRS peaks are
-#' presumed ventricular and zeroed before back‑projection.
+#' A single-lead signal is first embedded (time delay, default = 5) to create a
+#' pseudo-multichannel matrix, then decomposed with *FastICA* algorithm from
+#' [fastICA::fastICA()]. Components whose high frequency energy (20 to 50 Hz)
+#' rises >= `threshold`-fold inside a +/- 30 ms window around detected QRS peaks
+#' are presumed ventricular and zeroed before back-projection.
 #'
-#' @param signal Numeric vector, usually upsampled, bandpass‑filtered lead
+#' @param signal Numeric vector, usually upsampled, bandpass-filtered lead
 #' @param frequency Sampling rate (Hz).  DEFAULT = 1000
-#' @param embedding_dim Number of lags for the delay‑embedding (≥3). This is
+#' @param embedding_dim Number of lags for the delay-embedding (>=3). This is
 #'   equivalent to the number of components for ICA. DEFAULT = 5
 #' @param qrs_loc Optional integer vector of QRS indices.  If NULL (DEFAULT),
 #'   the internal `detect_QRS()` is called.
-#' @param threshold Energy‑ratio threshold for classifying a component as
-#'   QRST‑dominant. DEFAULT = 3.
+#' @param threshold Energy-ratio threshold for classifying a component as
+#'   QRST-dominant. DEFAULT = 3.
 #' @param post_blanking Duration of time in ms that is used to help provide some
 #'   blanking and spline interpolation through residual QRS complexes. As the
 #'   number increases the interpolation increases. Lower values decrease the
@@ -691,20 +691,20 @@ remove_qrs_with_ica <- function(signal,
 	N <- length(signal)
 
 	if (!requireNamespace("fastICA", quietly = TRUE)) {
-		warning("fastICA not installed – falling back to adaptive SVD.")
+		warning("fastICA not installed, falling back to adaptive SVD.")
 		return(remove_qrs_with_adaptive_svd(signal, frequency = frequency))
 	}
 
 	if (is.null(qrs_loc)) qrs_loc <- detect_QRS(signal, frequency)
 	if (length(qrs_loc) < 3L) {
-		warning("Too few QRS complexes for ICA – returning original signal.")
+		warning("Too few QRS complexes for ICA, returning original signal.")
 		return(signal)
 	}
 
 	embedding_dim <- max(3, min(embedding_dim, length(qrs_loc) - 1))
 
 	# Build the embedding matrix with lags
-	X <- stats::embed(signal, embedding_dim) # (N‑L+1) × L
+	X <- stats::embed(signal, embedding_dim) # (N - L + 1) * L
 	X <- scale(X, center = TRUE, scale = FALSE) # Scale and center
 
 	# ICA ----
@@ -769,7 +769,7 @@ remove_qrs_with_ica <- function(signal,
 		mean(comp_hf[idx]^2)
 	}
 
-	# Adjust peak locations for shorter S (lost first L‑1 samples)
+	# Adjust peak locations for shorter S (lost first L-1 samples)
 	# Need to document this area better
 	# Not even sure if this is helping
 	shift <- embedding_dim - 1L
@@ -869,7 +869,7 @@ ica_removal <- function(signal,
 	}
 
 	# Build delay-embedding matrix for pseudo-multichannel signal
-	X <- stats::embed(signal, embedding_dim)  # Creates (N-embedding_dim+1) × embedding_dim matrix
+	X <- stats::embed(signal, embedding_dim)  # Creates (N-embedding-dim+1) * embedding_dim matrix
 	X <- scale(X, center = TRUE, scale = FALSE)  # Center but don't scale
 
 	# Try multiple ICA algorithms to increase chances of success
@@ -915,7 +915,7 @@ ica_removal <- function(signal,
 	# Setup bandpass filter (20-50 Hz) to highlight QRS components
 	nyquist <- frequency / 2
 	bandpass_filter <- signal::butter(3, c(20, 50) / nyquist, type = "pass")
-	window_size <- round(0.03 * frequency)  # ±30 ms around QRS
+	window_size <- round(0.03 * frequency)  # +/- 30 ms around QRS
 
 	# Helper functions for energy calculations
 	component_energy <- function(comp) mean(comp^2)

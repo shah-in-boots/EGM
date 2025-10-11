@@ -8,7 +8,7 @@ test_that("ECGs can be windowed", {
 	object <- read_wfdb(rec, dir, "ecgpuwave")
 
 	# Should create a number of high likelihood sinus beats
-	beats <- window_signal(
+	beats <- window(
 		object,
 		by = "rhythm",
 		rhythm_type = "sinus",
@@ -33,7 +33,7 @@ test_that("Basic `windowed` specific functions work", {
 	object <- read_wfdb(rec, dir, "ecgpuwave")
 
 	# Create windows from an egm object
-	windows <- window_signal(
+	windows <- window(
 		object,
 		method = "rhythm",
 		rhythm_type = "sinus",
