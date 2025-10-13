@@ -81,9 +81,11 @@ NULL
 #' Type of signal data, as specified by the recording system, that are currently
 #' supported.
 #'
-#' * _lspro_ = LabSystem Pro, e.g. [read_lspro()]
+#' * _bard_ = Bard (LabSystem Pro), e.g. [read_bard()]
 #'
-#' * _muse_ = GE MUSE, e.g. [read_muse()]
+#' * _muse_ = MUSE (GE), e.g. [read_muse()]
+#'
+#' * _prucka_ = Prucka (CardioLab), e.g. [read_prucka()]
 #'
 #' @inheritParams wfdb
 #'

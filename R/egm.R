@@ -25,7 +25,7 @@
 #'
 #'   __IMPORTANT__: The `egm` class can be built from ground-up by the user,
 #'   however it is primarily generated for the user using the other read/write
-#'   functions, such as [read_lspro()] or [read_wfdb()].
+#'   functions, such as [read_bard()] or [read_wfdb()].
 #'
 #' @returns An object of class `egm` that is always a list of the above three
 #'   components. Oftentimes, the `annotation_table` object may be missing, and

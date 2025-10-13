@@ -12,7 +12,7 @@ test_that('can convert bard to wfdb with wrsamp', {
 	bard <- read_bard(file)
 	write_wfdb(
 		data = bard,
-		record = 'egm',
+		record = 'bard-egm',
 		record_dir = test_path()
 	)
 
@@ -35,11 +35,11 @@ test_that('R data objects can be converted or written to WFDB format', {
 
 	write_wfdb(
 		data = data,
-		record = 'egm',
+		record = 'bard-egm',
 		record_dir = test_path()
 	)
 
-	headerFile <- readLines(test_path('egm.hea'))
+	headerFile <- readLines(test_path('bard-egm.hea'))
 	expect_gt(length(headerFile), 14)
 	expect_output(print(headerFile[1]), 'egm 14')
 

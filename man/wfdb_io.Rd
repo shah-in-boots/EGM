@@ -143,8 +143,9 @@ environment
 Type of signal data, as specified by the recording system, that are currently
 supported.
 \itemize{
-\item \emph{lspro} = LabSystem Pro, e.g. \code{\link[=read_lspro]{read_lspro()}}
-\item \emph{muse} = GE MUSE, e.g. \code{\link[=read_muse]{read_muse()}}
+\item \emph{bard} = Bard (LabSystem Pro), e.g. \code{\link[=read_bard]{read_bard()}}
+\item \emph{muse} = MUSE (GE), e.g. \code{\link[=read_muse]{read_muse()}}
+\item \emph{prucka} = Prucka (CardioLab), e.g. \code{\link[=read_prucka]{read_prucka()}}
 }
 }
 
