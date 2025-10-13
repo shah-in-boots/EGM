@@ -78,7 +78,7 @@
 <p>Thie software supports reading in certain types of raw cardiac
 electric signal currently. This includes both intracardiac and
 extracardiac data. Please see <code><a href="../reference/muse.html">read_muse()</a></code> and
-<code><a href="../reference/lspro.html">read_lspro()</a></code> as examples. If additional formats are
+<code><a href="../reference/bard.html">read_bard()</a></code> as examples. If additional formats are
 requested, please <a href="https://github.com/shah-in-boots/EGM/issues" class="external-link">file an issue</a> and
 provide a sample file (which primarily requires signal, in whatever
 format, and meta-information about the individual channels).</p>
@@ -118,13 +118,13 @@ XML format.</p>
 <span><span class="co">#&gt; Scale for <span style="color: #00BB00;">colour</span> is already present.</span></span>
 <span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">colour</span>, which will replace the existing scale.</span></span></code></pre></div>
 <p><img src="getting-started_files/figure-html/unnamed-chunk-2-1.png" width="700"></p>
-<p>Similarly, intracardiac recordings obtained through LSPro can be read
+<p>Similarly, intracardiac recordings obtained through bard can be read
 in as well. The function itself documents how this generally work.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Read in data</span></span>
-<span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'lspro-avnrt.txt'</span>, package <span class="op">=</span> <span class="st">'EGM'</span><span class="op">)</span></span>
-<span><span class="va">lspro</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">lspro</span>, n <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
+<span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'bard-avnrt.txt'</span>, package <span class="op">=</span> <span class="st">'EGM'</span><span class="op">)</span></span>
+<span><span class="va">bard</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">bard</span>, n <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  [1] "[Header]"                  "File Type: 1"             </span></span>
 <span><span class="co">#&gt;  [3] "Version: 2"                "Channels exported: 11"    </span></span>
 <span><span class="co">#&gt;  [5] "Samples per channel: 3522" "Start time: 15:17:57"     </span></span>
@@ -138,7 +138,7 @@ in as well. The function itself documents how this generally work.</p>
 <span></span>
 <span><span class="co"># Instead, read this as signal, breaking apart header and signal data</span></span>
 <span><span class="co"># Presented as an `egm` class object</span></span>
-<span><span class="va">egram</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lspro.html">read_lspro</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
+<span><span class="va">egram</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bard.html">read_bard</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
 <span><span class="va">egram</span></span>
 <span><span class="co">#&gt; &lt;Electrogram&gt;</span></span>
 <span><span class="co">#&gt; -------------------</span></span>

@@ -1,6 +1,5 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://shah-in-boots.github.io/EGM/404.html</loc></url>
-<url><loc>https://shah-in-boots.github.io/EGM/LICENSE-text.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/LICENSE.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/articles/getting-started.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/articles/index.html</loc></url>
@@ -17,6 +16,7 @@
 <url><loc>https://shah-in-boots.github.io/EGM/reference/annotation_table.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/annotators.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/as_ecg.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/bard.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/c.windowed.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/calculate_approximate_entropy.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/calculate_dominant_frequency.html</loc></url>
@@ -34,9 +34,9 @@
 <url><loc>https://shah-in-boots.github.io/EGM/reference/interpolate_signal.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/is_windowed.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/lapply.windowed.html</loc></url>
-<url><loc>https://shah-in-boots.github.io/EGM/reference/lspro.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/muse.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/print.windowed.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/prucka.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/segmentation.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/signal_table.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/standardize_windows.html</loc></url>
