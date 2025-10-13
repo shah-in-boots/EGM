@@ -1,120 +1,65 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/404.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/LICENSE-text.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/LICENSE.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/articles/getting-started.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/articles/intro-egm.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/articles/intro-segmentation.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/articles/intro-wfdb.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/articles/segmentation-guide.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/articles/wfdb-guide.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/articles/wfdb.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/authors.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/index.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/news/index.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/add_colors.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/add_intervals.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/annotation_table.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/annotations.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/color_channels.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/colors.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/describe_wfdb2.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/detect_surface_beats.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/egm-package.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/egm-vctrs.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/egm.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/extract_signal.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/ggm.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/header_table.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/lspro.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/muse.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/new_ggm.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/segmentation.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/shiva-package.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/signal_table.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/wfdb.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/wfdb_annotations.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/wfdb_io.html</loc>
-  </url>
-  <url>
-    <loc>https://shah-in-boots.github.io/EGM/reference/wfdb_paths.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://shah-in-boots.github.io/EGM/404.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/LICENSE-text.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/LICENSE.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/articles/intro-wfdb.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/articles/segmentation.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/getting-started.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/index.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/intro-egm.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/intro-segmentation.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/intro-wfdb.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/segmentation-guide.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/segmentation.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/wfdb-guide.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/authors.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/index.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/news/index.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/add_annotations.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/add_colors.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/add_intervals.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/analyze_atrial_signal.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/annotation_table.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/annotations.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/annotators.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/as_ecg.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/c.windowed.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/calculate_approximate_entropy.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/calculate_dominant_frequency.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/color_channels.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/colors.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/describe_wfdb2.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/detect_QRS.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/detect_surface_beats.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/ecg.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/egm-package.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/egm-vctrs.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/egm.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/extract_f_waves.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/extract_signal.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/format.windowed.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/ggm.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/header_table.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/index.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/interpolate_signal.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/is_windowed.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/lapply.windowed.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/lspro.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/muse.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/new_ggm.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/print.windowed.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/segmentation.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/shiva-package.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/signal_table.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/standardize_windows.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/sub-.windowed.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/time_normalize_windows.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/validate_ecg_data.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb_annotations.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb_io.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb_paths.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/window.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/windowed.html</loc></url>
 </urlset>
+

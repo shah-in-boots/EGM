@@ -1,23 +1,23 @@
 # Writing WFDB records ----
 
-test_that('can convert lspro to wfdb with wrsamp', {
+test_that('can convert bard to wfdb with wrsamp', {
 
 	skip_on_cran()
 	skip_on_ci()
 
-	# Convert a LSPRO text file into a WFDB compatible format
+	# Convert a bard text file into a WFDB compatible format
 	wd <- getwd()
 
-	file <- test_path('egm.txt')
-	lspro <- read_lspro(file)
+	file <- test_path('bard-egm.txt')
+	bard <- read_bard(file)
 	write_wfdb(
-		data = lspro,
+		data = bard,
 		record = 'egm',
 		record_dir = test_path()
 	)
 
-	expect_true(file.exists(file.path(test_path(), 'egm.hea')))
-	expect_true(file.exists(file.path(test_path(), 'egm.dat')))
+	expect_true(file.exists(file.path(test_path(), 'bard-egm.hea')))
+	expect_true(file.exists(file.path(test_path(), 'bard-egm.dat')))
 	expect_equal(wd, getwd())
 
 })
@@ -27,9 +27,9 @@ test_that('R data objects can be converted or written to WFDB format', {
 	skip_on_cran()
 	skip_on_ci()
 
-	file <- test_path('egm.txt')
-	sig <- read_lspro_signal(file)
-	hea <- read_lspro_header(file)
+	file <- test_path('bard-egm.txt')
+	sig <- read_bard_signal(file)
+	hea <- read_bard_header(file)
 	rec <- attributes(hea)$record_line
 	data <- egm(sig, hea)
 
@@ -92,7 +92,7 @@ test_that('rdsamp can read in WFDB formatted files for signal data', {
 
 })
 
-test_that('internals of `read_header()` can create `header_table` from LSPro data', {
+test_that('internals of `read_header()` can create `header_table` from bard data', {
 
 	fp <- test_path("egm.hea")
 

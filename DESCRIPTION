@@ -12,7 +12,7 @@ Description: A system for importing electrophysiological signal, based
     analysis are provided. A stable and broadly compatible class for working
     with signal data, supporting the reading in of cardiac electrophysiogical
     files such as intracardiac electrograms, is introduced.
-License: LICENSE.md
+License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)

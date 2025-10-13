@@ -24,7 +24,6 @@ NULL
 #' @rdname muse
 #' @export
 read_muse <- function(file) {
-
 	# Signal data ----
 
 	# Read in XML signal data
@@ -164,12 +163,22 @@ read_muse <- function(file) {
 		xml2::xml_child(doc, "Diagnosis") |>
 		xml2::xml_contents() |>
 		sapply(xml2::xml_text) |>
-		{\(.x) gsub("RESTING", "", .x)}() |>
-		{\(.x) gsub("ENDSLINE", "", .x)}() |>
+		{
+			\(.x) gsub("RESTING", "", .x)
+		}() |>
+		{
+			\(.x) gsub("ENDSLINE", "", .x)
+		}() |>
 		paste(collapse = ", ") |>
-		{\(.x) gsub(", ,", ",", .x)}() |>
-		{\(.x) gsub(",,", ",", .x)}() |>
-		{\(.x) gsub("^, ", "", .x)}() |>
+		{
+			\(.x) gsub(", ,", ",", .x)
+		}() |>
+		{
+			\(.x) gsub(",,", ",", .x)
+		}() |>
+		{
+			\(.x) gsub("^, ", "", .x)
+		}() |>
 		trimws()
 
 	hea <- header_table(
@@ -193,4 +202,3 @@ read_muse <- function(file) {
 	ecg(signal = sig, header = hea)
 
 }
-
