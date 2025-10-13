@@ -17,6 +17,8 @@ The changes to this version are as follows.
 
 * Addition of rudimentary functions for windowing signal based on surface ECG
 
+* New function to read in Prucka (CardioLab) for EP study recordings with the `read_prucka()` function
+
 # EGM 0.1.0
 
 This is the first *CRAN* release for this package. 

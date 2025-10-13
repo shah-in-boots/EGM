@@ -40,8 +40,8 @@
 #' 1. Header attributes: recording information such as sample number, gain,
 #' sampling frequency
 #'
-#' 1. Annotations: information about the record such as abeat
-#' labels or alarm triggers
+#' 1. Annotations: information about the record such as a beat labels or alarm
+#' triggers
 #'
 #' @param record String that will be used to name the WFDB record. Cannot
 #'   include extensions, and is not a filepath. alphanumeric characters are

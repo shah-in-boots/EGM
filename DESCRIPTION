@@ -10,7 +10,7 @@ Description: A system for importing electrophysiological signal, based
     2022 <doi:10.13026/gjvw-1m31>. A wrapper for utilizing 'WFDB' functions for
     reading and writing signal data, as well as functions for visualization and
     analysis are provided. A stable and broadly compatible class for working
-    with signal data, supporting the reading in of cardiac electrophysiogical
+    with signal data, supporting the reading in of cardiac electrophysiological
     files such as intracardiac electrograms, is introduced.
 License: GPL (>= 3)
 Encoding: UTF-8
