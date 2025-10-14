@@ -7,8 +7,8 @@ test_that("lead-based colors can be extracted", {
 
 test_that("colors can be added to ggplot", {
 
-	fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'EGM')
-	obj <- read_lspro(fp)
+	fp <- system.file('extdata', 'bard-avnrt.txt', package = 'EGM')
+	obj <- read_bard(fp)
 
 	# Similarly, can be visualized with ease
 	g1 <-

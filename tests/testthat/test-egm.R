@@ -1,10 +1,10 @@
 test_that("egm class can be made", {
 
-	df <- read_lspro(file = test_path("egm.txt"))
+	df <- read_bard(file = test_path("bard-egm.txt"))
 
-	file <- test_path("egm.txt")
-	sig <- read_lspro_signal(file)
-	hea <- read_lspro_header(file)
+	file <- test_path("bard-egm.txt")
+	sig <- read_bard_signal(file)
+	hea <- read_bard_header(file)
 
 	x <- new_egm(signal = sig, header = hea)
 	expect_s3_class(x, "egm")

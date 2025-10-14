@@ -51,13 +51,13 @@ The records that the WFDB uses have three components...
 frequency
 \item Header attributes: recording information such as sample number, gain,
 sampling frequency
-\item Annotations: information about the record such as abeat
-labels or alarm triggers
+\item Annotations: information about the record such as a beat labels or alarm
+triggers
 }
 }
 
 \author{
 Original software: George Moody, Tom Pollard, Benjamin Moody \cr
 R implementation: Anish S. Shah \cr
-Last updated: 2025-10-11 \cr
+Last updated: 2025-10-13 \cr
 }

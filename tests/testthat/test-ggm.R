@@ -2,7 +2,7 @@
 
 test_that("plots can be generated easily", {
 	# EPS data
-	data <- read_lspro(test_path('egm.txt'))
+	data <- read_bard(test_path('bard-egm.txt'))
 	expect_s3_class(data, "egm")
 
 	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
@@ -44,7 +44,7 @@ test_that('header and labels work fluidly when plotting', {
 
 test_that("theming works", {
 	# EPS data
-	data <- read_lspro(test_path('egm.txt'))
+	data <- read_bard(test_path('bard-egm.txt'))
 	expect_s3_class(data, "egm")
 
 	channels <- c("I", "CS", "HIS D", "HIS M", "RV")
@@ -76,8 +76,8 @@ test_that("theming works", {
 })
 
 test_that("multiple channel data from different leads can be theme", {
-	fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'EGM')
-	dat <- read_lspro(fp)
+	fp <- system.file('extdata', 'bard-avnrt.txt', package = 'EGM')
+	dat <- read_bard(fp)
 
 	# Similarly, can be visualized with ease
 	g <-
@@ -86,3 +86,4 @@ test_that("multiple channel data from different leads can be theme", {
 
 	expect_true(inherits(g, 'ggm') & inherits(g, 'ggplot'))
 })
+

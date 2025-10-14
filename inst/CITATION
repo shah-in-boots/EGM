@@ -1,11 +1,10 @@
 bibentry(
-  bibtype  = "Article",
-  title    = "EGM: Evaluating Cardiac Electrophysiology Signals",
-  author   = "Anish S. Shah",
-  journal  = ,
-  year     = 2024,
-  volume   = ,
-  number   = ,
-  pages    = ,
-  doi      = "10.5281/zenodo.15244229"
+  bibtype = "Manual",
+  title   = "EGM: Intracardiac Electrograms",
+  author  = "Anish S. Shah, Darren Seaney",
+  year    = 2025,
+  doi     = "10.32614/CRAN.package.EGM",
+  url     = "https://shah-in-boots.github.io/EGM/",
+  key     = "EGM-package",
+  note    = "R package version 0.1.1"
 )

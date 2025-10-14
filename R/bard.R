@@ -1,8 +1,8 @@
-#' Read in ECG and EGM data from LabSystem Pro
+#' Read in ECG and EGM data from Bard (LabSystem Pro)
 #'
 #' @description This function allows for reading in LS Pro data based on their
 #' text export of signals. Signals can be exported directly from the LS Pro
-#' system.
+#' system. The actual software is written by *Bard*.
 #'
 #' The [LabSystem
 #' Pro](https://www.bostonscientific.com/en-EU/medical-specialties/electrophysiology/arrhythmias/cardiac-mapping-system/electrophysiology-recording-system.html)
@@ -82,31 +82,43 @@
 #' @param n Number of signal values to return (this will be the same for each
 #'   channel of data). Defaults to all values.
 #'
-#' @return An `egm` class object that is a list of `eps` signals the format of a
+#' @return An `egm` class object that is a list of EP signals the format of a
 #'   `data.table`, with an attached __header__ attribute that contains
 #'   additional recording data.
-#' @name lspro
+#'
+#' @name bard
 NULL
 
-#' @rdname lspro
+#' @rdname bard
 #' @export
-read_lspro <- function(file, n = Inf) {
+read_bard <- function(file, n = Inf) {
 
-	# Read in the LSPro data and package it into a simple "EGM" table
+	# Read in the bard data and package it into a simple "EGM" table
 	# This is to ensure class safety when plotting
-	sig <- read_lspro_signal(file = file, n = n)
-	hea <- read_lspro_header(file = file)
+	sig <- read_bard_signal(file = file, n = n)
+	hea <- read_bard_header(file = file)
 
-	# Get the correct naems from the header file
+	# Ensure that the number of channels labeled matches number in signal file
+	if ((ncol(sig) - 1) != attributes(hea)$record_line$number_of_channels) {
+		warning(
+			"Number of channels in signal file (",
+			ncol(sig) - 1,
+			") does not match number in header (",
+			attributes(hea)$record_line$number_of_channels,
+			")"
+		)
+	}
+
+	# Assign channel names from header
 	names(sig) <- c('sample', as.character(hea$label))
 
 	egm(signal = sig, header = hea)
 
 }
 
-#' @rdname lspro
+#' @rdname bard
 #' @export
-read_lspro_header <- function(file) {
+read_bard_header <- function(file) {
 
 	record_name <- fs::path_ext_remove(fs::path_file(file))
 	file_name <- paste0(record_name, '.dat')
@@ -200,9 +212,9 @@ read_lspro_header <- function(file) {
 
 }
 
-#' @rdname lspro
+#' @rdname bard
 #' @export
-read_lspro_signal <- function(file, n = Inf) {
+read_bard_signal <- function(file, n = Inf) {
 
 	# Read in the CSV-styled signal data quickly
 	sig <-

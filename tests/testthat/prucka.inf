@@ -1,0 +1,38 @@
+Patient = PATIENT, TEST
+Description = VT induction
+Date = 7/28/2024 11:49:37 AM
+Number of Channel = 28
+Points for Each Channel = 4027
+Data Sampling Rate = 977 points/second
+Start Time = 7/26/2024 10:02:58 AM
+Stop Time = 7/26/2024 10:03:02 AM
+Units: mmHg for pressure and mV for all others
+Channel Number  Channel Label
+1              I
+2              II
+3              III
+4              aVR
+5              aVL
+6              aVF
+7              V1
+8              V2
+9              V3
+10              V4
+11              V5
+12              V6
+49              ABL d
+50              ABL
+75              RVa d
+76              RVa
+81              A1-A2
+83              A2-A3
+85              A4-A3
+87              B1-B2
+89              B2-B3
+92              B3-B4
+93              C2-C1
+96              C3-C2
+98              C4-C3
+100              D1-D2
+102              D3-D2
+104              D4-D3

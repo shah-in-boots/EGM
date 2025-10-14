@@ -7,10 +7,8 @@
 #' options into XML.
 #'
 #' @details
-#' [GE Healthcare MUSE
-#' v9](https://www.gehealthcare.com/en-ph/products/diagnostic-ecg/cardio-data-management/muse-v9)
-#' is currently the model that is being used. These functions have not been
-#' tested in older models.
+#' GE Healthcare MUSE v9 is currently the model that is being used. These
+#' functions have not been tested in older versions.
 #'
 #' @return An `egm` class object that is a list of `eps` signals the format of a
 #'   `data.table`, with an attached __header__ attribute that contains
@@ -24,7 +22,6 @@ NULL
 #' @rdname muse
 #' @export
 read_muse <- function(file) {
-
 	# Signal data ----
 
 	# Read in XML signal data
@@ -164,12 +161,22 @@ read_muse <- function(file) {
 		xml2::xml_child(doc, "Diagnosis") |>
 		xml2::xml_contents() |>
 		sapply(xml2::xml_text) |>
-		{\(.x) gsub("RESTING", "", .x)}() |>
-		{\(.x) gsub("ENDSLINE", "", .x)}() |>
+		{
+			\(.x) gsub("RESTING", "", .x)
+		}() |>
+		{
+			\(.x) gsub("ENDSLINE", "", .x)
+		}() |>
 		paste(collapse = ", ") |>
-		{\(.x) gsub(", ,", ",", .x)}() |>
-		{\(.x) gsub(",,", ",", .x)}() |>
-		{\(.x) gsub("^, ", "", .x)}() |>
+		{
+			\(.x) gsub(", ,", ",", .x)
+		}() |>
+		{
+			\(.x) gsub(",,", ",", .x)
+		}() |>
+		{
+			\(.x) gsub("^, ", "", .x)
+		}() |>
 		trimws()
 
 	hea <- header_table(
@@ -193,4 +200,3 @@ read_muse <- function(file) {
 	ecg(signal = sig, header = hea)
 
 }
-

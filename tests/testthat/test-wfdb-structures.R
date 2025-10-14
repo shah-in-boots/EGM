@@ -47,7 +47,7 @@ test_that("header_table can be made using LSPro data", {
 	color = character()
 	scale = integer()
 
-	file <- test_path("egm.txt")
+	file <- test_path("bard-egm.txt")
 	record_name <- deparse1(substitute(file))
 	file_name <- paste0(deparse1(substitute(file)), ".dat")
 	hea <-

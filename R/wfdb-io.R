@@ -40,8 +40,8 @@
 #' 1. Header attributes: recording information such as sample number, gain,
 #' sampling frequency
 #'
-#' 1. Annotations: information about the record such as abeat
-#' labels or alarm triggers
+#' 1. Annotations: information about the record such as a beat labels or alarm
+#' triggers
 #'
 #' @param record String that will be used to name the WFDB record. Cannot
 #'   include extensions, and is not a filepath. alphanumeric characters are
@@ -81,9 +81,11 @@ NULL
 #' Type of signal data, as specified by the recording system, that are currently
 #' supported.
 #'
-#' * _lspro_ = LabSystem Pro, e.g. [read_lspro()]
+#' * _bard_ = Bard (LabSystem Pro), e.g. [read_bard()]
 #'
-#' * _muse_ = GE MUSE, e.g. [read_muse()]
+#' * _muse_ = MUSE (GE), e.g. [read_muse()]
+#'
+#' * _prucka_ = Prucka (CardioLab), e.g. [read_prucka()]
 #'
 #' @inheritParams wfdb
 #'

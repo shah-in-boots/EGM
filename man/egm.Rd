@@ -58,5 +58,5 @@ different data types (particularly WFDB).
 
 \strong{IMPORTANT}: The \code{egm} class can be built from ground-up by the user,
 however it is primarily generated for the user using the other read/write
-functions, such as \code{\link[=read_lspro]{read_lspro()}} or \code{\link[=read_wfdb]{read_wfdb()}}.
+functions, such as \code{\link[=read_bard]{read_bard()}} or \code{\link[=read_wfdb]{read_wfdb()}}.
 }

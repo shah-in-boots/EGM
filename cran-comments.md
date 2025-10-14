@@ -1,15 +1,9 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 0 note
 
-* This is a new release.
+* This is a small patch and update to work with the new {testthat} changes and the update to {ggplot2} v4.0.0.
 
-## Re-submission
+* The change in maintainers is only reflecting the change in contact information, and remains the same individual. 
 
-In response to the helpful feedback from the CRAN team, I've additionally made the following changes.
-
-1. In the DESCRIPTION file, software/package names require single quotation: I have added the appropriate single-quotes around these names. 
-
-2. The DESCRIPTION file, under the "description" element, has inappropriate/too many white spaces: The formatting was reviewed and adjusted to avoid excess white space at linebreaks.
-
-3. The exported methods and return tags were missing in the documentation for several functions ("colors", "header_table()", "signal_table()", "wfdb_paths()"): I have updated the documentation to explain the return values, including class and interpretation for the missing files. I apologize for the oversight.
+* An additional individual was added to reflect contributions to the package

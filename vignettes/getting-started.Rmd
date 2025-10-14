@@ -22,7 +22,7 @@ library(EGM)
 
 Thie software supports reading in certain types of raw cardiac electric signal currently. 
 This includes both intracardiac and extracardiac data.
-Please see `read_muse()` and `read_lspro()` as examples.
+Please see `read_muse()` and `read_bard()` as examples.
 If additional formats are requested, please [file an issue](https://github.com/shah-in-boots/EGM/issues) and provide a sample file (which primarily requires signal, in whatever format, and meta-information about the individual channels).
 
 Here is a simple example of taking a MUSE XML file and converting it to digital signal.
@@ -44,17 +44,17 @@ ggm(ecg) +
   theme_egm_light()
 ```
 
-Similarly, intracardiac recordings obtained through LSPro can be read in as well. The function itself documents how this generally work.
+Similarly, intracardiac recordings obtained through bard can be read in as well. The function itself documents how this generally work.
 
 ```{r}
 # Read in data
-fp <- system.file('extdata', 'lspro-avnrt.txt', package = 'EGM')
-lspro <- readLines(fp)
-head(lspro, n = 20)
+fp <- system.file('extdata', 'bard-avnrt.txt', package = 'EGM')
+bard <- readLines(fp)
+head(bard, n = 20)
 
 # Instead, read this as signal, breaking apart header and signal data
 # Presented as an `egm` class object
-egram <- read_lspro(fp)
+egram <- read_bard(fp)
 egram
 
 # Similarly, can be visualized with ease
