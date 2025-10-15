@@ -20,11 +20,19 @@ extern "C" SEXP _EGM_fun() {
     return R_NilValue;
   END_CPP11
 }
+// wfdb_native.cpp
+cpp11::writable::doubles_matrix<> read_wfdb_dat_cpp(const std::string& path, int n_channels, int start_sample, int n_samples, int bytes_per_sample);
+extern "C" SEXP _EGM_read_wfdb_dat_cpp(SEXP path, SEXP n_channels, SEXP start_sample, SEXP n_samples, SEXP bytes_per_sample) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(read_wfdb_dat_cpp(cpp11::as_cpp<cpp11::decay_t<std::string>>(path), cpp11::as_cpp<cpp11::decay_t<int>>(n_channels), cpp11::as_cpp<cpp11::decay_t<int>>(start_sample), cpp11::as_cpp<cpp11::decay_t<int>>(n_samples), cpp11::as_cpp<cpp11::decay_t<int>>(bytes_per_sample)));
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
     {"_EGM_calculate_approximate_entropy_cpp", (DL_FUNC) &_EGM_calculate_approximate_entropy_cpp, 3},
     {"_EGM_fun",                               (DL_FUNC) &_EGM_fun,                               0},
+    {"_EGM_read_wfdb_dat_cpp",                 (DL_FUNC) &_EGM_read_wfdb_dat_cpp,                 5},
     {NULL, NULL, 0}
 };
 }
