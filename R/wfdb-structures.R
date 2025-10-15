@@ -17,7 +17,6 @@
 #'
 #' @export
 signal_table <- function(...) {
-
 	# Invariant rules:
 	# 	Can add and remove rows (each row is a time point)
 	# 	Rows can NOT be re-ordered
@@ -169,17 +168,17 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' @param frequency An `integer` that represents the sampling frequency in Hertz
 #'
 #' @export
-annotation_table <- function(annotator = character(),
-														 time = character(),
-														 sample = integer(),
-														 frequency = integer(),
-														 type = character(),
-														 subtype = character(),
-														 channel = integer(),
-														 number = integer(),
-														 ...) {
-
-
+annotation_table <- function(
+	annotator = character(),
+	time = character(),
+	sample = integer(),
+	frequency = integer(),
+	type = character(),
+	subtype = character(),
+	channel = integer(),
+	number = integer(),
+	...
+) {
 	# Invariant rules:
 	# 	Can add and remove rows (each row is an annotation)
 	# 	Rows CAN be re-ordered
@@ -210,12 +209,10 @@ annotation_table <- function(annotator = character(),
 		subtype <- vector(mode = "character", length = n)
 	}
 
-
 	# Number
 	if (length(number) == 0) {
 		number <- vector(mode = "integer", length = n)
 	}
-
 
 	# Channel
 	if (length(channel) == 0) {
@@ -249,20 +246,20 @@ annotation_table <- function(annotator = character(),
 		}
 	}
 
-	x <- df_list(time = time,
-							 sample = sample,
-							 type = type,
-							 subtype = subtype,
-							 channel = channel,
-							 number = number)
+	x <- df_list(
+		time = time,
+		sample = sample,
+		type = type,
+		subtype = subtype,
+		channel = channel,
+		number = number
+	)
 
 	new_annotation_table(x, annotator)
 }
 
 #' @keywords internal
-new_annotation_table <- function(x = list(),
-																 annotator = character()) {
-
+new_annotation_table <- function(x = list(), annotator = character()) {
 	if (length(x) > 0) {
 		checkmate::assert_list(
 			x,
@@ -275,13 +272,15 @@ new_annotation_table <- function(x = list(),
 		)
 	}
 
-	new_data_frame(x, annotator = annotator, class = c("annotation_table", "data.table"))
-
+	new_data_frame(
+		x,
+		annotator = annotator,
+		class = c("annotation_table", "data.table")
+	)
 }
 
 #' @export
 print.annotation_table <- function(x, ...) {
-
 	if (nrow(x) > 0) {
 		cat(sprintf(
 			'<%s: %s `%s` annotations>\n',
@@ -293,9 +292,8 @@ print.annotation_table <- function(x, ...) {
 			NextMethod()
 		}
 	} else {
-		cat(sprintf( '<%s: 0 annotations>\n', class(x)[[1]]))
+		cat(sprintf('<%s: 0 annotations>\n', class(x)[[1]]))
 	}
-
 }
 
 #' @export
@@ -460,31 +458,31 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #' @param scale An `integer` Scale
 #'
 #' @export
-header_table <- function(record_name = character(), # Record line information
-												 number_of_channels = integer(),
-												 frequency = 250.0,
-												 samples = integer(),
-												 start_time = strptime(Sys.time(), "%Y-%m-%d %H:%M:%OSn"),
-												 ADC_saturation = integer(),
-												 file_name = character(), # Signal specific information
-												 storage_format = 16L,
-												 ADC_gain = 200L,
-												 ADC_baseline = ADC_zero,
-												 ADC_units = "mV",
-												 ADC_resolution = 12L,
-												 ADC_zero = 0L,
-												 initial_value = ADC_zero,
-												 checksum = 0L,
-												 blocksize = 0L,
-												 label = character(),
-												 info_strings = list(), # Secondary information
-												 additional_gain = 1.0,
-												 low_pass = integer(),
-												 high_pass = integer(),
-												 color = '#000000',
-												 scale = integer()) {
-
-
+header_table <- function(
+	record_name = character(), # Record line information
+	number_of_channels = integer(),
+	frequency = 250.0,
+	samples = integer(),
+	start_time = strptime(Sys.time(), "%Y-%m-%d %H:%M:%OSn"),
+	ADC_saturation = integer(),
+	file_name = character(), # Signal specific information
+	storage_format = 16L,
+	ADC_gain = 200L,
+	ADC_baseline = ADC_zero,
+	ADC_units = "mV",
+	ADC_resolution = 12L,
+	ADC_zero = 0L,
+	initial_value = ADC_zero,
+	checksum = 0L,
+	blocksize = 0L,
+	label = character(),
+	info_strings = list(), # Secondary information
+	additional_gain = 1.0,
+	low_pass = integer(),
+	high_pass = integer(),
+	color = '#000000',
+	scale = integer()
+) {
 	# Three components to the header structure as described above
 	# 	Record line
 	# 	Signal line(s)
@@ -523,10 +521,10 @@ header_table <- function(record_name = character(), # Record line information
 		lab_splits <-
 			stringr::str_split(label, pattern = "_", n = 2, simplify = TRUE)
 
-		source <- lab_splits[,1]
+		source <- lab_splits[, 1]
 		source <- ifelse(label %in% .leads$ECG, "ECG", source)
 
-		lead <- lab_splits[,2]
+		lead <- lab_splits[, 2]
 		lead <- ifelse(label %in% .leads$ECG, label, lead)
 
 		# Factor if possible
@@ -581,28 +579,26 @@ header_table <- function(record_name = character(), # Record line information
 	# TODO
 	# Info strings
 
-
 	# Construct new table
 	new_header_table(
 		x = x,
 		record_line = record_line,
 		info_strings = info_strings
 	)
-
 }
 
 #' @keywords internal
-new_header_table <- function(x = list(),
-														 record_line = list(),
-														 info_strings = list()) {
-
+new_header_table <- function(
+	x = list(),
+	record_line = list(),
+	info_strings = list()
+) {
 	new_data_frame(
 		x,
 		record_line = record_line,
 		info_strings = info_strings,
 		class = c("header_table", "data.table")
 	)
-
 }
 
 #' @export
@@ -613,7 +609,6 @@ is_header_table <- function(x) {
 
 #' @export
 print.header_table <- function(x, ...) {
-
 	if (nrow(x) > 0) {
 		cat(
 			sprintf(
@@ -629,7 +624,6 @@ print.header_table <- function(x, ...) {
 			NextMethod()
 		}
 	} else {
-		cat(sprintf( "<%s: 0 channels, 0 samples>\n", class(x)[[1]]))
+		cat(sprintf("<%s: 0 channels, 0 samples>\n", class(x)[[1]]))
 	}
-
 }

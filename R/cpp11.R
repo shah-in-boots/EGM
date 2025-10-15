@@ -8,6 +8,10 @@ fun <- function() {
   invisible(.Call(`_EGM_fun`))
 }
 
-read_wfdb_dat_cpp <- function(path, n_channels, start_sample, n_samples, bytes_per_sample) {
-  .Call(`_EGM_read_wfdb_dat_cpp`, path, n_channels, start_sample, n_samples, bytes_per_sample)
+read_wfdb_dat_cpp <- function(path, n_channels, start_sample, n_samples, storage_format) {
+  .Call(`_EGM_read_wfdb_dat_cpp`, path, n_channels, start_sample, n_samples, storage_format)
+}
+
+write_wfdb_dat_cpp <- function(path, samples, n_channels, storage_format) {
+  invisible(.Call(`_EGM_write_wfdb_dat_cpp`, path, samples, n_channels, storage_format))
 }

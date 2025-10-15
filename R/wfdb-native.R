@@ -1,23 +1,19 @@
-#' Native WFDB readers without external utilities
+#' Native WFDB readers and writers without external utilities
 #'
 #' @description
-#' These functions provide experimental replacements for the existing WFDB
-#' readers that rely on the external `wfdb` command line utilities. The native
-#' implementations focus on stability and currently support 16-bit interleaved
-#' WFDB records stored in a single signal file. When provided with a matching
-#' pair of `.hea` and `.dat` files, the native reader parses the header using
-#' [read_header()] and streams the binary signal data directly from the
-#' `.dat` file without invoking any system commands.
+#' These functions provide native replacements for the existing WFDB helpers
+#' that rely on the external `wfdb` command line utilities. The implementation
+#' operates entirely within R and C++ via [cpp11], avoiding any dependency on
+#' the WFDB C library while maintaining compatibility with WFDB-formatted
+#' records.
 #'
 #' @details
-#' The native backend mirrors the record-selection semantics of
-#' [read_signal()] and the WFDB `rdsamp` utility for the supported subset of
-#' records. Unlike the C-based `rdsamp`, which links against the full WFDB
-#' library and understands the entire range of WFDB storage formats, the
-#' current implementation is intentionally conservative and focuses on the most
-#' common configuration used by the bundled example data (a single interleaved
-#' 16-bit signal file). This trade-off keeps the initial implementation simple
-#' and portable while we iterate towards broader format coverage.
+#' The native backend mirrors the record-selection semantics of [read_signal()]
+#' and the WFDB `rdsamp` utility while supporting the three most common WFDB
+#' storage formats—16-bit integers, 32-bit integers and the packed 12-bit
+#' `212` format—for both reading and writing. The writer complements
+#' [write_wfdb()] by emitting WFDB-compatible `.hea` and `.dat` files without
+#' invoking external binaries.
 #'
 #' @param record Character scalar giving the record name (without extension).
 #' @param record_dir Directory that contains the WFDB files.
@@ -31,25 +27,43 @@
 #'   return raw integer samples or scaled values.
 #' @param channels Optional character or numeric vector specifying the channels
 #'   to retain.
+#' @param header A [header_table] describing the channels. Required for writing
+#'   unless `data` is an [egm] object.
+#' @param data When writing, either an [egm], a [signal_table], or a data frame
+#'   that can be coerced with [signal_table()].
+#' @param storage_format Optional integer WFDB storage format (one of 16, 32,
+#'   or 212) to use when writing. Defaults to the format declared in `header`.
+#' @param overwrite Logical flag indicating whether existing WFDB files may be
+#'   replaced.
+#' @param info_strings Named list of info strings to append to the header when
+#'   writing.
 #' @param ... Reserved for future extensions.
 #'
-#' @return `read_signal_native()` returns a [signal_table] that mirrors the
-#'   structure produced by [read_signal()]. `read_wfdb_native()` returns an
-#'   [egm] object composed of the native signal data, the parsed header and an
-#'   empty annotation table.
+#' @return
+#' * `read_signal_native()` returns a [signal_table] that mirrors the structure
+#'   produced by [read_signal()].
+#' * `read_wfdb_native()` returns an [egm] object composed of the native signal
+#'   data, the parsed header and an empty annotation table.
+#' * `write_wfdb_native()` invisibly returns a named list containing the written
+#'   `signal_path`, `header_path`, and the normalised `header`.
 #'
 #' @seealso [read_signal()], [read_wfdb()]
 #'
+#' @name wfdb_native
 #' @export
-read_signal_native <- function(record,
-                               record_dir = ".",
-                               begin = 0,
-                               end = NA_real_,
-                               interval = NA_real_,
-                               units = c("digital", "physical"),
-                               channels = character(),
-                               ...) {
 
+#' @rdname wfdb_native
+#' @export
+read_signal_native <- function(
+  record,
+  record_dir = ".",
+  begin = 0,
+  end = NA_real_,
+  interval = NA_real_,
+  units = c("digital", "physical"),
+  channels = character(),
+  ...
+) {
   units <- match.arg(units)
   if (begin < 0) {
     stop("`begin` must be non-negative", call. = FALSE)
@@ -65,11 +79,17 @@ read_signal_native <- function(record,
   samples <- record_line$samples
 
   if (is.null(frequency) || is.na(frequency)) {
-    stop("Header is missing the sampling frequency; native reading is not available", call. = FALSE)
+    stop(
+      "Header is missing the sampling frequency; native reading is not available",
+      call. = FALSE
+    )
   }
 
   if (is.null(samples) || is.na(samples)) {
-    stop("Header is missing the total number of samples; native reading is not available", call. = FALSE)
+    stop(
+      "Header is missing the total number of samples; native reading is not available",
+      call. = FALSE
+    )
   }
 
   start_sample <- as.integer(round(begin * frequency))
@@ -92,34 +112,38 @@ read_signal_native <- function(record,
 
   file_names <- unique(header$file_name)
   if (length(file_names) != 1L) {
-    stop("Native reader currently supports records stored in a single signal file", call. = FALSE)
+    stop(
+      "Native reader currently supports records stored in a single signal file",
+      call. = FALSE
+    )
+  }
+
+  file_name <- file_names[[1]]
+  if (is.na(file_name) || !nzchar(file_name)) {
+    stop("Header does not declare a signal file name", call. = FALSE)
   }
 
   storage_format <- unique(header$storage_format)
   if (length(storage_format) != 1L) {
-    stop("Native reader requires a single storage format across channels", call. = FALSE)
+    stop(
+      "Native reader requires a single storage format across channels",
+      call. = FALSE
+    )
   }
+  storage_format <- native_validate_storage_format(storage_format[[1]])
 
-  bytes_per_sample <- storage_format / 8L
-  if (!bytes_per_sample %in% c(2L)) {
-    stop("Only 16-bit WFDB records are supported by the native reader", call. = FALSE)
-  }
-
-  signal_path <- fs::path(record_dir, file_names[[1]])
+  signal_path <- fs::path(record_dir, file_name)
   if (!fs::file_exists(signal_path)) {
     stop("Signal file not found at ", signal_path, call. = FALSE)
   }
   n_channels <- nrow(header)
 
-  # Load the selected range from the binary signal file using the
-  # cpp11-backed helper. The helper returns a numeric matrix with each column
-  # representing a channel and each row representing a sample.
   raw_matrix <- read_wfdb_dat_cpp(
     path = signal_path,
     n_channels = n_channels,
     start_sample = start_sample,
     n_samples = n_samples,
-    bytes_per_sample = bytes_per_sample
+    storage_format = storage_format
   )
 
   channel_names <- as.character(header$label)
@@ -144,9 +168,6 @@ read_signal_native <- function(record,
     selected_header <- header[idx, ]
   }
 
-  # Convert the dense matrix returned from C++ into the signal_table format
-  # used throughout the package. The first column is the implicit sample index
-  # and the remaining columns store the per-channel measurements.
   dat <- data.table::as.data.table(raw_matrix)
   if (ncol(dat) > 0) {
     data.table::setnames(dat, channel_names)
@@ -154,18 +175,13 @@ read_signal_native <- function(record,
   dat[, sample := seq.int(from = start_sample, length.out = n_samples)]
   data.table::setcolorder(dat, c("sample", setdiff(names(dat), "sample")))
 
-  # For digital units, cast each column back to integer so downstream code can
-  # rely on the same data types exposed by the CLI-backed readers.
   if (identical(units, "digital") && length(channel_names) > 0) {
     for (col in channel_names) {
       data.table::set(dat, j = col, value = as.integer(dat[[col]]))
     }
   }
 
-  # Apply per-channel gain and baseline corrections when the caller requests
-  # physical units. Each column is adjusted independently using the metadata
-  # stored in the header record.
-  if (identical(units, "physical") && (ncol(dat) > 1)) {
+  if (identical(units, "physical") && length(channel_names) > 0) {
     gain <- as.numeric(selected_header$ADC_gain)
     baseline <- as.numeric(selected_header$ADC_baseline)
     zero <- as.numeric(selected_header$ADC_zero)
@@ -182,18 +198,19 @@ read_signal_native <- function(record,
   signal_table(dat)
 }
 
-#' @rdname read_signal_native
+#' @rdname wfdb_native
 #' @export
-read_wfdb_native <- function(record,
-                             record_dir = ".",
-                             annotator = NA_character_,
-                             begin = 0,
-                             end = NA_real_,
-                             interval = NA_real_,
-                             units = c("digital", "physical"),
-                             channels = character(),
-                             ...) {
-
+read_wfdb_native <- function(
+  record,
+  record_dir = ".",
+  annotator = NA_character_,
+  begin = 0,
+  end = NA_real_,
+  interval = NA_real_,
+  units = c("digital", "physical"),
+  channels = character(),
+  ...
+) {
   sig <- read_signal_native(
     record = record,
     record_dir = record_dir,
@@ -208,7 +225,9 @@ read_wfdb_native <- function(record,
   hea <- read_header(record, record_dir = record_dir)
 
   if (!is.na(annotator)) {
-    rlang::warn("Annotation reading is not yet available in the native WFDB backend; returning an empty table")
+    rlang::warn(
+      "Annotation reading is not yet available in the native WFDB backend; returning an empty table"
+    )
   }
 
   egm(
@@ -216,4 +235,486 @@ read_wfdb_native <- function(record,
     header = hea,
     annotation = annotation_table()
   )
+}
+
+#' @rdname wfdb_native
+#' @export
+write_wfdb_native <- function(
+  data,
+  record,
+  record_dir = ".",
+  units = c("digital", "physical"),
+  header = NULL,
+  storage_format = NULL,
+  info_strings = list(),
+  overwrite = FALSE,
+  ...
+) {
+  units <- match.arg(units)
+  if (missing(record) || !nzchar(record)) {
+    stop("`record` must be provided", call. = FALSE)
+  }
+
+  if (inherits(data, "egm")) {
+    signal <- data$signal
+    header_input <- data$header
+  } else if (is_signal_table(data)) {
+    signal <- data
+    header_input <- header
+  } else if (inherits(data, "data.frame")) {
+    signal <- signal_table(data)
+    header_input <- header
+  } else {
+    stop(
+      "`data` must be an `egm`, `signal_table`, or data frame",
+      call. = FALSE
+    )
+  }
+
+  if (is.null(header_input)) {
+    stop(
+      "`header` must be supplied when `data` is not an `egm` object",
+      call. = FALSE
+    )
+  }
+
+  if (!is_signal_table(signal)) {
+    signal <- signal_table(signal)
+  }
+
+  if (!is_header_table(header_input)) {
+    sig_dt <- data.table::as.data.table(signal)
+    channel_cols <- setdiff(names(sig_dt), "sample")
+    if (length(channel_cols) == 0L) {
+      stop("Signal table does not contain any channels", call. = FALSE)
+    }
+    n_channels <- length(channel_cols)
+
+    freq <- native_coalesce(header_input$frequency, 250)
+    gain <- native_coalesce(header_input$gain, header_input$ADC_gain)
+    gain <- native_coalesce(gain, 200L)
+    baseline <- native_coalesce(
+      header_input$baseline,
+      header_input$ADC_baseline
+    )
+    baseline <- native_coalesce(baseline, 0L)
+    units_col <- native_coalesce(header_input$units, header_input$ADC_units)
+    units_col <- native_coalesce(units_col, "mV")
+    labels <- native_coalesce(header_input$label, channel_cols)
+    storage_vec <- native_coalesce(header_input$storage_format, storage_format)
+    storage_vec <- native_coalesce(storage_vec, 16L)
+
+    header_input <- header_table(
+      record_name = record,
+      number_of_channels = n_channels,
+      frequency = freq,
+      samples = nrow(sig_dt),
+      storage_format = rep_len(storage_vec, n_channels),
+      ADC_gain = rep_len(gain, n_channels),
+      ADC_baseline = rep_len(baseline, n_channels),
+      ADC_units = rep_len(units_col, n_channels),
+      label = rep_len(labels, n_channels),
+      info_strings = info_strings
+    )
+  }
+
+  sig_dt <- data.table::as.data.table(signal)
+  channel_cols <- setdiff(names(sig_dt), "sample")
+  if (length(channel_cols) == 0L) {
+    stop("Signal table does not contain any channels", call. = FALSE)
+  }
+
+  n_samples <- nrow(sig_dt)
+  n_channels <- length(channel_cols)
+
+  header_copy <- data.table::copy(header_input)
+  storage_format <- native_resolve_storage_format(storage_format, header_copy)
+  header_copy$storage_format <- rep(storage_format, n_channels)
+
+  if (nrow(header_copy) != n_channels) {
+    stop("Header must contain one row per channel", call. = FALSE)
+  }
+
+  header_labels <- as.character(header_copy$label)
+  if (
+    length(header_labels) != n_channels ||
+      any(is.na(header_labels)) ||
+      any(!nzchar(header_labels))
+  ) {
+    header_labels <- channel_cols
+    header_copy$label <- header_labels
+  }
+
+  match_idx <- match(toupper(header_labels), toupper(channel_cols))
+  if (anyNA(match_idx)) {
+    stop("Header labels do not match the signal column names", call. = FALSE)
+  }
+
+  ordered_cols <- channel_cols[match_idx]
+  channel_mat <- as.matrix(sig_dt[, ..ordered_cols])
+  colnames(channel_mat) <- header_labels
+
+  if (!is.numeric(channel_mat)) {
+    stop("Signal data must be numeric", call. = FALSE)
+  }
+
+  if (identical(units, "physical")) {
+    gain <- as.numeric(header_copy$ADC_gain)
+    baseline <- as.numeric(header_copy$ADC_baseline)
+    zero <- as.numeric(header_copy$ADC_zero)
+
+    baseline[is.na(baseline)] <- zero[is.na(baseline)]
+    if (any(is.na(gain) | gain == 0)) {
+      stop(
+        "Gain values are required to convert physical units back to digital samples",
+        call. = FALSE
+      )
+    }
+
+    for (j in seq_len(n_channels)) {
+      channel_mat[, j] <- round(channel_mat[, j] * gain[[j]] + baseline[[j]])
+    }
+  }
+
+  if (any(!is.finite(channel_mat))) {
+    stop("Signal data contains non-finite values", call. = FALSE)
+  }
+
+  storage_mat <- round(channel_mat)
+  storage_mat <- matrix(
+    as.integer(storage_mat),
+    nrow = n_samples,
+    ncol = n_channels
+  )
+
+  if (anyNA(storage_mat)) {
+    stop("Signal data contains missing values", call. = FALSE)
+  }
+
+  if (storage_format == 16L) {
+    if (any(storage_mat < -32768L) || any(storage_mat > 32767L)) {
+      stop("Signal values exceed the 16-bit integer range", call. = FALSE)
+    }
+  } else if (storage_format == 212L) {
+    if (any(storage_mat < -2048L) || any(storage_mat > 2047L)) {
+      stop(
+        "Signal values exceed the 12-bit range used by format 212",
+        call. = FALSE
+      )
+    }
+  }
+
+  record_line <- attributes(header_copy)$record_line
+  if (is.null(record_line)) {
+    record_line <- list()
+  }
+  record_line$record_name <- record
+  record_line$number_of_channels <- n_channels
+  record_line$samples <- n_samples
+  if (is.null(record_line$frequency) || is.na(record_line$frequency)) {
+    stop(
+      "Header record line must include the sampling frequency",
+      call. = FALSE
+    )
+  }
+  attributes(header_copy)$record_line <- record_line
+
+  file_name <- unique(as.character(header_copy$file_name))
+  if (
+    length(file_name) == 0L || is.na(file_name[[1]]) || !nzchar(file_name[[1]])
+  ) {
+    file_name <- paste0(record, ".dat")
+  } else if (length(file_name) != 1L) {
+    stop("Native writer requires a single signal file name", call. = FALSE)
+  } else {
+    file_name <- file_name[[1]]
+  }
+  header_copy$file_name <- rep(file_name, n_channels)
+
+  header_copy$ADC_units <- ifelse(
+    is.na(header_copy$ADC_units) | !nzchar(as.character(header_copy$ADC_units)),
+    "mV",
+    as.character(header_copy$ADC_units)
+  )
+  header_copy$ADC_gain <- as.numeric(header_copy$ADC_gain)
+  header_copy$ADC_gain[is.na(header_copy$ADC_gain)] <- 200
+
+  baseline <- as.numeric(header_copy$ADC_baseline)
+  zero <- as.numeric(header_copy$ADC_zero)
+  baseline[is.na(baseline)] <- zero[is.na(baseline)]
+  baseline[is.na(baseline)] <- 0
+  zero[is.na(zero)] <- 0
+  header_copy$ADC_baseline <- as.integer(round(baseline))
+  header_copy$ADC_zero <- as.integer(round(zero))
+
+  header_copy$ADC_resolution <- as.integer(round(ifelse(
+    is.na(header_copy$ADC_resolution),
+    storage_format,
+    header_copy$ADC_resolution
+  )))
+  header_copy$initial_value <- as.integer(round(ifelse(
+    is.na(header_copy$initial_value),
+    header_copy$ADC_baseline,
+    header_copy$initial_value
+  )))
+  header_copy$checksum <- as.integer(round(ifelse(
+    is.na(header_copy$checksum),
+    0L,
+    header_copy$checksum
+  )))
+  header_copy$blocksize <- as.integer(round(ifelse(
+    is.na(header_copy$blocksize),
+    0L,
+    header_copy$blocksize
+  )))
+  header_copy$label <- as.character(header_copy$label)
+
+  existing_info <- attributes(header_copy)$info_strings
+  if (is.null(existing_info)) {
+    existing_info <- list()
+  }
+  if (length(info_strings) > 0) {
+    existing_info <- utils::modifyList(existing_info, info_strings)
+  }
+  attributes(header_copy)$info_strings <- existing_info
+
+  if (!fs::dir_exists(record_dir)) {
+    fs::dir_create(record_dir, recurse = TRUE)
+  }
+  signal_path <- fs::path(record_dir, file_name)
+  header_path <- fs::path(record_dir, paste0(record, ".hea"))
+
+  if (
+    !overwrite && (fs::file_exists(signal_path) || fs::file_exists(header_path))
+  ) {
+    stop(
+      "WFDB files already exist for this record; set `overwrite = TRUE` to replace them",
+      call. = FALSE
+    )
+  }
+
+  values <- as.integer(c(t(storage_mat)))
+  write_wfdb_dat_cpp(
+    path = signal_path,
+    samples = values,
+    n_channels = as.integer(n_channels),
+    storage_format = storage_format
+  )
+
+  header_lines <- native_header_lines(header_copy)
+  writeLines(header_lines, header_path)
+
+  invisible(list(
+    signal_path = signal_path,
+    header_path = header_path,
+    header = header_copy
+  ))
+}
+
+# Helper functions ----
+native_supported_storage_formats <- function() {
+  c(16L, 32L, 212L)
+}
+
+native_validate_storage_format <- function(storage_format) {
+  fmt <- as.integer(storage_format)[1]
+  if (is.na(fmt)) {
+    stop("Storage format must be specified", call. = FALSE)
+  }
+  if (!fmt %in% native_supported_storage_formats()) {
+    stop(
+      "Native backend supports storage formats 16, 32, and 212",
+      call. = FALSE
+    )
+  }
+  fmt
+}
+
+native_resolve_storage_format <- function(storage_format, header) {
+  if (!is.null(storage_format)) {
+    return(native_validate_storage_format(storage_format))
+  }
+
+  formats <- unique(as.integer(header$storage_format))
+  formats <- formats[!is.na(formats)]
+  if (length(formats) == 0L) {
+    return(16L)
+  }
+  if (length(formats) != 1L) {
+    stop(
+      "Native backend requires a single storage format across channels",
+      call. = FALSE
+    )
+  }
+  native_validate_storage_format(formats[[1]])
+}
+
+native_format_number <- function(x) {
+  if (length(x) == 0 || is.na(x)) {
+    return("0")
+  }
+  value <- suppressWarnings(as.numeric(x))
+  if (is.na(value)) {
+    return(as.character(x))
+  }
+  if (isTRUE(all.equal(value, round(value)))) {
+    sprintf("%d", as.integer(round(value)))
+  } else {
+    formatC(value, digits = 10, format = "fg", drop0trailing = TRUE)
+  }
+}
+
+native_collect_info_strings <- function(header) {
+  info <- attributes(header)$info_strings
+  if (is.null(info)) {
+    info <- list()
+  }
+
+  if (length(info) && is.null(names(info))) {
+    names(info) <- rep("", length(info))
+  }
+
+  fields <- c(
+    "source",
+    "lead",
+    "additional_gain",
+    "low_pass",
+    "high_pass",
+    "color",
+    "scale"
+  )
+
+  for (field in fields) {
+    if (!field %in% names(info) && field %in% names(header)) {
+      values <- header[[field]]
+      if (!all(is.na(values))) {
+        info[[field]] <- values
+      }
+    }
+  }
+
+  info
+}
+
+native_coalesce <- function(x, fallback) {
+  if (is.null(x) || length(x) == 0 || all(is.na(x))) {
+    fallback
+  } else {
+    x
+  }
+}
+
+native_header_info_lines <- function(header) {
+  info <- native_collect_info_strings(header)
+  if (!length(info)) {
+    return(character())
+  }
+
+  if (is.null(names(info))) {
+    names(info) <- paste0("info_", seq_along(info))
+  }
+
+  missing_names <- names(info) == "" | is.na(names(info))
+  if (any(missing_names)) {
+    names(info)[missing_names] <- paste0(
+      "info_",
+      seq_along(info)
+    )[missing_names]
+  }
+
+  vapply(
+    seq_along(info),
+    function(i) {
+      name <- names(info)[[i]]
+      values <- info[[i]]
+      paste("#", name, paste(as.character(values), collapse = " "))
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
+native_header_lines <- function(header) {
+  rec <- attributes(header)$record_line
+  if (is.null(rec)) {
+    stop("Header is missing record metadata", call. = FALSE)
+  }
+
+  record_name <- rec$record_name
+  if (is.null(record_name) || is.na(record_name) || !nzchar(record_name)) {
+    stop("Header record name must be specified", call. = FALSE)
+  }
+
+  n_channels <- rec$number_of_channels
+  if (is.null(n_channels) || is.na(n_channels)) {
+    n_channels <- nrow(header)
+  }
+
+  frequency <- rec$frequency
+  if (is.null(frequency) || is.na(frequency)) {
+    stop("Header is missing the sampling frequency", call. = FALSE)
+  }
+
+  samples <- rec$samples
+  if (is.null(samples) || is.na(samples)) {
+    stop("Header is missing the total number of samples", call. = FALSE)
+  }
+
+  start_time <- rec$start_time
+  components <- c(
+    record_name,
+    native_format_number(n_channels),
+    native_format_number(frequency),
+    native_format_number(samples)
+  )
+
+  if (!is.null(start_time) && !is.na(start_time)) {
+    components <- c(
+      components,
+      format(start_time, "%H:%M:%OS"),
+      format(start_time, "%d/%m/%Y")
+    )
+  }
+
+  lines <- paste(components, collapse = " ")
+
+  if (nrow(header) > 0) {
+    signal_lines <- vapply(
+      seq_len(nrow(header)),
+      function(i) {
+        units <- header$ADC_units[[i]]
+        if (is.null(units) || is.na(units) || !nzchar(units)) {
+          units <- "mV"
+        }
+        adc <- sprintf(
+          "%s(%s)/%s",
+          native_format_number(header$ADC_gain[[i]]),
+          native_format_number(header$ADC_baseline[[i]]),
+          units
+        )
+        paste(
+          header$file_name[[i]],
+          native_format_number(header$storage_format[[i]]),
+          adc,
+          native_format_number(header$ADC_resolution[[i]]),
+          native_format_number(header$ADC_zero[[i]]),
+          native_format_number(header$initial_value[[i]]),
+          native_format_number(header$checksum[[i]]),
+          native_format_number(header$blocksize[[i]]),
+          as.character(header$label[[i]]),
+          sep = "\t"
+        )
+      },
+      character(1),
+      USE.NAMES = FALSE
+    )
+    lines <- c(lines, signal_lines)
+  }
+
+  info_lines <- native_header_info_lines(header)
+  if (length(info_lines) > 0) {
+    lines <- c(lines, info_lines)
+  }
+
+  lines
 }

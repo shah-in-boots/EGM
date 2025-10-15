@@ -31,3 +31,145 @@ test_that("native WFDB reader builds an egm object", {
   expect_s3_class(obj$header, "header_table")
   expect_s3_class(obj$annotation, "annotation_table")
 })
+
+test_that("native writer round-trips 16-bit digital records", {
+  tmp <- withr::local_tempdir()
+
+  sig <- signal_table(
+    sample = 0:9,
+    lead1 = as.integer(seq(0L, 9L)),
+    lead2 = as.integer(-seq(0L, 9L))
+  )
+
+  hea <- header_table(
+    record_name = "roundtrip16",
+    number_of_channels = 2L,
+    frequency = 500L,
+    samples = nrow(sig),
+    storage_format = rep(16L, 2),
+    ADC_gain = rep(200L, 2),
+    ADC_baseline = rep(0L, 2),
+    label = c("LEAD1", "LEAD2")
+  )
+
+  write_wfdb_native(
+    data = sig,
+    header = hea,
+    record = "roundtrip16",
+    record_dir = tmp,
+    overwrite = TRUE
+  )
+
+  roundtrip <- read_signal_native("roundtrip16", record_dir = tmp)
+  expect_equal(roundtrip$LEAD1, sig$lead1)
+  expect_equal(roundtrip$LEAD2, sig$lead2)
+})
+
+test_that("native writer converts physical units back to digital", {
+  tmp <- withr::local_tempdir()
+
+  digital <- as.integer(c(-2000L, -1000L, 0L, 1000L, 2000L))
+  gain <- 200
+  baseline <- 0
+  physical <- (digital - baseline) / gain
+
+  sig <- signal_table(
+    sample = 0:(length(physical) - 1L),
+    lead = physical
+  )
+
+  hea <- header_table(
+    record_name = "physical16",
+    number_of_channels = 1L,
+    frequency = 250L,
+    samples = nrow(sig),
+    storage_format = 16L,
+    ADC_gain = gain,
+    ADC_baseline = baseline,
+    label = "LEAD"
+  )
+
+  write_wfdb_native(
+    data = sig,
+    header = hea,
+    record = "physical16",
+    record_dir = tmp,
+    units = "physical",
+    overwrite = TRUE
+  )
+
+  roundtrip <- read_signal_native(
+    "physical16",
+    record_dir = tmp,
+    units = "digital"
+  )
+  expect_equal(roundtrip$LEAD, digital)
+})
+
+test_that("native backend reads and writes 32-bit WFDB records", {
+  tmp <- withr::local_tempdir()
+
+  base_values <- as.integer(seq_len(12L) * 100000L)
+  sig <- signal_table(
+    sample = 0:(length(base_values) - 1L),
+    lead1 = base_values,
+    lead2 = -base_values
+  )
+
+  hea <- header_table(
+    record_name = "roundtrip32",
+    number_of_channels = 2L,
+    frequency = 360L,
+    samples = nrow(sig),
+    storage_format = rep(32L, 2),
+    ADC_gain = rep(1L, 2),
+    ADC_baseline = rep(0L, 2),
+    label = c("lead1", "lead2")
+  )
+
+  write_wfdb_native(
+    data = sig,
+    header = hea,
+    record = "roundtrip32",
+    record_dir = tmp,
+    overwrite = TRUE
+  )
+
+  roundtrip <- read_signal_native("roundtrip32", record_dir = tmp)
+  expect_equal(roundtrip$LEAD1, sig$lead1)
+  expect_equal(roundtrip$LEAD2, sig$lead2)
+})
+
+test_that("native backend reads and writes format 212 WFDB records", {
+  tmp <- withr::local_tempdir()
+
+  values <- as.integer(c(-2048L, -1024L, -1L, 0L, 1L, 1023L, 2047L, 0L))
+  sig <- signal_table(
+    sample = 0:(length(values) - 1L),
+    "LEAD I" = values,
+    "LEAD J" = rev(values)
+  )
+
+  hea <- header_table(
+    record_name = "roundtrip212",
+    number_of_channels = 2L,
+    frequency = 128L,
+    samples = nrow(sig),
+    storage_format = rep(212L, 2),
+    ADC_gain = rep(1L, 2),
+    ADC_baseline = rep(0L, 2),
+    label = c("LEAD_I", "LEAD_J")
+  )
+
+  write_wfdb_native(
+    data = sig,
+    header = hea,
+    record = "roundtrip212",
+    record_dir = tmp,
+    overwrite = TRUE
+  )
+
+  roundtrip <- read_signal_native("roundtrip212", record_dir = tmp)
+  expect_equal(roundtrip$LEAD_I, sig$LEAD_I)
+  expect_equal(roundtrip$LEAD_J, sig$LEAD_J)
+})
