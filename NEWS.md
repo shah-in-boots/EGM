@@ -3,6 +3,7 @@
 * Updates to `{pkgdown}` settings for documentation organization
 * Debugging the color issues when adding a color theme to `ggm()`
 * Creation of subclass of `egm` objects called `ecg` to identify 12-lead ECG subtypes
+* Added experimental native WFDB readers (`read_signal_native()` and `read_wfdb_native()`) that no longer require the external WFDB utilities
 
 # EGM 0.1.1
 

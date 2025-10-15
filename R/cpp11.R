@@ -7,3 +7,7 @@ calculate_approximate_entropy_cpp <- function(x, m, r) {
 fun <- function() {
   invisible(.Call(`_EGM_fun`))
 }
+
+read_wfdb_dat_cpp <- function(path, n_channels, start_sample, n_samples, bytes_per_sample) {
+  .Call(`_EGM_read_wfdb_dat_cpp`, path, n_channels, start_sample, n_samples, bytes_per_sample)
+}
