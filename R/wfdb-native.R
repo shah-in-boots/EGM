@@ -541,6 +541,23 @@ read_annotation_native <- function(
     stop("Specify only one of `end` or `interval`", call. = FALSE)
   }
 
+  # If the annotation is inadequate, need to check here before going further
+  # Example would be a file that is very small
+  annPath <- fs::path(record_dir, record, ext = annotator)
+  fileSize <- fs::file_size(annPath) # returns in bytes
+
+  if (fileSize < 8) {
+    # Unlikely to be readable?
+    # If its only a few bytes then annotation is unlikely
+    message(
+      'The annotation for ',
+      record,
+      ' is unlikely to be legible. ',
+      'An empty annotation table was returned instead.'
+    )
+    return(annotation_table())
+  }
+
   header <- read_header(record, record_dir = record_dir)
   record_line <- attributes(header)$record_line
 
@@ -668,7 +685,10 @@ write_annotation_native <- function(
   type_values <- as.character(ann[["type"]])
   type_codes <- native_annotation_mnemonic_to_code(type_values)
   if (any(is.na(type_codes))) {
-    stop("Encountered unknown annotation types that cannot be encoded", call. = FALSE)
+    stop(
+      "Encountered unknown annotation types that cannot be encoded",
+      call. = FALSE
+    )
   }
 
   subtype_values <- ann[["subtype"]]
@@ -921,16 +941,56 @@ native_header_lines <- function(header) {
 
 native_annotation_mnemonics <- function() {
   c(
-    " ", "N", "L", "R", "a",
-    "V", "F", "J", "A", "S",
-    "E", "j", "/", "Q", "~",
-    "[15]", "|", "[17]", "s", "T",
-    "*", "D", "\"", "=", "p",
-    "B", "^", "t", "+", "u",
-    "?", "!", "[", "]", "e",
-    "n", "@", "x", "f", "(",
-    ")", "r", "[42]", "[43]", "[44]",
-    "[45]", "[46]", "[47]", "[48]", "[49]"
+    " ",
+    "N",
+    "L",
+    "R",
+    "a",
+    "V",
+    "F",
+    "J",
+    "A",
+    "S",
+    "E",
+    "j",
+    "/",
+    "Q",
+    "~",
+    "[15]",
+    "|",
+    "[17]",
+    "s",
+    "T",
+    "*",
+    "D",
+    "\"",
+    "=",
+    "p",
+    "B",
+    "^",
+    "t",
+    "+",
+    "u",
+    "?",
+    "!",
+    "[",
+    "]",
+    "e",
+    "n",
+    "@",
+    "x",
+    "f",
+    "(",
+    ")",
+    "r",
+    "[42]",
+    "[43]",
+    "[44]",
+    "[45]",
+    "[46]",
+    "[47]",
+    "[48]",
+    "[49]"
   )
 }
 

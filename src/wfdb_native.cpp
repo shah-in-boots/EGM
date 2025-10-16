@@ -610,13 +610,16 @@ cpp11::writable::list read_wfdb_ann_cpp(const std::string& path) {
     aux_r[i] = aux_strings[i];
   }
 
-  cpp11::writable::list result({
-      {"sample", samples_r},
-      {"type", types_r},
-      {"subtype", subtypes_r},
-      {"channel", channels_r},
-      {"number", numbers_r},
-      {"aux", aux_r}});
+  cpp11::writable::list result;
+  result.push_back(samples_r);
+  result.push_back(types_r);
+  result.push_back(subtypes_r);
+  result.push_back(channels_r);
+  result.push_back(numbers_r);
+  result.push_back(aux_r);
+
+  cpp11::writable::strings names = {"sample", "type", "subtype", "channel", "number", "aux"};
+  result.attr("names") = names;
 
   return result;
 }

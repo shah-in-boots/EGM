@@ -5,6 +5,8 @@
 \alias{read_signal_native}
 \alias{read_wfdb_native}
 \alias{write_wfdb_native}
+\alias{read_annotation_native}
+\alias{write_annotation_native}
 \title{Native WFDB readers and writers without external utilities}
 \usage{
 read_signal_native(
@@ -41,6 +43,25 @@ write_wfdb_native(
   overwrite = FALSE,
   ...
 )
+
+read_annotation_native(
+  record,
+  annotator,
+  record_dir = ".",
+  begin = 0,
+  end = NA_real_,
+  interval = NA_real_,
+  ...
+)
+
+write_annotation_native(
+  data,
+  record,
+  annotator,
+  record_dir = ".",
+  overwrite = FALSE,
+  ...
+)
 }
 \arguments{
 \item{record}{Character scalar giving the record name (without extension).}
@@ -59,9 +80,7 @@ to retain.}
 
 \item{...}{Reserved for future extensions.}
 
-\item{annotator}{Optional annotator to read. Annotation support is not yet
-available for the native backend and an empty table is returned when an
-annotator is requested.}
+\item{annotator}{Optional annotator to read or write.}
 
 \item{data}{When writing, either an \link{egm}, a \link{signal_table}, or a data frame
 that can be coerced with \code{\link[=signal_table]{signal_table()}}.}
@@ -83,9 +102,13 @@ replaced.}
 \item \code{read_signal_native()} returns a \link{signal_table} that mirrors the structure
 produced by \code{\link[=read_signal]{read_signal()}}.
 \item \code{read_wfdb_native()} returns an \link{egm} object composed of the native signal
-data, the parsed header and an empty annotation table.
+data, the parsed header, and any decoded annotations.
 \item \code{write_wfdb_native()} invisibly returns a named list containing the written
 \code{signal_path}, \code{header_path}, and the normalised \code{header}.
+\item \code{read_annotation_native()} returns an \link{annotation_table} mirroring the
+structure produced by \code{\link[=read_annotation]{read_annotation()}}.
+\item \code{write_annotation_native()} invisibly returns the path to the WFDB
+annotation file that was written.
 }
 }
 \description{

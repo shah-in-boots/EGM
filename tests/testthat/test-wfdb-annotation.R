@@ -1,5 +1,4 @@
 test_that("can read in annotation files", {
-
 	skip_on_cran()
 	skip_on_ci()
 
@@ -13,13 +12,13 @@ test_that("can read in annotation files", {
 	expect_length(x, 6)
 	expect_output(print(x), 'ecgpuwave')
 	expect_s3_class(x, "data.table")
-	expect_named(x,
-							 expected = c("time", "sample", "type", "subtype", "channel", "number"))
-
+	expect_named(
+		x,
+		expected = c("time", "sample", "type", "subtype", "channel", "number")
+	)
 })
 
 test_that("can read in faulty signal safely", {
-
 	skip_on_cran()
 	skip_on_ci()
 
@@ -35,14 +34,4 @@ test_that("can read in faulty signal safely", {
 	})
 	expect_length(ann, 6)
 	expect_equal(nrow(ann), 0)
-
-})
-
-test_that("annotation read in uses appropriate header data", {
-
-	skip_on_cran()
-	skip_on_ci()
-
-	hea <- read_header("ecg", test_path())
-
 })
