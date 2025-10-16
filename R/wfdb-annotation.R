@@ -68,157 +68,267 @@
 #' @name wfdb_annotations
 #' @export
 read_annotation <- function(record,
-														record_dir = ".",
-														annotator,
-														wfdb_path = getOption("wfdb_path"),
-														begin = "00:00:00",
-														end = NA_character_,
-														...) {
+                                                                                                                record_dir = ".",
+                                                                                                                annotator,
+                                                                                                                wfdb_path = getOption("wfdb_path"),
+                                                                                                                begin = "00:00:00",
+                                                                                                                end = NA_character_,
+                                                                                                                backend = getOption("wfdb_backend", "native"),
+                                                                                                                ...) {
 
-	# Validate:
-	#		WFDB software command
-	# 	Current or parent working directory
-	# 	Directory of the record/WFDB files
-	# 	Variable definitions
-	rdann <- find_wfdb_command('rdann', wfdb_path)
+        backend <- wfdb_match_backend(backend)
 
-	# If the annotation is inadequate, need to check here before going further
-	# Example would be a file that is very small
-	annPath <- fs::path(record_dir, record, ext = annotator)
-	fileSize <- fs::file_size(annPath) # returns in bytes
+        if (identical(backend, "native")) {
+                convert_time <- function(x) {
+                        if (length(x) == 0 || is.null(x)) {
+                                return(NA_real_)
+                        }
+                        x <- x[[1]]
+                        if (is.numeric(x)) {
+                                return(as.numeric(x))
+                        }
+                        if (is.na(x)) {
+                                return(NA_real_)
+                        }
+                        x <- trimws(as.character(x))
+                        if (!nzchar(x)) {
+                                return(0)
+                        }
+                        if (!grepl(":", x, fixed = TRUE)) {
+                                suppressWarnings(val <- as.numeric(x))
+                                if (!is.na(val)) {
+                                        return(val)
+                                }
+                        }
+                        parts <- strsplit(x, ":", fixed = TRUE)[[1]]
+                        parts <- as.numeric(parts)
+                        parts <- rev(parts)
+                        multipliers <- c(1, 60, 3600)
+                        sum(parts * multipliers[seq_along(parts)], na.rm = TRUE)
+                }
 
-	if (fileSize < 8) {
-		# Unlikely to be readable?
-		# If its only a few bytes then annotation is unlikely
-		message('The annotation for ',
-						record,
-						' is unlikely to be legible. ',
-						'An empty annotation table was returned instead.')
-		return(annotation_table())
-	}
+                return(
+                        read_annotation_native(
+                                record = record,
+                                annotator = annotator,
+                                record_dir = record_dir,
+                                begin = convert_time(begin),
+                                end = convert_time(end),
+                                ...
+                        )
+                )
+        }
 
-	# Ensure appropriate working directory
-	if (fs::dir_exists(record_dir)) {
-		wd <- fs::path(record_dir)
-	} else {
-		wd <- getwd()
-	}
-
-	stopifnot("Expected `character`" = is.character(begin))
-	stopifnot("Expected `character`" = is.character(end))
-
-	# Create all the necessary parameters for rdann
-	#		-f			Start time
-	#		-t			End time
-	#		-v			Column headings
-	#		-e			Elapsed time as (versus absolute time)
-	# TODO filtering flags not yet included
-	cmd <-
-		paste(rdann, '-r', record, '-a', annotator) |>
-		{
-			\(.) {
-				if (begin != 0) {
-					paste(., "-f", begin)
-				} else {
-					.
-				}
-			}
-		}() |>
-		{
-			\(.) {
-				if (!is.na(end)) {
-					paste(., "-t", end)
-				} else {
-					.
-				}
-			}
-		}() |>
-		paste('-e')
-
-
-	# Temporary local/working directory, to reset at end of function
-	withr::with_dir(new = wd, code = {
-		dat <-
-			data.table::fread(cmd = cmd, header = FALSE)
-	})
-
-	# Rename annotation table
-	names(dat) <- c("time", "sample", "type", "subtype", "channel", "number")
-
-	# The time is raw, and converted to HH:MM:SS.SSS format, without a date
-	# 	This could be just M:S format or H:M:S format
-	# This is a discrepancy between `rdann` and this software
-	# Can temporarily convert this to a POSIX format here
-	hea <- read_header(record, record_dir)
-	start_time <- attributes(hea)$record_line$start_time
-
-	# Extract time appropriately
-	# Also make sure the type is appropriate
-	timeType <- stringr::str_count(dat$time, ":")
-	dat$time <- ifelse(timeType == 1, paste0("0:", dat$time), dat$time)
-
-	# Now split the strings by the position and check the times
-	datHMS <-
-		stringr::str_split(dat$time, ":", simplify = TRUE) |>
-		as.data.frame()
-	hours <- as.numeric(datHMS[[1]])
-	minutes <- as.numeric(datHMS[[2]])
-	seconds <- as.numeric(datHMS[[3]])
-
-	# Convert to characters
-	hours <- ifelse(hours < 10, paste0("0", hours), hours)
-	minutes <- ifelse(minutes < 10, paste0("0", minutes), minutes)
-	seconds <- ifelse(seconds < 10, paste0("0", seconds), seconds)
-
-	dat$time <- paste0(hours, ":", minutes, ":", seconds)
-
-	# Return
-	new_annotation_table(df_list(dat), annotator)
+        read_annotation_system(
+                record = record,
+                record_dir = record_dir,
+                annotator = annotator,
+                wfdb_path = wfdb_path,
+                begin = begin,
+                end = end,
+                ...
+        )
 }
+
+read_annotation_system <- function(record,
+                                                                                                                record_dir = ".",
+                                                                                                                annotator,
+                                                                                                                wfdb_path = getOption("wfdb_path"),
+                                                                                                                begin = "00:00:00",
+                                                                                                                end = NA_character_,
+                                                                                                                ...) {
+
+        # Validate:
+        #               WFDB software command
+        #       Current or parent working directory
+        #       Directory of the record/WFDB files
+        #       Variable definitions
+        rdann <- find_wfdb_command('rdann', wfdb_path)
+
+        # If the annotation is inadequate, need to check here before going further
+        # Example would be a file that is very small
+        annPath <- fs::path(record_dir, record, ext = annotator)
+        fileSize <- fs::file_size(annPath) # returns in bytes
+
+        if (fileSize < 8) {
+                # Unlikely to be readable?
+                # If its only a few bytes then annotation is unlikely
+                message('The annotation for ',
+                                                record,
+                                                ' is unlikely to be legible. ',
+                                                'An empty annotation table was returned instead.')
+                return(annotation_table())
+        }
+
+        # Ensure appropriate working directory
+        if (fs::dir_exists(record_dir)) {
+                wd <- fs::path(record_dir)
+        } else {
+                wd <- getwd()
+        }
+
+        stopifnot('Expected `character`' = is.character(begin))
+        stopifnot('Expected `character`' = is.character(end))
+
+        # Create all the necessary parameters for rdann
+        #               -f                      Start time
+        #               -t                      End time
+        #               -v                      Column headings
+        #               -e                      Elapsed time as (versus absolute time)
+        # TODO filtering flags not yet included
+        cmd <-
+                paste(rdann, '-r', record, '-a', annotator) |>
+                {
+                        \(.) {
+                                if (begin != 0) {
+                                        paste(., '-f', begin)
+                                } else {
+                                        .
+                                }
+                        }
+                }() |>
+                {
+                        \(.) {
+                                if (!is.na(end)) {
+                                        paste(., '-t', end)
+                                } else {
+                                        .
+                                }
+                        }
+                }() |>
+                paste('-e')
+
+
+        # Temporary local/working directory, to reset at end of function
+        withr::with_dir(new = wd, code = {
+                dat <-
+                        data.table::fread(cmd = cmd, header = FALSE)
+        })
+
+        # Rename annotation table
+        names(dat) <- c('time', 'sample', 'type', 'subtype', 'channel', 'number')
+
+        # The time is raw, and converted to HH:MM:SS.SSS format, without a date
+        #       This could be just M:S format or H:M:S format
+        # This is a discrepancy between `rdann` and this software
+        # Can temporarily convert this to a POSIX format here
+        hea <- read_header(record, record_dir)
+        start_time <- attributes(hea)$record_line$start_time
+
+        # Extract time appropriately
+        # Also make sure the type is appropriate
+        timeType <- stringr::str_count(dat$time, ':')
+        dat$time <- ifelse(timeType == 1, paste0('0:', dat$time), dat$time)
+
+        # Now split the strings by the position and check the times
+        datHMS <-
+                stringr::str_split(dat$time, ':', simplify = TRUE) |>
+                as.data.frame()
+        hours <- as.numeric(datHMS[[1]])
+        minutes <- as.numeric(datHMS[[2]])
+        seconds <- as.numeric(datHMS[[3]])
+
+        # Convert to characters
+        hours <- ifelse(hours < 10, paste0('0', hours), hours)
+        minutes <- ifelse(minutes < 10, paste0('0', minutes), minutes)
+        seconds <- ifelse(seconds < 10, paste0('0', seconds), seconds)
+
+        dat$time <- paste0(hours, ':', minutes, ':', seconds)
+
+        # Return
+        new_annotation_table(df_list(dat), annotator)
+}
+
 
 #' @rdname wfdb_annotations
 #' @export
 write_annotation <- function(data,
-														 annotator,
-														 record,
-														 record_dir = ".",
-														 wfdb_path = getOption("wfdb_path"),
-														 ...) {
+                                                                                                                 annotator,
+                                                                                                                 record,
+                                                                                                                 record_dir = '.',
+                                                                                                                 wfdb_path = getOption('wfdb_path'),
+                                                                                                                 backend = getOption('wfdb_backend', 'native'),
+                                                                                                                 overwrite = FALSE,
+                                                                                                                 ...) {
 
-	# Validate:
-	#		WFDB software command
-	# 	Current or parent working directory
-	# 	Variable definitions
-	wrann <- find_wfdb_command('wrann')
+        backend <- wfdb_match_backend(backend)
 
-	if (fs::dir_exists(record_dir)) {
-		wd <- fs::path(record_dir)
-	} else {
-		wd <- getwd()
-	}
+        if (identical(backend, 'native')) {
+                return(
+                        write_annotation_native(
+                                data = data,
+                                record = record,
+                                annotator = annotator,
+                                record_dir = record_dir,
+                                overwrite = overwrite,
+                                ...
+                        )
+                )
+        }
 
-	stopifnot("Expected `data.frame`" = inherits(data, "data.frame"))
+        write_annotation_system(
+                data = data,
+                annotator = annotator,
+                record = record,
+                record_dir = record_dir,
+                wfdb_path = wfdb_path,
+                overwrite = overwrite,
+                ...
+        )
+}
 
-	# Take annotation data and write to temporary file
-	# 	This later is sent to `wrann` through `cat` with a pipe
-	#		The temp file must be deleted after
-	tmpFile <- fs::file_temp("annotation_", ext = "txt")
-	withr::defer(fs::file_delete(tmpFile))
+write_annotation_system <- function(data,
+                                                                                                                 annotator,
+                                                                                                                 record,
+                                                                                                                 record_dir = '.',
+                                                                                                                 wfdb_path = getOption('wfdb_path'),
+                                                                                                                 overwrite = FALSE,
+                                                                                                                 ...) {
 
-	data |>
-		annotation_table_to_lines() |>
-		writeLines(tmpFile)
+        # Validate:
+        #               WFDB software command
+        #       Current or parent working directory
+        #       Variable definitions
+        wrann <- find_wfdb_command('wrann', wfdb_path)
 
-	# Prepare the command for writing this into a WFDB format
-	#		Cat annotation file
-	#		Pipe
-	# 	Write out file
-	cat_cmd <- paste('cat', tmpFile)
-	wfdb_cmd <- paste(wrann, '-r', record, '-a', annotator)
-	cmd <- paste(cat_cmd, wfdb_cmd, sep = " | ")
-	withr::with_dir(new = wd, code = system(cmd))
+        if (fs::dir_exists(record_dir)) {
+                wd <- fs::path(record_dir)
+        } else {
+                wd <- getwd()
+        }
+
+        if (inherits(data, 'annotation_table')) {
+                data <- data.table::as.data.table(data)
+        } else {
+                stopifnot('Expected `data.frame`' = inherits(data, 'data.frame'))
+        }
+
+        annPath <- fs::path(record_dir, record, ext = annotator)
+        if (isTRUE(overwrite) && fs::file_exists(annPath)) {
+                fs::file_delete(annPath)
+        }
+
+        # Take annotation data and write to temporary file
+        #       This later is sent to `wrann` through `cat` with a pipe
+        #               The temp file must be deleted after
+        tmpFile <- fs::file_temp('annotation_', ext = 'txt')
+        withr::defer(fs::file_delete(tmpFile))
+
+        data |>
+                annotation_table_to_lines() |>
+                writeLines(tmpFile)
+
+        # Prepare the command for writing this into a WFDB format
+        #               Cat annotation file
+        #               Pipe
+        #       Write out file
+        cat_cmd <- paste('cat', tmpFile)
+        wfdb_cmd <- paste(wrann, '-r', record, '-a', annotator)
+        cmd <- paste(cat_cmd, wfdb_cmd, sep = ' | ')
+        withr::with_dir(new = wd, code = system(cmd))
 
 }
+
 
 #' @rdname wfdb_annotations
 #' @export
