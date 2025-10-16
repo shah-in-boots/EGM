@@ -665,7 +665,7 @@ read_header <- function(
                         ADC_units
                 )
 
-        header_table(
+        header <- header_table(
                 record_name = record_name,
                 number_of_channels = number_of_channels,
                 frequency = frequency,
@@ -683,4 +683,8 @@ read_header <- function(
                 blocksize = sig_data[[8]],
                 label = sig_data[[9]]
         )
+
+        header$label <- native_canonicalize_labels(header$label)
+
+        header
 }

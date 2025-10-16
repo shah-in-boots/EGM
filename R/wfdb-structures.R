@@ -513,13 +513,15 @@ header_table <- function(
 	# Table of channel information
 	# 	Clean up names if possible
 	# 	All are made upper character
-	label <-
-		toupper(label) |>
-		gsub("_", "\ ", x = _)
+        label <-
+                toupper(label) |>
+                gsub("_", "\ ", x = _)
 
-	if (length(label) > 0 & all(label %in% .labels)) {
-		lab_splits <-
-			stringr::str_split(label, pattern = "_", n = 2, simplify = TRUE)
+        label <- native_canonicalize_labels(label)
+
+        if (length(label) > 0 & all(label %in% .labels)) {
+                lab_splits <-
+                        stringr::str_split(label, pattern = "_", n = 2, simplify = TRUE)
 
 		source <- lab_splits[, 1]
 		source <- ifelse(label %in% .leads$ECG, "ECG", source)
