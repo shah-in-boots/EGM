@@ -60,6 +60,7 @@ write_annotation_native(
   annotator,
   record_dir = ".",
   overwrite = FALSE,
+  header = NULL,
   ...
 )
 }
@@ -86,7 +87,8 @@ to retain.}
 that can be coerced with \code{\link[=signal_table]{signal_table()}}.}
 
 \item{header}{A \link{header_table} describing the channels. Required for writing
-unless \code{data} is an \link{egm} object.}
+signal data unless \code{data} is an \link{egm} object, and used when writing
+annotations to match channel names to their indices.}
 
 \item{storage_format}{Optional integer WFDB storage format (one of 16, 32,
 or 212) to use when writing. Defaults to the format declared in \code{header}.}
