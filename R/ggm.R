@@ -58,134 +58,148 @@
 #'
 #' @import ggplot2 data.table
 #' @export
-ggm <- function(data,
-								channels = character(),
-								time_frame = NULL,
-								palette = NULL,
-								mode = "dark",
-								...) {
-	# Global variables (used in data.table)
-	. <- color <- mV <- label <- NULL
+ggm <- function(
+  data,
+  channels = character(),
+  time_frame = NULL,
+  palette = NULL,
+  mode = "dark",
+  ...
+) {
+  # Global variables (used in data.table)
+  . <- color <- mV <- label <- NULL
 
-	stopifnot(inherits(data, "egm"))
+  stopifnot(inherits(data, "egm"))
 
-	# Clean channels
-	channels <- gsub("_", "\ ", x = channels)
+  # Clean channels
+  channels <- gsub("_", "\ ", x = channels)
 
-	# Process header and signal
-	hea <- data$header
-	ann <- data$annotation
-	sig <- data.table::as.data.table(data$signal)
-	hea$label <-
-		as.character(hea$label) |>
-		gsub("_", "\ ", x = _)
-	names(sig) <- c('sample', hea$label)
+  # Process header and signal
+  hea <- data$header
+  ann <- data$annotation
+  sig <- data.table::as.data.table(data$signal)
+  hea$label <-
+    as.character(hea$label) |>
+    gsub("_", "\ ", x = _)
+  names(sig) <- c('sample', hea$label)
 
-	# Should be all of the same frequency of data
-	hz <- attributes(hea)$record_line$frequency
-	sig$time <- sig$sample / hz
+  # Should be all of the same frequency of data
+  hz <- attributes(hea)$record_line$frequency
+  sig$time <- sig$sample / hz
 
-	# check if time frame exists within series, allowing for
-	# indexed rounding based on frequency
-	if (is.null(time_frame)) {
-		time_frame <- c(min(sig$time, na.rm = TRUE), max(sig$time, na.rm = TRUE))
-	}
-	stopifnot("`time_frame` must be within available data" = all(
-		min(time_frame) + 1 / hz >= min(sig$time) &
-			max(time_frame) - 1 / hz <= max(sig$time)
-	))
+  # check if time frame exists within series, allowing for
+  # indexed rounding based on frequency
+  if (is.null(time_frame)) {
+    time_frame <- c(min(sig$time, na.rm = TRUE), max(sig$time, na.rm = TRUE))
+  }
+  stopifnot(
+    "`time_frame` must be within available data" = all(
+      min(time_frame) + 1 / hz >= min(sig$time) &
+        max(time_frame) - 1 / hz <= max(sig$time)
+    )
+  )
 
-	# Filter time appropriately based on samples
-	sampleStart <- sig$sample[sig$time == time_frame[1]]
-	sampleEnd <- sig$sample[sig$time == time_frame[2]]
+  # Filter time appropriately based on samples
+  sampleStart <- sig$sample[sig$time == time_frame[1]]
+  sampleEnd <- sig$sample[sig$time == time_frame[2]]
 
-	# Trim the signal and annotation files to match the time frame
-	sig <- sig[sample >= sampleStart & sample <= sampleEnd, ]
-	ann <- ann[sample >= sampleStart & sample <= sampleEnd, ]
+  # Trim the signal and annotation files to match the time frame
+  sig <- sig[sample >= sampleStart & sample <= sampleEnd, ]
+  ann <- ann[sample >= sampleStart & sample <= sampleEnd, ]
 
-	# Make sure appropriate channels are selected
-	availableChannels <- hea$label
-	exactChannels <- channels[channels %in% .labels]
-	fuzzyChannels <- channels[!(channels %in% .labels)]
-	channelGrep <-
-		paste0(c(paste0("^", exactChannels, "$", collapse = "|"), fuzzyChannels), collapse = "|")
-	selectedChannels <- grep(channelGrep, availableChannels, value = TRUE)
-	if (length(channels) == 0) {
-		selectedChannels <- availableChannels
-	}
-	stopifnot("The requested channels do not exist within the signal data" = length(selectedChannels) >
-							0)
+  # Make sure appropriate channels are selected
+  availableChannels <- hea$label
+  exactChannels <- channels[channels %in% .labels]
+  fuzzyChannels <- channels[!(channels %in% .labels)]
+  channelGrep <-
+    paste0(
+      c(paste0("^", exactChannels, "$", collapse = "|"), fuzzyChannels),
+      collapse = "|"
+    )
+  selectedChannels <- grep(channelGrep, availableChannels, value = TRUE)
+  if (length(channels) == 0) {
+    selectedChannels <- availableChannels
+  }
+  stopifnot(
+    "The requested channels do not exist within the signal data" = length(
+      selectedChannels
+    ) >
+      0
+  )
 
-	# Get channel data from individual signals
-	# Need to make sure all that information is present from header
-	channelData <-
-		hea[, c("label", "source", "lead", "color")] |>
-		as.data.table()
-	if (is.null(channelData$color)) {
-		if (mode == "light") {
-			channelData$color <- '#000000'
-		} else {
-			channelData$color <- '#FFFFFF'
-		}
-	}
+  # Get channel data from individual signals
+  # Need to make sure all that information is present from header
+  channelData <-
+    hea[, c("label", "source", "lead", "color")] |>
+    as.data.table()
+  if (is.null(channelData$color)) {
+    if (mode == "light") {
+      channelData$color <- '#000000'
+    } else {
+      channelData$color <- '#FFFFFF'
+    }
+  }
 
-	dt <-
-		data.table::melt(
-			sig[, c('sample', 'time', selectedChannels), with = FALSE],
-			id.vars = c("sample", "time"),
-			variable.name = "label",
-			value.name = "mV"
-		) |>
-		{
-			\(.x) {
-				channelData[.x, on = .(label)][, mV := as.numeric(mV)]
-			}
-		}()
+  dt <-
+    data.table::melt(
+      sig[, c('sample', 'time', selectedChannels), with = FALSE],
+      id.vars = c("sample", "time"),
+      variable.name = "label",
+      value.name = "mV"
+    ) |>
+    {
+      \(.x) {
+        channelData[.x, on = .(label)][, mV := as.numeric(mV)]
+      }
+    }()
 
-	# Relevel because order is lost in the labels during transformation
-	# But only do this if the labels are... "official" and not custom labels
-	if (all(selectedChannels %in% .labels)) {
-		dt$label <-
-			factor(dt$label,
-						 levels = intersect(.labels, selectedChannels),
-						 ordered = TRUE)
-	} else {
-		dt$label <- factor(dt$label)
-	}
+  # Relevel because order is lost in the labels during transformation
+  # But only do this if the labels are... "official" and not custom labels
+  if (all(selectedChannels %in% .labels)) {
+    dt$label <-
+      factor(
+        dt$label,
+        levels = intersect(.labels, selectedChannels),
+        ordered = TRUE
+      )
+  } else {
+    dt$label <- factor(dt$label)
+  }
 
-	# Create final plot
-	g <-
-		ggplot(dt, aes(x = sample, y = mV, colour = color)) +
-		geom_line() +
-		facet_wrap( ~ label,
-								ncol = 1,
-								scales = "free_y",
-								strip.position = "left") +
-		scale_colour_identity() +
-		scale_x_continuous(breaks = seq(sampleStart, sampleEnd, by = hz),
-											 labels = NULL)
+  # Create final plot
+  g <-
+    ggplot(dt, aes(x = sample, y = mV, colour = color)) +
+    geom_line() +
+    facet_wrap(~label, ncol = 1, scales = "free_y", strip.position = "left") +
+    scale_colour_identity() +
+    scale_x_continuous(
+      breaks = seq(sampleStart, sampleEnd, by = hz),
+      labels = NULL
+    )
 
-	# Update class
-	g <- new_ggm(g, header = hea, annotation = ann)
+  # Update class
+  g <- new_ggm(g, header = hea, annotation = ann)
 
-	# Add palette and color mode to the plot
-	g <- add_colors(g, palette = palette, mode = mode)
+  # Add palette and color mode to the plot
+  g <- add_colors(g, palette = palette, mode = mode)
 
-	# Return object if available
-	g
+  # Return object if available
+  g
 }
 
-new_ggm <- function(object = ggplot(),
-										header = list(),
-										annotation = annotation_table()) {
-	stopifnot(is_ggplot(object))
+new_ggm <- function(
+  object = ggplot(),
+  header = list(),
+  annotation = annotation_table()
+) {
+  stopifnot(is_ggplot(object))
 
-	structure(
-		object,
-		header = header,
-		annotation = annotation,
-		class = c("ggm", class(object))
-	)
+  structure(
+    object,
+    header = header,
+    annotation = annotation,
+    class = c("ggm", class(object))
+  )
 }
 
 # Annotations ------------------------------------------------------------------
@@ -198,8 +212,7 @@ new_ggm <- function(object = ggplot(),
 #'
 #' @inheritDotParams ggm
 #' @export
-add_annotations <- function(...) {
-}
+add_annotations <- function(...) {}
 
 # Colors -----------------------------------------------------------------------
 
@@ -222,110 +235,110 @@ NULL
 #' @rdname colors
 #' @export
 theme_egm <- function() {
-	font <- "Arial"
-	theme_minimal() %+replace%
-		theme(
-			# Panels
-			panel.grid.major.y = element_blank(),
-			panel.grid.minor.y = element_blank(),
-			panel.grid.major.x = element_blank(),
-			panel.grid.minor.x = element_blank(),
+  font <- "Arial"
+  theme_minimal() %+replace%
+    theme(
+      # Panels
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
 
-			# Axes
-			axis.ticks.y = element_blank(),
-			axis.title.y = element_blank(),
-			axis.text.y = element_blank(),
-			axis.title.x = element_blank(),
-			axis.ticks.x = element_line(),
+      # Axes
+      axis.ticks.y = element_blank(),
+      axis.title.y = element_blank(),
+      axis.text.y = element_blank(),
+      axis.title.x = element_blank(),
+      axis.ticks.x = element_line(),
 
-			# Facets
-			panel.spacing = unit(0, units = "npc"),
-			panel.background = element_blank(),
-			strip.text.y.left = element_text(angle = 0, hjust = 1),
+      # Facets
+      panel.spacing = unit(0, units = "npc"),
+      panel.background = element_blank(),
+      strip.text.y.left = element_text(angle = 0, hjust = 1),
 
-			# Legend
-			legend.position = "none"
-		)
+      # Legend
+      legend.position = "none"
+    )
 }
 
 
 #' @rdname colors
 #' @export
 theme_egm_light <- function() {
-	font <- "Arial"
-	list(
-		theme_minimal() %+replace%
-			theme(
-				# Panels
-				panel.grid.major.y = element_blank(),
-				panel.grid.minor.y = element_blank(),
-				panel.grid.major.x = element_blank(),
-				panel.grid.minor.x = element_blank(),
+  font <- "Arial"
+  list(
+    theme_minimal() %+replace%
+      theme(
+        # Panels
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
 
-				# Axes
-				axis.ticks.y = element_blank(),
-				axis.title.y = element_blank(),
-				axis.text.y = element_blank(),
-				axis.title.x = element_blank(),
-				axis.ticks.x = element_line(),
+        # Axes
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_line(),
 
-				# Facets
-				panel.spacing = unit(0, units = "npc"),
-				panel.background = element_blank(),
-				strip.text.y.left = element_text(angle = 0, hjust = 1),
+        # Facets
+        panel.spacing = unit(0, units = "npc"),
+        panel.background = element_blank(),
+        strip.text.y.left = element_text(angle = 0, hjust = 1),
 
-				# Legend
-				legend.position = "none"
-			),
-		# If needed to force the colors to be black, can add something like this...
-		#scale_color_manual(values = rep("black", length(.labels)), na.value = "black")
-		scale_color_manual(
-			values = rep("black", length(.labels)),
-			na.value = "black"
-		)
-	)
+        # Legend
+        legend.position = "none"
+      ),
+    # If needed to force the colors to be black, can add something like this...
+    #scale_color_manual(values = rep("black", length(.labels)), na.value = "black")
+    scale_color_manual(
+      values = rep("black", length(.labels)),
+      na.value = "black"
+    )
+  )
 }
 
 #' @rdname colors
 #' @export
 theme_egm_dark <- function() {
-	font <- "Arial"
+  font <- "Arial"
 
-	list(
-		theme_minimal() %+replace%
-			theme(
-				# Panels and background
-				panel.grid.major.y = element_blank(),
-				panel.grid.minor.y = element_blank(),
-				panel.grid.major.x = element_blank(),
-				panel.grid.minor.x = element_blank(),
-				panel.background = element_rect(fill = "black"),
-				plot.background = element_rect(fill = "black"),
+  list(
+    theme_minimal() %+replace%
+      theme(
+        # Panels and background
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.background = element_rect(fill = "black"),
+        plot.background = element_rect(fill = "black"),
 
-				# Axes
-				axis.ticks.y = element_blank(),
-				axis.title.y = element_blank(),
-				axis.text.y = element_blank(),
-				axis.title.x = element_blank(),
-				axis.text.x = element_text(color = "white"),
-				axis.ticks.x = element_line(color = "white"),
+        # Axes
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(color = "white"),
+        axis.ticks.x = element_line(color = "white"),
 
-				# Facets
-				panel.spacing = unit(0, units = "npc"),
-				strip.text.y.left = element_text(
-					angle = 0,
-					hjust = 1,
-					color = "white"
-				),
+        # Facets
+        panel.spacing = unit(0, units = "npc"),
+        strip.text.y.left = element_text(
+          angle = 0,
+          hjust = 1,
+          color = "white"
+        ),
 
-				# Legend
-				legend.position = "none"
-			),
-		# If needed to force the colors to be white, can add something like this...
-		#scale_color_manual(values = rep("white", length(.labels)), na.value = "white")
-		scale_color_manual(
-			values = rep("white", length(.labels)),
-			na.value = "white"
-		)
-	)
+        # Legend
+        legend.position = "none"
+      ),
+    # If needed to force the colors to be white, can add something like this...
+    #scale_color_manual(values = rep("white", length(.labels)), na.value = "white")
+    scale_color_manual(
+      values = rep("white", length(.labels)),
+      na.value = "white"
+    )
+  )
 }

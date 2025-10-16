@@ -67,181 +67,189 @@
 #'
 #' @name wfdb_annotations
 #' @export
-read_annotation <- function(record,
-                                                                                                                record_dir = ".",
-                                                                                                                annotator,
-                                                                                                                wfdb_path = getOption("wfdb_path"),
-                                                                                                                begin = "00:00:00",
-                                                                                                                end = NA_character_,
-                                                                                                                backend = getOption("wfdb_backend", "native"),
-                                                                                                                ...) {
+read_annotation <- function(
+  record,
+  record_dir = ".",
+  annotator,
+  wfdb_path = getOption("wfdb_path"),
+  begin = "00:00:00",
+  end = NA_character_,
+  backend = getOption("wfdb_backend", "native"),
+  ...
+) {
+  backend <- wfdb_match_backend(backend)
 
-        backend <- wfdb_match_backend(backend)
-
-        if (identical(backend, "native")) {
-                convert_time <- function(x) {
-                        if (length(x) == 0 || is.null(x)) {
-                                return(NA_real_)
-                        }
-                        x <- x[[1]]
-                        if (is.numeric(x)) {
-                                return(as.numeric(x))
-                        }
-                        if (is.na(x)) {
-                                return(NA_real_)
-                        }
-                        x <- trimws(as.character(x))
-                        if (!nzchar(x)) {
-                                return(0)
-                        }
-                        if (!grepl(":", x, fixed = TRUE)) {
-                                suppressWarnings(val <- as.numeric(x))
-                                if (!is.na(val)) {
-                                        return(val)
-                                }
-                        }
-                        parts <- strsplit(x, ":", fixed = TRUE)[[1]]
-                        parts <- as.numeric(parts)
-                        parts <- rev(parts)
-                        multipliers <- c(1, 60, 3600)
-                        sum(parts * multipliers[seq_along(parts)], na.rm = TRUE)
-                }
-
-                return(
-                        read_annotation_native(
-                                record = record,
-                                annotator = annotator,
-                                record_dir = record_dir,
-                                begin = convert_time(begin),
-                                end = convert_time(end),
-                                ...
-                        )
-                )
+  if (identical(backend, "native")) {
+    convert_time <- function(x) {
+      if (length(x) == 0 || is.null(x)) {
+        return(NA_real_)
+      }
+      x <- x[[1]]
+      if (is.numeric(x)) {
+        return(as.numeric(x))
+      }
+      if (is.na(x)) {
+        return(NA_real_)
+      }
+      x <- trimws(as.character(x))
+      if (!nzchar(x)) {
+        return(0)
+      }
+      if (!grepl(":", x, fixed = TRUE)) {
+        suppressWarnings(val <- as.numeric(x))
+        if (!is.na(val)) {
+          return(val)
         }
+      }
+      parts <- strsplit(x, ":", fixed = TRUE)[[1]]
+      parts <- as.numeric(parts)
+      parts <- rev(parts)
+      multipliers <- c(1, 60, 3600)
+      sum(parts * multipliers[seq_along(parts)], na.rm = TRUE)
+    }
 
-        read_annotation_system(
-                record = record,
-                record_dir = record_dir,
-                annotator = annotator,
-                wfdb_path = wfdb_path,
-                begin = begin,
-                end = end,
-                ...
-        )
+    return(
+      read_annotation_native(
+        record = record,
+        annotator = annotator,
+        record_dir = record_dir,
+        begin = convert_time(begin),
+        end = convert_time(end),
+        ...
+      )
+    )
+  }
+
+  read_annotation_system(
+    record = record,
+    record_dir = record_dir,
+    annotator = annotator,
+    wfdb_path = wfdb_path,
+    begin = begin,
+    end = end,
+    ...
+  )
 }
 
 #' @rdname wfdb_annotations
 #' @export
-write_annotation <- function(data,
-                                                                                                                 annotator,
-                                                                                                                 record,
-                                                                                                                 record_dir = '.',
-                                                                                                                 wfdb_path = getOption('wfdb_path'),
-                                                                                                                 backend = getOption('wfdb_backend', 'native'),
-                                                                                                                 overwrite = FALSE,
-                                                                                                                 ...) {
+write_annotation <- function(
+  data,
+  annotator,
+  record,
+  record_dir = '.',
+  wfdb_path = getOption('wfdb_path'),
+  backend = getOption('wfdb_backend', 'native'),
+  overwrite = FALSE,
+  ...
+) {
+  backend <- wfdb_match_backend(backend)
 
-        backend <- wfdb_match_backend(backend)
+  if (identical(backend, 'native')) {
+    return(
+      write_annotation_native(
+        data = data,
+        record = record,
+        annotator = annotator,
+        record_dir = record_dir,
+        overwrite = overwrite,
+        ...
+      )
+    )
+  }
 
-        if (identical(backend, 'native')) {
-                return(
-                        write_annotation_native(
-                                data = data,
-                                record = record,
-                                annotator = annotator,
-                                record_dir = record_dir,
-                                overwrite = overwrite,
-                                ...
-                        )
-                )
-        }
-
-        write_annotation_system(
-                data = data,
-                annotator = annotator,
-                record = record,
-                record_dir = record_dir,
-                wfdb_path = wfdb_path,
-                overwrite = overwrite,
-                ...
-        )
+  write_annotation_system(
+    data = data,
+    annotator = annotator,
+    record = record,
+    record_dir = record_dir,
+    wfdb_path = wfdb_path,
+    overwrite = overwrite,
+    ...
+  )
 }
 
 #' @rdname wfdb_annotations
 #' @export
-annotate_wfdb <- function(record,
-													record_dir,
-													annotator,
-													wfdb_path = getOption('wfdb_path'),
-													...) {
+annotate_wfdb <- function(
+  record,
+  record_dir,
+  annotator,
+  wfdb_path = getOption('wfdb_path'),
+  ...
+) {
+  # Validate
+  # 	WFDB software - must be an ECG detector software
+  #		WFDB must be on path
+  # 	Reading/writing directory must be on path
 
-	# Validate
-	# 	WFDB software - must be an ECG detector software
-	#		WFDB must be on path
-	# 	Reading/writing directory must be on path
+  if (fs::dir_exists(record_dir)) {
+    wd <- fs::path(record_dir)
+  } else {
+    wd <- getwd()
+  }
 
-	if (fs::dir_exists(record_dir)) {
-		wd <- fs::path(record_dir)
-	} else {
-		wd <- getwd()
-	}
+  cmd <- find_wfdb_command(annotator)
+  rec <- paste("-r", record)
+  ann <- paste("-a", annotator)
 
-	cmd <- find_wfdb_command(annotator)
-	rec <- paste("-r", record)
-	ann <- paste("-a", annotator)
+  # Switch based on annotator system
+  # Change working directory for writing purposes
+  # This should change back at end of writing process
+  switch(
+    annotator,
+    ecpugwave = {
+      withr::with_dir(new = wd, code = {
+        # System call to beat detector/annotator
+        system2(
+          command = cmd,
+          args = c(rec, ann),
+          stdout = FALSE,
+          stderr = FALSE
+        )
 
-	# Switch based on annotator system
- 	# Change working directory for writing purposes
- 	# This should change back at end of writing process
-	switch(annotator,
-				 ecpugwave = {
-				 	withr::with_dir(new = wd,
-				 									code = {
-				 										# System call to beat detector/annotator
-				 										system2(
-				 											command = cmd,
-				 											args = c(rec, ann),
-				 											stdout = FALSE,
-				 											stderr = FALSE
-				 										)
-
-				 										if (fs::file_exists('fort.20')) {
-				 											fs::file_delete('fort.20')
-				 										}
-				 										if (fs::file_exists('fort.21')) {
-				 											fs::file_delete('fort.21')
-				 										}
-				 									})
-
-				 },
-				 wqrs = {
-				 	withr::with_dir(new = wd,
-				 									code = system2(
-				 										command = cmd,
-				 										args = c(rec, ann),
-				 										stdout = FALSE,
-				 										stderr = FALSE
-				 									))
-				 },
-				 gqrs = {
-				 	withr::with_dir(new = wd,
-				 									code = system2(
-				 										command = cmd,
-				 										args = c(rec, ann),
-				 										stdout = FALSE,
-				 										stderr = FALSE
-				 									))
-				 },
-				 sqrs = {
-				 	withr::with_dir(new = wd,
-				 									code = system2(
-				 										command = cmd,
-				 										args = c(rec, ann),
-				 										stdout = FALSE,
-				 										stderr = FALSE
-				 									))
-				 },
-	)
+        if (fs::file_exists('fort.20')) {
+          fs::file_delete('fort.20')
+        }
+        if (fs::file_exists('fort.21')) {
+          fs::file_delete('fort.21')
+        }
+      })
+    },
+    wqrs = {
+      withr::with_dir(
+        new = wd,
+        code = system2(
+          command = cmd,
+          args = c(rec, ann),
+          stdout = FALSE,
+          stderr = FALSE
+        )
+      )
+    },
+    gqrs = {
+      withr::with_dir(
+        new = wd,
+        code = system2(
+          command = cmd,
+          args = c(rec, ann),
+          stdout = FALSE,
+          stderr = FALSE
+        )
+      )
+    },
+    sqrs = {
+      withr::with_dir(
+        new = wd,
+        code = system2(
+          command = cmd,
+          args = c(rec, ann),
+          stdout = FALSE,
+          stderr = FALSE
+        )
+      )
+    },
+  )
 }
 
 # Annotator Systems -----------------------------------------------------------

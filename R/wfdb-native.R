@@ -898,7 +898,10 @@ native_canonicalize_labels <- function(labels) {
   result
 }
 
-native_annotation_channels_to_labels <- function(channel_indices, header_labels) {
+native_annotation_channels_to_labels <- function(
+  channel_indices,
+  header_labels
+) {
   if (!length(channel_indices) || !length(header_labels)) {
     return(channel_indices)
   }

@@ -148,39 +148,39 @@ NULL
 #'
 #' @export
 write_wfdb <- function(
-        data,
-        record,
-        record_dir,
-        wfdb_path = getOption('wfdb_path'),
-        header = list(frequency = 250, gain = 200L, label = character()),
-        info_strings = list(),
-        backend = getOption('wfdb_backend', 'native'),
-        ...
+  data,
+  record,
+  record_dir,
+  wfdb_path = getOption('wfdb_path'),
+  header = list(frequency = 250, gain = 200L, label = character()),
+  info_strings = list(),
+  backend = getOption('wfdb_backend', 'native'),
+  ...
 ) {
-        backend <- wfdb_match_backend(backend)
+  backend <- wfdb_match_backend(backend)
 
-        if (identical(backend, 'native')) {
-                return(
-                        write_wfdb_native(
-                                data = data,
-                                record = record,
-                                record_dir = record_dir,
-                                header = header,
-                                info_strings = info_strings,
-                                ...
-                        )
-                )
-        }
+  if (identical(backend, 'native')) {
+    return(
+      write_wfdb_native(
+        data = data,
+        record = record,
+        record_dir = record_dir,
+        header = header,
+        info_strings = info_strings,
+        ...
+      )
+    )
+  }
 
-        write_wfdb_system(
-                data = data,
-                record = record,
-                record_dir = record_dir,
-                wfdb_path = wfdb_path,
-                header = header,
-                info_strings = info_strings,
-                ...
-        )
+  write_wfdb_system(
+    data = data,
+    record = record,
+    record_dir = record_dir,
+    wfdb_path = wfdb_path,
+    header = header,
+    info_strings = info_strings,
+    ...
+  )
 }
 
 # Reading WFDB format data -----------------------------------------------------
@@ -191,48 +191,48 @@ write_wfdb <- function(
 #'
 #' @export
 read_wfdb <- function(
-        record,
-        record_dir = ".",
-        annotator = NA_character_,
-        wfdb_path = getOption("wfdb_path"),
-        begin = 0,
-        end = NA_integer_,
-        interval = NA_integer_,
-        units = "digital",
-        channels = character(),
-        backend = getOption("wfdb_backend", "native"),
-        ...
+  record,
+  record_dir = ".",
+  annotator = NA_character_,
+  wfdb_path = getOption("wfdb_path"),
+  begin = 0,
+  end = NA_integer_,
+  interval = NA_integer_,
+  units = "digital",
+  channels = character(),
+  backend = getOption("wfdb_backend", "native"),
+  ...
 ) {
-        backend <- wfdb_match_backend(backend)
+  backend <- wfdb_match_backend(backend)
 
-        if (identical(backend, "native")) {
-                return(
-                        read_wfdb_native(
-                                record = record,
-                                record_dir = record_dir,
-                                annotator = annotator,
-                                begin = begin,
-                                end = end,
-                                interval = interval,
-                                units = units,
-                                channels = channels,
-                                ...
-                        )
-                )
-        }
+  if (identical(backend, "native")) {
+    return(
+      read_wfdb_native(
+        record = record,
+        record_dir = record_dir,
+        annotator = annotator,
+        begin = begin,
+        end = end,
+        interval = interval,
+        units = units,
+        channels = channels,
+        ...
+      )
+    )
+  }
 
-        read_wfdb_system(
-                record = record,
-                record_dir = record_dir,
-                annotator = annotator,
-                wfdb_path = wfdb_path,
-                begin = begin,
-                end = end,
-                interval = interval,
-                units = units,
-                channels = channels,
-                ...
-        )
+  read_wfdb_system(
+    record = record,
+    record_dir = record_dir,
+    annotator = annotator,
+    wfdb_path = wfdb_path,
+    begin = begin,
+    end = end,
+    interval = interval,
+    units = units,
+    channels = channels,
+    ...
+  )
 }
 
 #' @describeIn wfdb_io Specifically reads the signal data from the WFDB binary
@@ -241,45 +241,45 @@ read_wfdb <- function(
 #'
 #' @export
 read_signal <- function(
-        record,
-        record_dir = ".",
-        wfdb_path = getOption("wfdb_path"),
-        begin = 0L,
-        end = NA_integer_,
-        interval = NA_integer_,
-        units = "digital",
-        channels = character(),
-        backend = getOption("wfdb_backend", "native"),
-        ...
+  record,
+  record_dir = ".",
+  wfdb_path = getOption("wfdb_path"),
+  begin = 0L,
+  end = NA_integer_,
+  interval = NA_integer_,
+  units = "digital",
+  channels = character(),
+  backend = getOption("wfdb_backend", "native"),
+  ...
 ) {
-        backend <- wfdb_match_backend(backend)
+  backend <- wfdb_match_backend(backend)
 
-        if (identical(backend, "native")) {
-                return(
-                        read_signal_native(
-                                record = record,
-                                record_dir = record_dir,
-                                begin = begin,
-                                end = end,
-                                interval = interval,
-                                units = units,
-                                channels = channels,
-                                ...
-                        )
-                )
-        }
+  if (identical(backend, "native")) {
+    return(
+      read_signal_native(
+        record = record,
+        record_dir = record_dir,
+        begin = begin,
+        end = end,
+        interval = interval,
+        units = units,
+        channels = channels,
+        ...
+      )
+    )
+  }
 
-        read_signal_system(
-                record = record,
-                record_dir = record_dir,
-                wfdb_path = wfdb_path,
-                begin = begin,
-                end = end,
-                interval = interval,
-                units = units,
-                channels = channels,
-                ...
-        )
+  read_signal_system(
+    record = record,
+    record_dir = record_dir,
+    wfdb_path = wfdb_path,
+    begin = begin,
+    end = end,
+    interval = interval,
+    units = units,
+    channels = channels,
+    ...
+  )
 }
 
 #' @describeIn wfdb_io Specifically reads the header data from the WFDB header
@@ -288,100 +288,100 @@ read_signal <- function(
 #'
 #' @export
 read_header <- function(
-        record,
-        record_dir = ".",
-        wfdb_path = getOption("wfdb_path"),
-        ...
+  record,
+  record_dir = ".",
+  wfdb_path = getOption("wfdb_path"),
+  ...
 ) {
-        # Generate header file path
-        fp <- fs::path(record_dir, record, ext = 'hea')
-        if (!fs::file_exists(fp)) {
-                stop(record, " not found in ", record_dir)
-        }
+  # Generate header file path
+  fp <- fs::path(record_dir, record, ext = 'hea')
+  if (!fs::file_exists(fp)) {
+    stop(record, " not found in ", record_dir)
+  }
 
-        # Record line (first one)
-        # 10 columns:
-        # 	>= V9 and V10 are descriptive fields
-        # 		Should be a tab-delim field
-        #			Can contain spaces internal to it
-        #		V1 = File Name (*.dat)
-        # 	V2 = 8-bit or 16-bit
-        # 	V3 is ADC gain
-        #			Can be appended with baseline value "(0)"
-        # 		Can be appended with "/mV" to specify units
-        # 	V4 = ADC resolution in bits (8-bits, 16-bits, etc)
-        # 	V5 = ADC zero, is assumed to be zero if missing
-        # 	V6 = Initial value of sample[0], present only if ADC zero is present
-        # 	V7 = Checksum value (16-bit checksum of all samples)
-        # 	V8 = Block size, usually 0
-        # 	V9 = Description, usually ECG lead or EGM label
-        record_line <- readLines(con = fp, n = 1)
-        record_items <-
-                record_line |>
-                strsplit('\ ') |>
-                unlist()
+  # Record line (first one)
+  # 10 columns:
+  # 	>= V9 and V10 are descriptive fields
+  # 		Should be a tab-delim field
+  #			Can contain spaces internal to it
+  #		V1 = File Name (*.dat)
+  # 	V2 = 8-bit or 16-bit
+  # 	V3 is ADC gain
+  #			Can be appended with baseline value "(0)"
+  # 		Can be appended with "/mV" to specify units
+  # 	V4 = ADC resolution in bits (8-bits, 16-bits, etc)
+  # 	V5 = ADC zero, is assumed to be zero if missing
+  # 	V6 = Initial value of sample[0], present only if ADC zero is present
+  # 	V7 = Checksum value (16-bit checksum of all samples)
+  # 	V8 = Block size, usually 0
+  # 	V9 = Description, usually ECG lead or EGM label
+  record_line <- readLines(con = fp, n = 1)
+  record_items <-
+    record_line |>
+    strsplit('\ ') |>
+    unlist()
 
-        record_name <- as.character(record_items[1])
-        number_of_channels <- as.integer(record_items[2])
-        frequency <- as.integer(record_items[3])
-        samples <- as.integer(record_items[4])
-        start_time <- parse_date_and_time(record_line)
+  record_name <- as.character(record_items[1])
+  number_of_channels <- as.integer(record_items[2])
+  frequency <- as.integer(record_items[3])
+  samples <- as.integer(record_items[4])
+  start_time <- parse_date_and_time(record_line)
 
-        # Number of columns is important here
-        sig_data <-
-                data.table::fread(
-                        file = fp,
-                        skip = 1, # Skip head line
-                        nrows = number_of_channels
-                ) # Read in channel data
-        # Number of columns is important here
-        sig_data <-
-                data.table::fread(
-                        file = fp,
-                        skip = 1, # Skip head line
-                        nrows = number_of_channels
-                ) # Read in channel data
+  # Number of columns is important here
+  sig_data <-
+    data.table::fread(
+      file = fp,
+      skip = 1, # Skip head line
+      nrows = number_of_channels
+    ) # Read in channel data
+  # Number of columns is important here
+  sig_data <-
+    data.table::fread(
+      file = fp,
+      skip = 1, # Skip head line
+      nrows = number_of_channels
+    ) # Read in channel data
 
-        # ADC gain is in multiple parts that need to be split
-        # Units will come after a forward slash `/`
-        # Baseline value will be within parenthesis
-        adc <- sig_data[[3]]
-        ADC_gain <- stringr::str_extract(adc, '\\d+([.]\\d+)?')
-        ADC_baseline <- stringr::str_extract(adc, "\\((\\d+)\\)", group = 1)
-        ADC_baseline <-
-                ifelse(
-                        is.na(ADC_baseline),
-                        formals(header_table)$ADC_zero,
-                        ADC_baseline
-                )
-        ADC_units <- stringr::str_extract(adc, "/([:alpha:]+)", group = 1)
-        ADC_units <-
-                ifelse(
-                        is.na(ADC_units),
-                        formals(header_table)$ADC_units,
-                        ADC_units
-                )
+  # ADC gain is in multiple parts that need to be split
+  # Units will come after a forward slash `/`
+  # Baseline value will be within parenthesis
+  adc <- sig_data[[3]]
+  ADC_gain <- stringr::str_extract(adc, '\\d+([.]\\d+)?')
+  ADC_baseline <- stringr::str_extract(adc, "\\((\\d+)\\)", group = 1)
+  ADC_baseline <-
+    ifelse(
+      is.na(ADC_baseline),
+      formals(header_table)$ADC_zero,
+      ADC_baseline
+    )
+  ADC_units <- stringr::str_extract(adc, "/([:alpha:]+)", group = 1)
+  ADC_units <-
+    ifelse(
+      is.na(ADC_units),
+      formals(header_table)$ADC_units,
+      ADC_units
+    )
 
-        header <- header_table(
-                record_name = record_name,
-                number_of_channels = number_of_channels,
-                frequency = frequency,
-                samples = samples,
-                start_time = start_time,
-                file_name = sig_data[[1]],
-                storage_format = sig_data[[2]],
-                ADC_gain = ADC_gain,
-                ADC_baseline = ADC_baseline,
-                ADC_units = ADC_units,
-                ADC_resolution = sig_data[[4]],
-                ADC_zero = sig_data[[5]],
-                initial_value = sig_data[[6]],
-                checksum = sig_data[[7]],
-                blocksize = sig_data[[8]],
-                label = sig_data[[9]]
-        )
+  header <- header_table(
+    record_name = record_name,
+    number_of_channels = number_of_channels,
+    frequency = frequency,
+    samples = samples,
+    start_time = start_time,
+    file_name = sig_data[[1]],
+    storage_format = sig_data[[2]],
+    ADC_gain = ADC_gain,
+    ADC_baseline = ADC_baseline,
+    ADC_units = ADC_units,
+    ADC_resolution = sig_data[[4]],
+    ADC_zero = sig_data[[5]],
+    initial_value = sig_data[[6]],
+    checksum = sig_data[[7]],
+    blocksize = sig_data[[8]],
+    label = sig_data[[9]]
+  )
 
-        header$label <- native_canonicalize_labels(header$label)
+  header$label <- native_canonicalize_labels(header$label)
 
-        header
+  header
 }
