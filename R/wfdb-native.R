@@ -26,7 +26,8 @@
 #' @param channels Optional character or numeric vector specifying the channels
 #'   to retain.
 #' @param header A [header_table] describing the channels. Required for writing
-#'   unless `data` is an [egm] object.
+#'   signal data unless `data` is an [egm] object, and used when writing
+#'   annotations to match channel names to their indices.
 #' @param data When writing, either an [egm], a [signal_table], or a data frame
 #'   that can be coerced with [signal_table()].
 #' @param storage_format Optional integer WFDB storage format (one of 16, 32,
@@ -148,7 +149,7 @@ read_signal_native <- function(
     storage_format = storage_format
   )
 
-  channel_names <- as.character(header$label)
+  channel_names <- native_canonicalize_labels(header$label)
   if (length(channel_names) != n_channels) {
     channel_names <- paste0("channel_", seq_len(n_channels))
   }
@@ -347,6 +348,7 @@ write_wfdb_native <- function(
     stop("Header must contain one row per channel", call. = FALSE)
   }
 
+  header_copy$label <- native_canonicalize_labels(header_copy$label)
   header_labels <- as.character(header_copy$label)
   if (
     length(header_labels) != n_channels ||
@@ -515,6 +517,27 @@ write_wfdb_native <- function(
   header_lines <- native_header_lines(header_copy)
   writeLines(header_lines, header_path)
 
+  if (inherits(data, "egm")) {
+    annotation_tbl <- data$annotation
+    if (
+      is_annotation_table(annotation_tbl) &&
+        nrow(annotation_tbl) > 0 &&
+        length(attr(annotation_tbl, "annotator")) > 0 &&
+        nzchar(attr(annotation_tbl, "annotator"))
+    ) {
+      annotator_name <- attr(annotation_tbl, "annotator")
+      write_annotation_native(
+        data = annotation_tbl,
+        record = record,
+        annotator = annotator_name,
+        record_dir = record_dir,
+        overwrite = TRUE,
+        header = header_copy
+      )
+      message("Annotation file updated to reflect header channel names.")
+    }
+  }
+
   invisible(list(
     signal_path = signal_path,
     header_path = header_path,
@@ -622,12 +645,15 @@ read_annotation_native <- function(
   times <- native_format_annotation_time(samples, frequency)
   types <- native_annotation_code_to_mnemonic(type_codes)
 
+  header_labels <- native_canonicalize_labels(header$label)
+  channel_names <- native_annotation_channels_to_labels(channel, header_labels)
+
   dat <- df_list(
     time = times,
     sample = samples,
     type = types,
     subtype = subtype,
-    channel = channel,
+    channel = channel_names,
     number = number
   )
 
@@ -646,6 +672,7 @@ write_annotation_native <- function(
   annotator,
   record_dir = ".",
   overwrite = FALSE,
+  header = NULL,
   ...
 ) {
   if (missing(annotator) || !nzchar(annotator)) {
@@ -698,6 +725,42 @@ write_annotation_native <- function(
   number_values <- ann[["number"]]
 
   subtype_values <- native_annotation_normalise_integer(subtype_values)
+
+  if (is.null(header)) {
+    header_path <- fs::path(record_dir, record, ext = "hea")
+    if (fs::file_exists(header_path)) {
+      header <- tryCatch(
+        read_header(record, record_dir = record_dir),
+        error = function(e) NULL
+      )
+    }
+  }
+
+  header_labels <- character()
+  if (!is.null(header) && "label" %in% names(header)) {
+    header_labels <- native_canonicalize_labels(header$label)
+  }
+
+  if (is.character(channel_values) || is.factor(channel_values)) {
+    if (!length(header_labels)) {
+      stop(
+        "Channel names provided but header labels are unavailable for matching",
+        call. = FALSE
+      )
+    }
+    channel_chr <- as.character(channel_values)
+    idx <- native_annotation_labels_to_indices(channel_chr, header_labels)
+    unresolved <- is.na(idx) & !is.na(channel_chr) & nzchar(channel_chr)
+    if (any(unresolved)) {
+      stop(
+        "Annotation channels could not be matched to header labels",
+        call. = FALSE
+      )
+    }
+    idx[is.na(idx)] <- 0L
+    channel_values <- as.integer(idx)
+  }
+
   channel_values <- native_annotation_normalise_integer(channel_values)
   number_values <- native_annotation_normalise_integer(number_values)
 
@@ -792,6 +855,101 @@ native_normalise_channel_name <- function(x) {
   }
   x <- toupper(trimws(as.character(x)))
   gsub("[^A-Z0-9]", "", x, perl = TRUE)
+}
+
+native_canonicalize_labels <- function(labels) {
+  if (!length(labels)) {
+    return(as.character(labels))
+  }
+
+  labels_chr <- as.character(labels)
+  if (!exists(".labels", inherits = TRUE)) {
+    return(labels_chr)
+  }
+
+  canonical_labels <- as.character(.labels)
+  canonical_norm <- native_normalise_channel_name(canonical_labels)
+  label_norm <- native_normalise_channel_name(labels_chr)
+
+  matched_idx <- match(label_norm, canonical_norm)
+  result <- labels_chr
+
+  matched <- !is.na(matched_idx)
+  result[matched] <- canonical_labels[matched_idx[matched]]
+
+  remaining <- which(!matched & !is.na(label_norm) & nzchar(label_norm))
+  if (length(remaining)) {
+    for (i in remaining) {
+      distances <- utils::adist(label_norm[[i]], canonical_norm)
+      if (!length(distances) || !is.finite(distances[[1]])) {
+        next
+      }
+      min_dist <- min(distances)
+      if (!is.finite(min_dist) || min_dist > 2) {
+        next
+      }
+      candidates <- which(distances == min_dist)
+      if (length(candidates) == 1L) {
+        result[[i]] <- canonical_labels[[candidates]]
+      }
+    }
+  }
+
+  result
+}
+
+native_annotation_channels_to_labels <- function(channel_indices, header_labels) {
+  if (!length(channel_indices) || !length(header_labels)) {
+    return(channel_indices)
+  }
+
+  header_labels <- native_canonicalize_labels(header_labels)
+  idx <- suppressWarnings(as.integer(channel_indices))
+  result <- as.character(channel_indices)
+
+  valid <- !is.na(idx) & idx >= 1 & idx <= length(header_labels)
+  if (any(valid)) {
+    result[valid] <- header_labels[idx[valid]]
+  }
+
+  result
+}
+
+native_annotation_labels_to_indices <- function(channel_labels, header_labels) {
+  if (!length(channel_labels)) {
+    return(integer())
+  }
+
+  header_labels <- native_canonicalize_labels(header_labels)
+  header_norm <- native_normalise_channel_name(header_labels)
+
+  if (!length(header_norm)) {
+    return(rep(NA_integer_, length(channel_labels)))
+  }
+
+  labels_chr <- native_canonicalize_labels(channel_labels)
+  label_norm <- native_normalise_channel_name(labels_chr)
+
+  idx <- match(label_norm, header_norm)
+  unresolved <- which(is.na(idx) & !is.na(label_norm) & nzchar(label_norm))
+  if (length(unresolved)) {
+    for (i in unresolved) {
+      distances <- utils::adist(label_norm[[i]], header_norm)
+      if (!length(distances) || !is.finite(distances[[1]])) {
+        next
+      }
+      min_dist <- min(distances)
+      if (!is.finite(min_dist) || min_dist > 2) {
+        next
+      }
+      candidates <- which(distances == min_dist)
+      if (length(candidates) == 1L) {
+        idx[[i]] <- candidates
+      }
+    }
+  }
+
+  idx
 }
 
 native_align_signal_columns <- function(signal_cols, header_labels) {
@@ -1133,7 +1291,7 @@ native_normalize_label <- function(x) {
 native_align_signal_to_header <- function(signal, header) {
   sig_dt <- data.table::as.data.table(signal)
   channel_cols <- setdiff(names(sig_dt), "sample")
-  header_labels <- as.character(header$label)
+  header_labels <- native_canonicalize_labels(header$label)
 
   if (length(channel_cols) == 0 || length(header_labels) == 0) {
     return(signal)

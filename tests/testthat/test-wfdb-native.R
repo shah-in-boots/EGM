@@ -65,6 +65,15 @@ test_that("native writer round-trips 16-bit digital records", {
   expect_equal(roundtrip$LEAD2, sig$lead2)
 })
 
+test_that("channel labels are canonicalized to known definitions", {
+  raw <- c("cs12", "his_prox", "unknown")
+  canonical <- EGM:::native_canonicalize_labels(raw)
+
+  expect_equal(canonical[[1]], "CS 1-2")
+  expect_equal(canonical[[2]], "HIS PROX")
+  expect_equal(canonical[[3]], "unknown")
+})
+
 test_that("native writer converts physical units back to digital", {
   tmp <- withr::local_tempdir()
 
@@ -222,6 +231,58 @@ test_that("can read in annotation files natively", {
     x,
     expected = c("time", "sample", "type", "subtype", "channel", "number")
   )
+})
+
+test_that("annotation channels align to header labels", {
+  record <- "300"
+  record_dir <- test_path()
+  header <- read_header(record, record_dir)
+  ann <- read_annotation_native(
+    record = record,
+    record_dir = record_dir,
+    annotator = "ecgpuwave"
+  )
+
+  header_labels <- EGM:::native_canonicalize_labels(header$label)
+  channel_values <- ann$channel
+  known_channels <- channel_values[!channel_values %in% c("0", NA_character_)]
+
+  expect_true(all(known_channels %in% header_labels))
+})
+
+test_that("write_annotation_native matches channel names to header", {
+  tmp <- withr::local_tempdir()
+
+  hea <- header_table(
+    record_name = "annot", 
+    number_of_channels = 2L,
+    frequency = 500L,
+    samples = 100L,
+    storage_format = rep(16L, 2),
+    ADC_gain = rep(200L, 2),
+    ADC_baseline = rep(0L, 2),
+    label = c("cs12", "his_prox")
+  )
+
+  ann <- annotation_table(
+    annotator = "qa",
+    sample = c(0L, 10L),
+    type = c("N", "N"),
+    subtype = c(0L, 0L),
+    channel = c("CS 1-2", "HIS PROX"),
+    number = c(0L, 0L)
+  )
+
+  expect_no_error(write_annotation_native(
+    data = ann,
+    record = "annot",
+    annotator = "qa",
+    record_dir = tmp,
+    overwrite = TRUE,
+    header = hea
+  ))
+
+  expect_true(fs::file_exists(fs::path(tmp, "annot.qa")))
 })
 
 
