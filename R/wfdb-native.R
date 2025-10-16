@@ -741,31 +741,21 @@ write_annotation_native <- function(
     header_labels <- native_canonicalize_labels(header$label)
   }
 
-  if (is.character(channel_values) || is.factor(channel_values)) {
-    if (!length(header_labels)) {
-      stop(
-        "Channel names provided but header labels are unavailable for matching",
-        call. = FALSE
-      )
-    }
-    channel_chr <- as.character(channel_values)
-    idx <- native_annotation_labels_to_indices(channel_chr, header_labels)
-    unresolved <- is.na(idx) & !is.na(channel_chr) & nzchar(channel_chr)
-    if (any(unresolved)) {
-      stop(
-        "Annotation channels could not be matched to header labels",
-        call. = FALSE
-      )
-    }
-    idx[is.na(idx)] <- 0L
-    channel_values <- as.integer(idx)
+  resolved <- annotation_resolve_channel_indices(channel_values, header_labels)
+  if (length(resolved$changes)) {
+    message(
+      "Annotation channel labels were updated to match the header: ",
+      paste(resolved$changes, collapse = ", ")
+    )
   }
-
-  channel_values <- native_annotation_normalise_integer(channel_values)
+  channel_values <- native_annotation_normalise_integer(resolved$values)
   number_values <- native_annotation_normalise_integer(number_values)
 
+  aux_attr <- attr(data, "aux")
   aux_values <- if ("aux" %in% names(ann)) {
     as.character(ann[["aux"]])
+  } else if (length(aux_attr) == length(samples)) {
+    as.character(aux_attr)
   } else {
     rep("", length(samples))
   }

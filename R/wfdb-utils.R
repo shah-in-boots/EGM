@@ -113,44 +113,129 @@ wfdb_match_backend <- function(backend) {
 
 #' @keywords internal
 #' @noRd
+annotation_resolve_channel_indices <- function(channel_values, header_labels) {
+  if (length(channel_values) == 0L) {
+    return(list(values = integer(), changes = character()))
+  }
+
+  header_labels <- as.character(header_labels)
+  message_pairs <- character()
+
+  if (is.character(channel_values) || is.factor(channel_values)) {
+    if (!length(header_labels)) {
+      stop(
+        "Channel names provided but header labels are unavailable for matching",
+        call. = FALSE
+      )
+    }
+
+    channel_chr <- as.character(channel_values)
+    idx <- native_annotation_labels_to_indices(channel_chr, header_labels)
+    unresolved <- is.na(idx) & !is.na(channel_chr) & nzchar(channel_chr)
+    if (any(unresolved)) {
+      stop(
+        "Annotation channels could not be matched to header labels: ",
+        paste(unique(channel_chr[unresolved]), collapse = ", "),
+        call. = FALSE
+      )
+    }
+
+    idx[is.na(idx)] <- 0L
+
+    resolved_labels <- character(length(idx))
+    resolved_labels[idx > 0] <- header_labels[idx[idx > 0]]
+
+    original_norm <- native_normalise_channel_name(channel_chr)
+    resolved_norm <- native_normalise_channel_name(resolved_labels)
+
+    changed <- idx > 0 & !is.na(original_norm) & original_norm != resolved_norm
+    if (any(changed)) {
+      mapping <- unique(
+        sprintf(
+          "'%s' -> '%s'",
+          channel_chr[changed],
+          resolved_labels[changed]
+        )
+      )
+      message_pairs <- mapping
+    }
+  } else {
+    idx <- native_annotation_normalise_integer(channel_values)
+    if (length(header_labels)) {
+      too_high <- idx > length(header_labels)
+      if (any(too_high, na.rm = TRUE)) {
+        stop(
+          "Annotation channels refer to indices beyond those defined in the header",
+          call. = FALSE
+        )
+      }
+    }
+  }
+
+  list(values = as.integer(idx), changes = message_pairs)
+}
+
 annotation_table_to_lines <- function(data) {
-  # Each annotation file has a string length of 42 characters
-  # Each annotation `rdann -e` has 4 characters of spaces up front
-  # When using the `-e` option for rdann, gives an elapsed time
-  # That assumption leads to spaces before the time starts
+  # Formatting for annotation tables mirrors the fixed-width output of
+  # `rdann -e`/`wrann`:
+  #   * Each record occupies 42 characters before any auxiliary string.
+  #   * The first six fields appear left padded to fixed widths, corresponding to
+  #     time (12), sample (9), type (6), subtype (5), channel (5), and number (5).
+  #   * Auxiliary text, when present, follows after a single separating space.
 
-  # Columns are... n = 6
-  #		Time
-  #		Sample
-  #		Annotation
-  #		Type
-  #		Subtype
-  #		Channel
-  #		Number
-  #		Auxillary (7th, ignored)
+  columns <- c("time", "sample", "type", "subtype", "channel", "number")
 
-  # The spacing is as such...
-  # 	[TIME] = 12
-  # 	[SAMPLE] = 9
-  # 	[TYPE] = 6
-  # 	[SUBTYPE] = 5
-  # 	[CHANNEL] = 5
-  # 	[NUMBER] = 5
+  missing <- setdiff(columns, names(data))
+  if (length(missing)) {
+    stop(
+      "Annotation data must include columns: ",
+      paste(missing, collapse = ", "),
+      call. = FALSE
+    )
+  }
 
-  # Each column can get appropriately padded back into lines
-  v1 <- stringr::str_pad(data[[1]], width = 12, side = "left")
-  v2 <- stringr::str_pad(data[[2]], width = 9, side = "left")
-  v3 <- stringr::str_pad(data[[3]], width = 6, side = "left")
-  v4 <- stringr::str_pad(data[[4]], width = 5, side = "left")
-  v5 <- stringr::str_pad(data[[5]], width = 5, side = "left")
-  v6 <- stringr::str_pad(data[[6]], width = 5, side = "left")
+  pad <- function(x, width) {
+    stringr::str_pad(x, width = width, side = "left")
+  }
 
-  # Output will be put back into `wrann` compatible lines
-  # 	base::sprintf() is 2-3 faster than paste
-  # 	lines <- paste0(v1, v2, v3, v4, v5, v6)
-  lines <- sprintf(paste0(rep("%s", 6), collapse = ""), v1, v2, v3, v4, v5, v6)
+  format_integer <- function(x) {
+    if (length(x) == 0L) {
+      return(character())
+    }
+    values <- suppressWarnings(as.numeric(x))
+    out <- rep("", length(values))
+    keep <- !is.na(values)
+    out[keep] <- sprintf("%d", as.integer(round(values[keep])))
+    out
+  }
 
-  # Return
+  to_character <- function(x) {
+    if (length(x) == 0L) {
+      return(character())
+    }
+    result <- as.character(x)
+    result[is.na(result)] <- ""
+    result
+  }
+
+  time <- pad(to_character(data[["time"]]), width = 12)
+  sample <- pad(format_integer(data[["sample"]]), width = 9)
+  type <- pad(to_character(data[["type"]]), width = 6)
+  subtype <- pad(format_integer(data[["subtype"]]), width = 5)
+  channel <- pad(format_integer(data[["channel"]]), width = 5)
+  number <- pad(format_integer(data[["number"]]), width = 5)
+
+  lines <- sprintf("%s%s%s%s%s%s", time, sample, type, subtype, channel, number)
+
+  aux <- NULL
+  if ("aux" %in% names(data)) {
+    aux <- to_character(data[["aux"]])
+  }
+
+  if (!is.null(aux) && length(aux) && any(nzchar(aux))) {
+    lines <- paste0(lines, " ", aux)
+  }
+
   lines
 }
 

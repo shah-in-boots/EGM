@@ -250,6 +250,35 @@ test_that("annotation channels align to header labels", {
   expect_true(all(known_channels %in% header_labels))
 })
 
+test_that("write_annotation emits channel update messages", {
+  record <- "300"
+  record_dir <- test_path()
+  header <- read_header(record, record_dir)
+  header$label <- paste0(header$label, "1")
+
+  ann <- read_annotation(
+    record = record,
+    record_dir = record_dir,
+    annotator = "ecgpuwave",
+    backend = "native"
+  )
+
+  tmp <- withr::local_tempdir()
+
+  expect_message(
+    write_annotation(
+      data = ann,
+      annotator = "ecgpuwave",
+      record = record,
+      record_dir = tmp,
+      backend = "native",
+      overwrite = TRUE,
+      header = header
+    ),
+    "Annotation channel labels were updated"
+  )
+})
+
 
 test_that("can read in annotations natively with faulty signal safely", {
   # Bad ECG that has no signal

@@ -380,6 +380,7 @@ write_annotation_system <- function(
   record_dir = '.',
   wfdb_path = getOption('wfdb_path'),
   overwrite = FALSE,
+  header = NULL,
   ...
 ) {
   # Validate:
@@ -388,11 +389,13 @@ write_annotation_system <- function(
   #       Variable definitions
   wrann <- find_wfdb_command('wrann', wfdb_path)
 
-  if (fs::dir_exists(record_dir)) {
-    wd <- fs::path(record_dir)
-  } else {
-    wd <- getwd()
+  if (!fs::dir_exists(record_dir)) {
+    fs::dir_create(record_dir, recurse = TRUE)
   }
+
+  wd <- fs::path(record_dir)
+
+  aux_attr <- attr(data, 'aux')
 
   if (inherits(data, 'annotation_table')) {
     data <- data.table::as.data.table(data)
@@ -400,9 +403,48 @@ write_annotation_system <- function(
     stopifnot('Expected `data.frame`' = inherits(data, 'data.frame'))
   }
 
+  data <- data.table::copy(data)
+
   annPath <- fs::path(record_dir, record, ext = annotator)
   if (isTRUE(overwrite) && fs::file_exists(annPath)) {
     fs::file_delete(annPath)
+  }
+
+  if (is.null(header)) {
+    header_path <- fs::path(record_dir, record, ext = 'hea')
+    if (fs::file_exists(header_path)) {
+      header <- tryCatch(
+        read_header(record, record_dir = record_dir),
+        error = function(e) NULL
+      )
+    }
+  }
+
+  header_labels <- character()
+  if (!is.null(header) && 'label' %in% names(header)) {
+    header_labels <- native_canonicalize_labels(header$label)
+  }
+
+  channel_values <- data[['channel']]
+  resolved <- annotation_resolve_channel_indices(channel_values, header_labels)
+  if (length(resolved$changes)) {
+    message(
+      'Annotation channel labels were updated to match the header: ',
+      paste(resolved$changes, collapse = ', ')
+    )
+  }
+  data[['channel']] <- resolved$values
+
+  if (!'aux' %in% names(data) && length(aux_attr)) {
+    if (length(aux_attr) == nrow(data)) {
+      data[['aux']] <- as.character(aux_attr)
+    }
+  }
+
+  if ('aux' %in% names(data)) {
+    aux_values <- as.character(data[['aux']])
+    aux_values[is.na(aux_values)] <- ''
+    data[['aux']] <- aux_values
   }
 
   # Take annotation data and write to temporary file
@@ -419,8 +461,18 @@ write_annotation_system <- function(
   #               Cat annotation file
   #               Pipe
   #       Write out file
-  cat_cmd <- paste('cat', tmpFile)
-  wfdb_cmd <- paste(wrann, '-r', record, '-a', annotator)
+  cat_cmd <- paste('cat', shQuote(tmpFile))
+  wfdb_cmd <- paste(
+    shQuote(wrann),
+    '-r', shQuote(record),
+    '-a', shQuote(annotator)
+  )
   cmd <- paste(cat_cmd, wfdb_cmd, sep = ' | ')
-  withr::with_dir(new = wd, code = system(cmd))
+  exit_status <- withr::with_dir(new = wd, code = system(cmd))
+
+  if (!identical(exit_status, 0L)) {
+    stop('wrann command failed with status ', exit_status, call. = FALSE)
+  }
+
+  invisible(annPath)
 }
