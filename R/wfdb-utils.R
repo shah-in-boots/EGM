@@ -58,13 +58,30 @@ find_wfdb_software <- function() {
 #' @rdname wfdb_paths
 #' @export
 set_wfdb_path <- function(.path) {
-	options(wfdb_path = .path)
+        options(wfdb_path = .path)
+}
+
+#' Configure the preferred WFDB backend
+#'
+#' @description Allows advanced users to toggle between the native
+#' {cpp11}-powered backend and the external WFDB system utilities.
+#'
+#' @param backend One of "native" or "system" specifying the desired backend.
+#'
+#' @returns Invisibly returns the selected backend after updating the session
+#'   option.
+#'
+#' @export
+set_wfdb_backend <- function(backend = c("native", "system")) {
+        backend <- match.arg(backend)
+        options(wfdb_backend = backend)
+        invisible(backend)
 }
 
 #' @rdname wfdb_paths
 #' @export
 find_wfdb_command <- function(.app,
-															.path = getOption('wfdb_path')) {
+                                                                                                                        .path = getOption('wfdb_path')) {
 
 	# Check for wfdb_path
 	# Maybe NULL or NA
@@ -73,6 +90,31 @@ find_wfdb_command <- function(.app,
 	}
 
 	cmd <- fs::path(.path, .app)
+
+}
+
+#' Normalise a backend specification
+#'
+#' @keywords internal
+#' @noRd
+wfdb_match_backend <- function(backend) {
+
+        choices <- c("native", "system")
+
+        if (length(backend) == 0 || is.null(backend) || is.na(backend)) {
+                backend <- "native"
+        }
+
+        backend <- tolower(backend[[1]])
+
+        if (!backend %in% choices) {
+                stop(
+                        "`backend` must be one of 'native' or 'system'",
+                        call. = FALSE
+                )
+        }
+
+        backend
 
 }
 
