@@ -40,7 +40,7 @@ write_wfdb_native(
   header = NULL,
   storage_format = NULL,
   info_strings = list(),
-  overwrite = FALSE,
+  overwrite = TRUE,
   ...
 )
 

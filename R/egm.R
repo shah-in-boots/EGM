@@ -47,25 +47,44 @@
 #'
 #' @name egm
 #' @export
-egm <- function(signal = signal_table(),
-								header = header_table(),
-								annotation = annotation_table(),
-								...) {
-
+egm <- function(
+	signal = signal_table(),
+	header = header_table(),
+	annotation = annotation_table(),
+	...
+) {
 	# Signal data will be in multi-channel format for EPS data, e.g. data.table
 	# Header will be  a list
 
-	new_egm(signal,
-					header = header,
-					annotation = annotation)
+	# Normalize signal and header names together
+	if (is_signal_table(signal) && is_header_table(header)) {
+		channel_idx <- which(names(signal) != "sample")
+		if (length(channel_idx) > 0 && "label" %in% names(header)) {
+			header_labels <- as.character(header$label)
+			if (length(header_labels) < length(channel_idx)) {
+				stop("header has fewer channel labels than signal columns")
+			}
+			new_channel_names <- header_labels[seq_len(length(channel_idx))]
+			empty_labels <- is.na(new_channel_names) | new_channel_names == ""
+			if (any(empty_labels)) {
+				original_names <- names(signal)[channel_idx]
+				new_channel_names[empty_labels] <- original_names[empty_labels]
+			}
+			current_names <- names(signal)
+			current_names[channel_idx] <- new_channel_names
+			names(signal) <- current_names
+		}
+	}
+	new_egm(signal, header = header, annotation = annotation)
 }
 
 #' @keywords internal
-new_egm <- function(signal = signal_table(),
-										header = header_table(),
-										annotation = annotation_table(),
-										...) {
-
+new_egm <- function(
+	signal = signal_table(),
+	header = header_table(),
+	annotation = annotation_table(),
+	...
+) {
 	# Signal will become a data frame (coerced into a data table)
 	structure(
 		list(
@@ -75,7 +94,6 @@ new_egm <- function(signal = signal_table(),
 		),
 		class = c('egm', 'list')
 	)
-
 }
 
 #' @export
@@ -86,12 +104,11 @@ format.egm <- function(x, ...) {
 
 	cat('<Electrogram>\n')
 	cat('-------------------\n')
-	cat('Recording Duration: ', rec$samples / rec$frequency, 'seconds\n' )
+	cat('Recording Duration: ', rec$samples / rec$frequency, 'seconds\n')
 	cat('Recording frequency ', rec$frequency, ' hz\n')
 	cat('Number of channels: ', rec$number_of_channels, '\n')
 	cat('Channel Names: ', paste(hea$label), '\n')
 	cat('Annotation: ', paste(attributes(ann)$annotator), '\n')
-
 }
 
 #' @export
@@ -135,12 +152,14 @@ is_egm <- function(x) {
 #' @returns An object as described by the __format__ option
 #'
 #' @export
-extract_signal <- function(object,
-													 data_format = c("data.frame", "matrix", "array"),
-													 ...) {
-
-	stopifnot("Requires object of `egm` class for evaluation"
-						= inherits(object, "egm"))
+extract_signal <- function(
+	object,
+	data_format = c("data.frame", "matrix", "array"),
+	...
+) {
+	stopifnot(
+		"Requires object of `egm` class for evaluation" = inherits(object, "egm")
+	)
 
 	# Get string, defaults to `matrix`
 	data_format <- data_format[1]
@@ -149,23 +168,22 @@ extract_signal <- function(object,
 	sig <- data.frame(object$signal[, -1])
 	sig <- data.frame(object$signal)
 
-	switch(data_format,
-				 array = {
-				 	# Drop sample names
-				 	out <- array(sig[, -1], dimnames = list(names(sig[, -1])))
-
-				 },
-				 matrix = {
-				 	# Drop sample names
-				 	out <- as.matrix(sig[, -1])
-
-				 },
-				 data.frame = {
-				 	# Keep samples
-				 	out <- as.data.frame(sig)
-				 })
+	switch(
+		data_format,
+		array = {
+			# Drop sample names
+			out <- array(sig[, -1], dimnames = list(names(sig[, -1])))
+		},
+		matrix = {
+			# Drop sample names
+			out <- as.matrix(sig[, -1])
+		},
+		data.frame = {
+			# Keep samples
+			out <- as.data.frame(sig)
+		}
+	)
 
 	# Return
 	out
-
 }

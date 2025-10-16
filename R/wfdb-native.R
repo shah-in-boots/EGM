@@ -226,6 +226,9 @@ read_wfdb_native <- function(
 
   hea <- read_header(record, record_dir = record_dir)
 
+  # Align signal columns to header labels
+  sig <- native_align_signal_to_header(sig, hea)
+
   annotation <- annotation_table()
   if (!is.na(annotator) && length(annotator) == 1 && nzchar(annotator)) {
     annotation <- read_annotation_native(
@@ -256,7 +259,7 @@ write_wfdb_native <- function(
   header = NULL,
   storage_format = NULL,
   info_strings = list(),
-  overwrite = FALSE,
+  overwrite = TRUE,
   ...
 ) {
   units <- match.arg(units)
@@ -354,13 +357,12 @@ write_wfdb_native <- function(
     header_copy$label <- header_labels
   }
 
-  match_idx <- match(toupper(header_labels), toupper(channel_cols))
-  if (anyNA(match_idx)) {
-    stop("Header labels do not match the signal column names", call. = FALSE)
-  }
+  alignment <- native_align_signal_columns(channel_cols, header_labels)
+  channel_cols <- alignment$channel_cols
+  header_labels <- alignment$header_labels
+  header_copy$label <- header_labels
 
-  ordered_cols <- channel_cols[match_idx]
-  channel_mat <- as.matrix(sig_dt[, ..ordered_cols])
+  channel_mat <- as.matrix(sig_dt[, ..channel_cols])
   colnames(channel_mat) <- header_labels
 
   if (!is.numeric(channel_mat)) {
@@ -784,6 +786,55 @@ native_format_number <- function(x) {
   }
 }
 
+native_normalise_channel_name <- function(x) {
+  if (!length(x)) {
+    return(character())
+  }
+  x <- toupper(trimws(as.character(x)))
+  gsub("[^A-Z0-9]", "", x, perl = TRUE)
+}
+
+native_align_signal_columns <- function(signal_cols, header_labels) {
+  signal_cols <- as.character(signal_cols)
+  header_labels <- as.character(header_labels)
+
+  if (!length(signal_cols)) {
+    return(list(channel_cols = signal_cols, header_labels = header_labels))
+  }
+
+  if (!length(header_labels)) {
+    return(list(channel_cols = signal_cols, header_labels = signal_cols))
+  }
+
+  sig_norm <- native_normalise_channel_name(signal_cols)
+  hdr_norm <- native_normalise_channel_name(header_labels)
+
+  order <- rep(NA_integer_, length(hdr_norm))
+  used <- rep(FALSE, length(sig_norm))
+
+  for (i in seq_along(hdr_norm)) {
+    candidates <- which(sig_norm == hdr_norm[[i]] & !used)
+    if (length(candidates)) {
+      order[[i]] <- candidates[[1]]
+      used[[candidates[[1]]]] <- TRUE
+    }
+  }
+
+  if (any(is.na(order))) {
+    missing <- header_labels[is.na(order)]
+    stop(
+      "Header channel labels do not match the signal table columns: ",
+      paste(missing, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  list(
+    channel_cols = signal_cols[order],
+    header_labels = header_labels
+  )
+}
+
 native_collect_info_strings <- function(header) {
   info <- attributes(header)$info_strings
   if (is.null(info)) {
@@ -1071,4 +1122,35 @@ native_annotation_normalise_integer <- function(x) {
   values <- as.integer(round(x))
   values[!is.finite(values)] <- 0L
   values
+}
+
+# Normalize label for matching: uppercase and replace spaces/hyphens with underscores
+native_normalize_label <- function(x) {
+  toupper(gsub("[ -]", "_", x))
+}
+
+# Match and reorder signal columns to header labels
+native_align_signal_to_header <- function(signal, header) {
+  sig_dt <- data.table::as.data.table(signal)
+  channel_cols <- setdiff(names(sig_dt), "sample")
+  header_labels <- as.character(header$label)
+
+  if (length(channel_cols) == 0 || length(header_labels) == 0) {
+    return(signal)
+  }
+
+  normalized_header <- native_normalize_label(header_labels)
+  normalized_cols <- native_normalize_label(channel_cols)
+
+  match_idx <- match(normalized_header, normalized_cols)
+  if (anyNA(match_idx)) {
+    return(signal)
+  }
+
+  # Reorder and rename columns to match header
+  ordered_cols <- channel_cols[match_idx]
+  sig_dt <- sig_dt[, c("sample", ordered_cols), with = FALSE]
+  data.table::setnames(sig_dt, ordered_cols, header_labels)
+
+  signal_table(sig_dt)
 }

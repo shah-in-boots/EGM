@@ -14,6 +14,7 @@ read_annotation(
   wfdb_path = getOption("wfdb_path"),
   begin = "00:00:00",
   end = NA_character_,
+  backend = getOption("wfdb_backend", "native"),
   ...
 )
 
@@ -23,6 +24,8 @@ write_annotation(
   record,
   record_dir = ".",
   wfdb_path = getOption("wfdb_path"),
+  backend = getOption("wfdb_backend", "native"),
+  overwrite = FALSE,
   ...
 )
 

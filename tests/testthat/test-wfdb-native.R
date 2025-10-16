@@ -174,6 +174,39 @@ test_that("native backend reads and writes format 212 WFDB records", {
   expect_equal(roundtrip$LEAD_J, sig$LEAD_J)
 })
 
+test_that("native writer aligns header labels with the signal table", {
+  tmp <- withr::local_tempdir()
+
+  sig <- signal_table(
+    sample = 0:4,
+    lead_a = as.integer(1:5),
+    lead_b = as.integer(seq(10L, 50L, by = 10L))
+  )
+
+  hea <- header_table(
+    record_name = "label-alignment",
+    number_of_channels = 2L,
+    frequency = 250L,
+    samples = nrow(sig),
+    storage_format = rep(16L, 2),
+    ADC_gain = rep(200L, 2),
+    ADC_baseline = rep(0L, 2),
+    label = c("LEAD B", "LEAD A")
+  )
+
+  write_wfdb_native(
+    data = sig,
+    header = hea,
+    record = "label-alignment",
+    record_dir = tmp,
+    overwrite = TRUE
+  )
+
+  roundtrip <- read_signal_native("label-alignment", record_dir = tmp)
+  expect_equal(roundtrip$`LEAD B`, sig$lead_b)
+  expect_equal(roundtrip$`LEAD A`, sig$lead_a)
+})
+
 test_that("can read in annotation files natively", {
   x <- read_annotation_native(
     record = "300",

@@ -15,6 +15,7 @@ write_wfdb(
   wfdb_path = getOption("wfdb_path"),
   header = list(frequency = 250, gain = 200L, label = character()),
   info_strings = list(),
+  backend = getOption("wfdb_backend", "native"),
   ...
 )
 
@@ -28,6 +29,7 @@ read_wfdb(
   interval = NA_integer_,
   units = "digital",
   channels = character(),
+  backend = getOption("wfdb_backend", "native"),
   ...
 )
 
@@ -40,6 +42,7 @@ read_signal(
   interval = NA_integer_,
   units = "digital",
   channels = character(),
+  backend = getOption("wfdb_backend", "native"),
   ...
 )
 

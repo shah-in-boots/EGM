@@ -1,7 +1,6 @@
 # Writing WFDB records ----
 
 test_that('can convert bard to wfdb with wrsamp', {
-
 	skip_on_cran()
 	skip_on_ci()
 
@@ -13,21 +12,21 @@ test_that('can convert bard to wfdb with wrsamp', {
 	write_wfdb(
 		data = bard,
 		record = 'bard-egm',
-		record_dir = test_path()
+		record_dir = test_path(),
+		overwrite = TRUE
 	)
 
 	expect_true(file.exists(file.path(test_path(), 'bard-egm.hea')))
 	expect_true(file.exists(file.path(test_path(), 'bard-egm.dat')))
 	expect_equal(wd, getwd())
-
 })
 
 test_that('R data objects can be converted or written to WFDB format', {
-
 	skip_on_cran()
 	skip_on_ci()
 
 	file <- test_path('bard-egm.txt')
+	x <- read_bard(file)
 	sig <- read_bard_signal(file)
 	hea <- read_bard_header(file)
 	rec <- attributes(hea)$record_line
@@ -51,13 +50,11 @@ test_that('R data objects can be converted or written to WFDB format', {
 		record = 'ecg',
 		record_dir = test_path()
 	)
-
 })
 
 # Reading WFDB records ----
 
 test_that('rdsamp can read in WFDB formatted files for signal data', {
-
 	skip_on_cran()
 	skip_on_ci()
 
@@ -89,11 +86,9 @@ test_that('rdsamp can read in WFDB formatted files for signal data', {
 	)
 
 	expect_s3_class(z, 'signal_table')
-
 })
 
 test_that('internals of `read_header()` can create `header_table` from bard data', {
-
 	fp <- test_path("egm.hea")
 
 	record_line <- readLines(con = fp, n = 1)
@@ -110,9 +105,11 @@ test_that('internals of `read_header()` can create `header_table` from bard data
 
 	# Number of columns is important here
 	sig_data <-
-		data.table::fread(file = fp,
-											skip = 1, # Skip head line
-											nrows = number_of_channels) # Read in channel data
+		data.table::fread(
+			file = fp,
+			skip = 1, # Skip head line
+			nrows = number_of_channels
+		) # Read in channel data
 
 	# ADC gain is in multiple parts that need to be split
 	# Units will come after a forward slash `/`
@@ -121,14 +118,10 @@ test_that('internals of `read_header()` can create `header_table` from bard data
 	ADC_gain <- stringr::str_extract(adc, '\\d+([.]\\d+)?')
 	ADC_baseline <- stringr::str_extract(adc, "\\((\\d+)\\)", group = 1)
 	ADC_baseline <-
-		ifelse(is.na(ADC_baseline),
-					 formals(header_table)$ADC_zero,
-					 ADC_baseline)
+		ifelse(is.na(ADC_baseline), formals(header_table)$ADC_zero, ADC_baseline)
 	ADC_units <- stringr::str_extract(adc, "/([:alpha:]+)", group = 1)
 	ADC_units <-
-		ifelse(is.na(ADC_units),
-					 formals(header_table)$ADC_units,
-					 ADC_units)
+		ifelse(is.na(ADC_units), formals(header_table)$ADC_units, ADC_units)
 
 	h <- header_table(
 		record_name = record_name,
@@ -151,11 +144,9 @@ test_that('internals of `read_header()` can create `header_table` from bard data
 
 	expect_s3_class(h, 'header_table')
 	expect_equal(nrow(h), 14)
-
 })
 
 test_that('can read in WFDB file into `egm` directly', {
-
 	skip_on_cran()
 	skip_on_ci()
 
@@ -189,12 +180,9 @@ test_that('can read in WFDB file into `egm` directly', {
 	rec <- 'muse-sinus'
 	dir <- system.file('extdata', 'muse-sinus.dat', package = 'EGM')
 	ecg <- read_wfdb(rec, fs::path_dir(dir))
-
-
 })
 
 test_that('can read in MUSE ECG header', {
-
 	skip_on_cran()
 	skip_on_ci()
 
@@ -205,14 +193,11 @@ test_that('can read in MUSE ECG header', {
 	# Complex header
 	fp <- system.file("extdata", "muse-sinus.hea", package = "EGM")
 	hea <- read_header(
-		record =
-			fs::path_file(fp) |>
+		record = fs::path_file(fp) |>
 			fs::path_ext_remove(),
 		record_dir = fs::path_dir(fp)
 	)
 
 	header <- readLines(fp)
 	expect_equal(hea$color, unlist(strsplit(header[16], " "))[-c(1:2)])
-
 })
-

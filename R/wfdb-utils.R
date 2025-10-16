@@ -19,7 +19,6 @@
 #' @name wfdb_paths
 #' @export
 find_wfdb_software <- function() {
-
 	# Check to see if WFDB software path is already set
 	op <- getOption("wfdb_path")
 
@@ -52,13 +51,12 @@ find_wfdb_software <- function() {
 
 	# Return path if exists already
 	invisible(op)
-
 }
 
 #' @rdname wfdb_paths
 #' @export
 set_wfdb_path <- function(.path) {
-        options(wfdb_path = .path)
+	options(wfdb_path = .path)
 }
 
 #' Configure the preferred WFDB backend
@@ -73,16 +71,14 @@ set_wfdb_path <- function(.path) {
 #'
 #' @export
 set_wfdb_backend <- function(backend = c("native", "system")) {
-        backend <- match.arg(backend)
-        options(wfdb_backend = backend)
-        invisible(backend)
+	backend <- match.arg(backend)
+	options(wfdb_backend = backend)
+	invisible(backend)
 }
 
 #' @rdname wfdb_paths
 #' @export
-find_wfdb_command <- function(.app,
-                                                                                                                        .path = getOption('wfdb_path')) {
-
+find_wfdb_command <- function(.app, .path = getOption('wfdb_path')) {
 	# Check for wfdb_path
 	# Maybe NULL or NA
 	if (is.null(.path) | is.na(.path)) {
@@ -90,7 +86,6 @@ find_wfdb_command <- function(.app,
 	}
 
 	cmd <- fs::path(.path, .app)
-
 }
 
 #' Normalise a backend specification
@@ -98,30 +93,27 @@ find_wfdb_command <- function(.app,
 #' @keywords internal
 #' @noRd
 wfdb_match_backend <- function(backend) {
+	choices <- c("native", "system")
 
-        choices <- c("native", "system")
+	if (length(backend) == 0 || is.null(backend) || is.na(backend)) {
+		backend <- "native"
+	}
 
-        if (length(backend) == 0 || is.null(backend) || is.na(backend)) {
-                backend <- "native"
-        }
+	backend <- tolower(backend[[1]])
 
-        backend <- tolower(backend[[1]])
+	if (!backend %in% choices) {
+		stop(
+			"`backend` must be one of 'native' or 'system'",
+			call. = FALSE
+		)
+	}
 
-        if (!backend %in% choices) {
-                stop(
-                        "`backend` must be one of 'native' or 'system'",
-                        call. = FALSE
-                )
-        }
-
-        backend
-
+	backend
 }
 
 #' @keywords internal
 #' @noRd
 annotation_table_to_lines <- function(data) {
-
 	# Each annotation file has a string length of 42 characters
 	# Each annotation `rdann -e` has 4 characters of spaces up front
 	# When using the `-e` option for rdann, gives an elapsed time
@@ -160,7 +152,6 @@ annotation_table_to_lines <- function(data) {
 
 	# Return
 	lines
-
 }
 
 #' Evaluates a character string and extracts first date and time objects
@@ -169,7 +160,6 @@ annotation_table_to_lines <- function(data) {
 #' @keywords internal
 #' @noRd
 parse_date_and_time <- function(x) {
-
 	stopifnot('Requires `x` to be a `character`' = is.character(x))
 
 	# Time
@@ -182,5 +172,4 @@ parse_date_and_time <- function(x) {
 
 	# Create date time
 	as.POSIXct(strptime(paste(tm[1], dt[1]), "%H:%M:%OS %d/%m/%Y"))
-
 }
