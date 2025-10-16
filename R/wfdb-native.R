@@ -17,9 +17,7 @@
 #'
 #' @param record Character scalar giving the record name (without extension).
 #' @param record_dir Directory that contains the WFDB files.
-#' @param annotator Optional annotator to read. Annotation support is not yet
-#'   available for the native backend and an empty table is returned when an
-#'   annotator is requested.
+#' @param annotator Optional annotator to read or write.
 #' @param begin,end,interval Numeric values expressed in seconds that describe
 #'   the portion of the record that should be read. Only one of `end` or
 #'   `interval` should be supplied.
@@ -43,9 +41,13 @@
 #' * `read_signal_native()` returns a [signal_table] that mirrors the structure
 #'   produced by [read_signal()].
 #' * `read_wfdb_native()` returns an [egm] object composed of the native signal
-#'   data, the parsed header and an empty annotation table.
+#'   data, the parsed header, and any decoded annotations.
 #' * `write_wfdb_native()` invisibly returns a named list containing the written
 #'   `signal_path`, `header_path`, and the normalised `header`.
+#' * `read_annotation_native()` returns an [annotation_table] mirroring the
+#'   structure produced by [read_annotation()].
+#' * `write_annotation_native()` invisibly returns the path to the WFDB
+#'   annotation file that was written.
 #'
 #' @seealso [read_signal()], [read_wfdb()]
 #'
@@ -224,16 +226,23 @@ read_wfdb_native <- function(
 
   hea <- read_header(record, record_dir = record_dir)
 
-  if (!is.na(annotator)) {
-    rlang::warn(
-      "Annotation reading is not yet available in the native WFDB backend; returning an empty table"
+  annotation <- annotation_table()
+  if (!is.na(annotator) && length(annotator) == 1 && nzchar(annotator)) {
+    annotation <- read_annotation_native(
+      record = record,
+      record_dir = record_dir,
+      annotator = annotator,
+      begin = begin,
+      end = end,
+      interval = interval,
+      ...
     )
   }
 
   egm(
     signal = sig,
     header = hea,
-    annotation = annotation_table()
+    annotation = annotation
   )
 }
 
@@ -511,6 +520,197 @@ write_wfdb_native <- function(
   ))
 }
 
+#' @rdname wfdb_native
+#' @export
+read_annotation_native <- function(
+  record,
+  annotator,
+  record_dir = ".",
+  begin = 0,
+  end = NA_real_,
+  interval = NA_real_,
+  ...
+) {
+  if (missing(annotator) || !nzchar(annotator)) {
+    stop("`annotator` must be supplied", call. = FALSE)
+  }
+  if (begin < 0) {
+    stop("`begin` must be non-negative", call. = FALSE)
+  }
+  if (!is.na(end) && !is.na(interval)) {
+    stop("Specify only one of `end` or `interval`", call. = FALSE)
+  }
+
+  header <- read_header(record, record_dir = record_dir)
+  record_line <- attributes(header)$record_line
+
+  frequency <- record_line$frequency
+  if (is.null(frequency) || is.na(frequency)) {
+    stop(
+      "Header is missing the sampling frequency; cannot decode annotations",
+      call. = FALSE
+    )
+  }
+
+  samples_total <- record_line$samples
+
+  start_sample <- as.integer(round(begin * frequency))
+  if (!is.na(interval)) {
+    stopifnot("`interval` must be non-negative" = interval >= 0)
+    end_sample <- start_sample + as.integer(round(interval * frequency))
+  } else if (!is.na(end)) {
+    stopifnot("`end` must be greater than or equal to `begin`" = end >= begin)
+    end_sample <- as.integer(round(end * frequency))
+  } else if (!is.null(samples_total) && !is.na(samples_total)) {
+    end_sample <- as.integer(samples_total)
+  } else {
+    end_sample <- NA_integer_
+  }
+
+  if (!is.na(end_sample) && end_sample < start_sample) {
+    stop("Requested sample range is empty", call. = FALSE)
+  }
+
+  annotation_path <- fs::path(record_dir, record, ext = annotator)
+  if (!fs::file_exists(annotation_path)) {
+    stop("Annotation file not found at ", annotation_path, call. = FALSE)
+  }
+
+  raw <- read_wfdb_ann_cpp(annotation_path)
+  samples <- as.integer(raw$sample)
+  type_codes <- as.integer(raw$type)
+  subtype <- as.integer(raw$subtype)
+  channel <- as.integer(raw$channel)
+  number <- as.integer(raw$number)
+  aux <- as.character(raw$aux)
+
+  include <- samples >= start_sample
+  if (!is.na(end_sample)) {
+    include <- include & samples <= end_sample
+  }
+
+  if (!any(include)) {
+    return(new_annotation_table(annotator = annotator))
+  }
+
+  samples <- samples[include]
+  type_codes <- type_codes[include]
+  subtype <- subtype[include]
+  channel <- channel[include]
+  number <- number[include]
+  aux <- aux[include]
+
+  times <- native_format_annotation_time(samples, frequency)
+  types <- native_annotation_code_to_mnemonic(type_codes)
+
+  dat <- df_list(
+    time = times,
+    sample = samples,
+    type = types,
+    subtype = subtype,
+    channel = channel,
+    number = number
+  )
+
+  result <- new_annotation_table(dat, annotator)
+  if (length(aux) && any(nzchar(aux))) {
+    attr(result, "aux") <- aux
+  }
+  result
+}
+
+#' @rdname wfdb_native
+#' @export
+write_annotation_native <- function(
+  data,
+  record,
+  annotator,
+  record_dir = ".",
+  overwrite = FALSE,
+  ...
+) {
+  if (missing(annotator) || !nzchar(annotator)) {
+    stop("`annotator` must be supplied", call. = FALSE)
+  }
+  if (missing(record) || !nzchar(record)) {
+    stop("`record` must be supplied", call. = FALSE)
+  }
+
+  if (inherits(data, "annotation_table")) {
+    ann <- data.table::as.data.table(data)
+  } else if (inherits(data, "data.frame")) {
+    ann <- data.table::as.data.table(data)
+  } else {
+    stop("`data` must be an annotation_table or data.frame", call. = FALSE)
+  }
+
+  required <- c("sample", "type", "subtype", "channel", "number")
+  if (!all(required %in% names(ann))) {
+    stop(
+      "Annotation data must include columns: ",
+      paste(required, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  sample_values <- ann[["sample"]]
+  if (!is.numeric(sample_values)) {
+    stop("`sample` column must be numeric", call. = FALSE)
+  }
+  if (anyNA(sample_values)) {
+    stop("`sample` column contains missing values", call. = FALSE)
+  }
+  if (any(abs(sample_values - round(sample_values)) > 1e-6)) {
+    stop("`sample` column must contain integer values", call. = FALSE)
+  }
+  samples <- as.integer(round(sample_values))
+
+  type_values <- as.character(ann[["type"]])
+  type_codes <- native_annotation_mnemonic_to_code(type_values)
+  if (any(is.na(type_codes))) {
+    stop("Encountered unknown annotation types that cannot be encoded", call. = FALSE)
+  }
+
+  subtype_values <- ann[["subtype"]]
+  channel_values <- ann[["channel"]]
+  number_values <- ann[["number"]]
+
+  subtype_values <- native_annotation_normalise_integer(subtype_values)
+  channel_values <- native_annotation_normalise_integer(channel_values)
+  number_values <- native_annotation_normalise_integer(number_values)
+
+  aux_values <- if ("aux" %in% names(ann)) {
+    as.character(ann[["aux"]])
+  } else {
+    rep("", length(samples))
+  }
+  aux_values[is.na(aux_values)] <- ""
+
+  if (!fs::dir_exists(record_dir)) {
+    fs::dir_create(record_dir, recurse = TRUE)
+  }
+
+  annotation_path <- fs::path(record_dir, record, ext = annotator)
+  if (fs::file_exists(annotation_path) && !overwrite) {
+    stop(
+      "Annotation file already exists; set `overwrite = TRUE` to replace it",
+      call. = FALSE
+    )
+  }
+
+  write_wfdb_ann_cpp(
+    path = annotation_path,
+    samples = samples,
+    types = type_codes,
+    subtypes = subtype_values,
+    channels = channel_values,
+    numbers = number_values,
+    aux = aux_values
+  )
+
+  invisible(annotation_path)
+}
+
 # Helper functions ----
 native_supported_storage_formats <- function() {
   c(16L, 32L, 212L)
@@ -717,4 +917,98 @@ native_header_lines <- function(header) {
   }
 
   lines
+}
+
+native_annotation_mnemonics <- function() {
+  c(
+    " ", "N", "L", "R", "a",
+    "V", "F", "J", "A", "S",
+    "E", "j", "/", "Q", "~",
+    "[15]", "|", "[17]", "s", "T",
+    "*", "D", "\"", "=", "p",
+    "B", "^", "t", "+", "u",
+    "?", "!", "[", "]", "e",
+    "n", "@", "x", "f", "(",
+    ")", "r", "[42]", "[43]", "[44]",
+    "[45]", "[46]", "[47]", "[48]", "[49]"
+  )
+}
+
+native_annotation_code_to_mnemonic <- function(code) {
+  mnemonics <- native_annotation_mnemonics()
+  code <- as.integer(code)
+  result <- rep(NA_character_, length(code))
+  valid <- !is.na(code) & code >= 0 & code < length(mnemonics)
+  if (any(valid)) {
+    result[valid] <- mnemonics[code[valid] + 1L]
+  }
+  invalid <- !is.na(code) & !valid
+  if (any(invalid)) {
+    result[invalid] <- sprintf("[%d]", code[invalid])
+  }
+  result
+}
+
+native_annotation_mnemonic_to_code <- function(mnemonic) {
+  mnemonics <- native_annotation_mnemonics()
+  lookup <- stats::setNames(seq_along(mnemonics) - 1L, mnemonics)
+  mnemonic <- as.character(mnemonic)
+  result <- rep(NA_integer_, length(mnemonic))
+  valid <- !is.na(mnemonic)
+  if (any(valid)) {
+    values <- mnemonic[valid]
+    codes <- lookup[values]
+    missing <- is.na(codes)
+    if (any(missing)) {
+      bracket_mask <- grepl("^\\[(\\d+)\\]$", values[missing])
+      if (any(bracket_mask)) {
+        missing_idx <- which(missing)
+        codes[missing_idx[bracket_mask]] <- as.integer(sub(
+          "^\\[(\\d+)\\]$",
+          "\\1",
+          values[missing][bracket_mask]
+        ))
+      }
+    }
+    result[valid] <- as.integer(codes)
+  }
+  result
+}
+
+native_format_annotation_time <- function(samples, frequency) {
+  stopifnot(length(frequency) == 1L, !is.na(frequency), frequency > 0)
+  samples <- as.numeric(samples)
+  total_seconds <- samples / frequency
+  hours <- floor(total_seconds / 3600)
+  remaining <- total_seconds - hours * 3600
+  minutes <- floor(remaining / 60)
+  seconds <- remaining - minutes * 60
+  seconds <- round(seconds, 3)
+
+  overflow_sec <- seconds >= 60
+  if (any(overflow_sec, na.rm = TRUE)) {
+    seconds[overflow_sec] <- seconds[overflow_sec] - 60
+    minutes[overflow_sec] <- minutes[overflow_sec] + 1
+  }
+
+  overflow_min <- minutes >= 60
+  if (any(overflow_min, na.rm = TRUE)) {
+    minutes[overflow_min] <- minutes[overflow_min] - 60
+    hours[overflow_min] <- hours[overflow_min] + 1
+  }
+
+  sprintf("%02d:%02d:%06.3f", hours, minutes, seconds)
+}
+
+native_annotation_normalise_integer <- function(x) {
+  if (length(x) == 0L) {
+    return(integer())
+  }
+  if (!is.numeric(x)) {
+    stop("Annotation columns must be numeric", call. = FALSE)
+  }
+  x[is.na(x)] <- 0
+  values <- as.integer(round(x))
+  values[!is.finite(values)] <- 0L
+  values
 }
