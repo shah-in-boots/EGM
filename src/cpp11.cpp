@@ -35,6 +35,28 @@ extern "C" SEXP _EGM_write_wfdb_dat_cpp(SEXP path, SEXP samples, SEXP n_channels
     return R_NilValue;
   END_CPP11
 }
+// wfdb_native.cpp
+cpp11::writable::list read_wfdb_ann_cpp(const std::string& path);
+extern "C" SEXP _EGM_read_wfdb_ann_cpp(SEXP path) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(read_wfdb_ann_cpp(cpp11::as_cpp<cpp11::decay_t<const std::string&>>(path)));
+  END_CPP11
+}
+// wfdb_native.cpp
+void write_wfdb_ann_cpp(const std::string& path, const integers& samples, const integers& types, const integers& subtypes, const integers& channels, const integers& numbers, const cpp11::strings& aux);
+extern "C" SEXP _EGM_write_wfdb_ann_cpp(SEXP path, SEXP samples, SEXP types, SEXP subtypes, SEXP channels, SEXP numbers, SEXP aux) {
+  BEGIN_CPP11
+    write_wfdb_ann_cpp(
+        cpp11::as_cpp<cpp11::decay_t<const std::string&>>(path),
+        cpp11::as_cpp<cpp11::decay_t<const integers&>>(samples),
+        cpp11::as_cpp<cpp11::decay_t<const integers&>>(types),
+        cpp11::as_cpp<cpp11::decay_t<const integers&>>(subtypes),
+        cpp11::as_cpp<cpp11::decay_t<const integers&>>(channels),
+        cpp11::as_cpp<cpp11::decay_t<const integers&>>(numbers),
+        cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(aux));
+    return R_NilValue;
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
@@ -42,6 +64,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_EGM_fun",                               (DL_FUNC) &_EGM_fun,                               0},
     {"_EGM_read_wfdb_dat_cpp",                 (DL_FUNC) &_EGM_read_wfdb_dat_cpp,                 5},
     {"_EGM_write_wfdb_dat_cpp",                (DL_FUNC) &_EGM_write_wfdb_dat_cpp,                4},
+    {"_EGM_read_wfdb_ann_cpp",                 (DL_FUNC) &_EGM_read_wfdb_ann_cpp,                 1},
+    {"_EGM_write_wfdb_ann_cpp",                (DL_FUNC) &_EGM_write_wfdb_ann_cpp,                7},
     {NULL, NULL, 0}
 };
 }

@@ -15,3 +15,11 @@ read_wfdb_dat_cpp <- function(path, n_channels, start_sample, n_samples, storage
 write_wfdb_dat_cpp <- function(path, samples, n_channels, storage_format) {
   invisible(.Call(`_EGM_write_wfdb_dat_cpp`, path, samples, n_channels, storage_format))
 }
+
+read_wfdb_ann_cpp <- function(path) {
+  .Call(`_EGM_read_wfdb_ann_cpp`, path)
+}
+
+write_wfdb_ann_cpp <- function(path, samples, types, subtypes, channels, numbers, aux) {
+  invisible(.Call(`_EGM_write_wfdb_ann_cpp`, path, samples, types, subtypes, channels, numbers, aux))
+}
