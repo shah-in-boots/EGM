@@ -67,14 +67,15 @@
 #'
 #' @name wfdb_annotations
 #' @export
-read_annotation <- function(record,
-														record_dir = ".",
-														annotator,
-														wfdb_path = getOption("wfdb_path"),
-														begin = "00:00:00",
-														end = NA_character_,
-														...) {
-
+read_annotation <- function(
+	record,
+	record_dir = ".",
+	annotator,
+	wfdb_path = getOption("wfdb_path"),
+	begin = "00:00:00",
+	end = NA_character_,
+	...
+) {
 	# Validate:
 	#		WFDB software command
 	# 	Current or parent working directory
@@ -90,10 +91,12 @@ read_annotation <- function(record,
 	if (fileSize < 8) {
 		# Unlikely to be readable?
 		# If its only a few bytes then annotation is unlikely
-		message('The annotation for ',
-						record,
-						' is unlikely to be legible. ',
-						'An empty annotation table was returned instead.')
+		message(
+			'The annotation for ',
+			record,
+			' is unlikely to be legible. ',
+			'An empty annotation table was returned instead.'
+		)
 		return(annotation_table())
 	}
 
@@ -134,7 +137,6 @@ read_annotation <- function(record,
 			}
 		}() |>
 		paste('-e')
-
 
 	# Temporary local/working directory, to reset at end of function
 	withr::with_dir(new = wd, code = {
@@ -178,13 +180,14 @@ read_annotation <- function(record,
 
 #' @rdname wfdb_annotations
 #' @export
-write_annotation <- function(data,
-														 annotator,
-														 record,
-														 record_dir = ".",
-														 wfdb_path = getOption("wfdb_path"),
-														 ...) {
-
+write_annotation <- function(
+	data,
+	annotator,
+	record,
+	record_dir = ".",
+	wfdb_path = getOption("wfdb_path"),
+	...
+) {
 	# Validate:
 	#		WFDB software command
 	# 	Current or parent working directory
@@ -217,17 +220,17 @@ write_annotation <- function(data,
 	wfdb_cmd <- paste(wrann, '-r', record, '-a', annotator)
 	cmd <- paste(cat_cmd, wfdb_cmd, sep = " | ")
 	withr::with_dir(new = wd, code = system(cmd))
-
 }
 
 #' @rdname wfdb_annotations
 #' @export
-annotate_wfdb <- function(record,
-													record_dir,
-													annotator,
-													wfdb_path = getOption('wfdb_path'),
-													...) {
-
+annotate_wfdb <- function(
+	record,
+	record_dir,
+	annotator,
+	wfdb_path = getOption('wfdb_path'),
+	...
+) {
 	# Validate
 	# 	WFDB software - must be an ECG detector software
 	#		WFDB must be on path
@@ -244,56 +247,61 @@ annotate_wfdb <- function(record,
 	ann <- paste("-a", annotator)
 
 	# Switch based on annotator system
- 	# Change working directory for writing purposes
- 	# This should change back at end of writing process
-	switch(annotator,
-				 ecpugwave = {
-				 	withr::with_dir(new = wd,
-				 									code = {
-				 										# System call to beat detector/annotator
-				 										system2(
-				 											command = cmd,
-				 											args = c(rec, ann),
-				 											stdout = FALSE,
-				 											stderr = FALSE
-				 										)
+	# Change working directory for writing purposes
+	# This should change back at end of writing process
+	switch(
+		annotator,
+		ecpugwave = {
+			withr::with_dir(new = wd, code = {
+				# System call to beat detector/annotator
+				system2(
+					command = cmd,
+					args = c(rec, ann),
+					stdout = FALSE,
+					stderr = FALSE
+				)
 
-				 										if (fs::file_exists('fort.20')) {
-				 											fs::file_delete('fort.20')
-				 										}
-				 										if (fs::file_exists('fort.21')) {
-				 											fs::file_delete('fort.21')
-				 										}
-				 									})
-
-				 },
-				 wqrs = {
-				 	withr::with_dir(new = wd,
-				 									code = system2(
-				 										command = cmd,
-				 										args = c(rec, ann),
-				 										stdout = FALSE,
-				 										stderr = FALSE
-				 									))
-				 },
-				 gqrs = {
-				 	withr::with_dir(new = wd,
-				 									code = system2(
-				 										command = cmd,
-				 										args = c(rec, ann),
-				 										stdout = FALSE,
-				 										stderr = FALSE
-				 									))
-				 },
-				 sqrs = {
-				 	withr::with_dir(new = wd,
-				 									code = system2(
-				 										command = cmd,
-				 										args = c(rec, ann),
-				 										stdout = FALSE,
-				 										stderr = FALSE
-				 									))
-				 },
+				if (fs::file_exists('fort.20')) {
+					fs::file_delete('fort.20')
+				}
+				if (fs::file_exists('fort.21')) {
+					fs::file_delete('fort.21')
+				}
+			})
+		},
+		wqrs = {
+			withr::with_dir(
+				new = wd,
+				code = system2(
+					command = cmd,
+					args = c(rec, ann),
+					stdout = FALSE,
+					stderr = FALSE
+				)
+			)
+		},
+		gqrs = {
+			withr::with_dir(
+				new = wd,
+				code = system2(
+					command = cmd,
+					args = c(rec, ann),
+					stdout = FALSE,
+					stderr = FALSE
+				)
+			)
+		},
+		sqrs = {
+			withr::with_dir(
+				new = wd,
+				code = system2(
+					command = cmd,
+					args = c(rec, ann),
+					stdout = FALSE,
+					stderr = FALSE
+				)
+			)
+		},
 	)
 }
 

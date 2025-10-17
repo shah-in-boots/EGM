@@ -36,8 +36,9 @@ test_that('header and labels work fluidly when plotting', {
 
 	object <- ggm(data, channels = data$header$label)
 
+	
 	expect_s3_class(object, 'ggm')
-	expect_equal(attributes(object$theme$axis.ticks)$class[1], "element_blank")
+	expect_equal(attributes(object@theme$axis.ticks)$class[1], "ggplot2::element_blank")
 })
 
 # Colors ----

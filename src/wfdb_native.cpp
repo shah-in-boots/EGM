@@ -211,19 +211,20 @@ void write_format212_pair(std::ostream &stream, int16_t first, int16_t second) {
 }
 
 std::string annotation_symbol(int code) {
-        static const std::array<std::string, 50> symbols = {
+        static const std::array<const char *, 64> symbols = {{
                 " ", "N", "L", "R", "a", "V", "F", "J", "A", "S",
-                "E", "j", "/", "Q", "~", "",
-                "|", "", "s", "T", "*", "D", "\"", "=", "p", "B",
-                "^", "t", "+", "u", "?", "!",
-                "[", "]", "e", "n", "@", "x", "f", "(", ")", "r",
-                "", "", "", "", "", "", "", "", "", ""
-        };
+                "E", "j", "/", "Q", "~", "", "|", "", "s", "T",
+                "*", "D", "\"", "=", "p", "B", "^", "t", "+", "u",
+                "?", "!", "[", "]", "e", "n", "@", "x", "f", "(",
+                ")", "r", "", "", "", "", "", "", "", "",
+                "", "", "", "", "", "", "", "", "", "",
+                "", "", "", ""
+        }};
 
         if (code >= 0 && code < static_cast<int>(symbols.size())) {
-                const std::string &symbol = symbols[code];
-                if (!symbol.empty()) {
-                        return symbol;
+                const char *symbol = symbols[code];
+                if (symbol[0] != '\0') {
+                        return std::string(symbol);
                 }
         }
         return std::string("?");
