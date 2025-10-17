@@ -3,7 +3,9 @@
 
 
 #include "cpp11/declarations.hpp"
+#include "cpp11/matrix.hpp"
 #include <R_ext/Visibility.h>
+#include <string>
 
 // approximate_entropy.cpp
 double calculate_approximate_entropy_cpp(cpp11::writable::doubles x, int m, double r);
@@ -20,11 +22,34 @@ extern "C" SEXP _EGM_fun() {
     return R_NilValue;
   END_CPP11
 }
+// wfdb_native.cpp
+cpp11::writable::list read_header_native_cpp(const std::string& header_path);
+extern "C" SEXP _EGM_read_header_native_cpp(SEXP header_path) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(read_header_native_cpp(cpp11::as_cpp<cpp11::decay_t<std::string>>(header_path)));
+  END_CPP11
+}
+cpp11::writable::list read_signal_native_cpp(const std::string& data_path, int number_of_channels, int total_samples, cpp11::integers storage_format, int begin_sample, int end_sample, cpp11::integers channel_indices, cpp11::doubles adc_gain, cpp11::integers adc_baseline, bool physical, cpp11::strings channel_names);
+extern "C" SEXP _EGM_read_signal_native_cpp(SEXP data_path, SEXP number_of_channels, SEXP total_samples, SEXP storage_format, SEXP begin_sample, SEXP end_sample, SEXP channel_indices, SEXP adc_gain, SEXP adc_baseline, SEXP physical, SEXP channel_names) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(read_signal_native_cpp(cpp11::as_cpp<cpp11::decay_t<std::string>>(data_path), cpp11::as_cpp<cpp11::decay_t<int>>(number_of_channels), cpp11::as_cpp<cpp11::decay_t<int>>(total_samples), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(storage_format), cpp11::as_cpp<cpp11::decay_t<int>>(begin_sample), cpp11::as_cpp<cpp11::decay_t<int>>(end_sample), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(channel_indices), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(adc_gain), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(adc_baseline), cpp11::as_cpp<cpp11::decay_t<bool>>(physical), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(channel_names)));
+  END_CPP11
+}
+void write_wfdb_native_cpp(const std::string& data_path, const std::string& header_path, cpp11::doubles_matrix<> signal_matrix, cpp11::strings channel_names, cpp11::strings file_names, cpp11::integers storage_format, cpp11::doubles adc_gain, cpp11::integers adc_baseline, cpp11::strings adc_units, cpp11::integers adc_resolution, cpp11::integers adc_zero, cpp11::integers initial_value, cpp11::integers checksum, cpp11::integers blocksize, double frequency, int samples, const std::string& record_name, const std::string& start_time, cpp11::list info_strings);
+extern "C" SEXP _EGM_write_wfdb_native_cpp(SEXP data_path, SEXP header_path, SEXP signal_matrix, SEXP channel_names, SEXP file_names, SEXP storage_format, SEXP adc_gain, SEXP adc_baseline, SEXP adc_units, SEXP adc_resolution, SEXP adc_zero, SEXP initial_value, SEXP checksum, SEXP blocksize, SEXP frequency, SEXP samples, SEXP record_name, SEXP start_time, SEXP info_strings) {
+  BEGIN_CPP11
+    write_wfdb_native_cpp(cpp11::as_cpp<cpp11::decay_t<std::string>>(data_path), cpp11::as_cpp<cpp11::decay_t<std::string>>(header_path), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles_matrix<>>>(signal_matrix), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(channel_names), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(file_names), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(storage_format), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(adc_gain), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(adc_baseline), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(adc_units), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(adc_resolution), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(adc_zero), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(initial_value), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(checksum), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(blocksize), cpp11::as_cpp<cpp11::decay_t<double>>(frequency), cpp11::as_cpp<cpp11::decay_t<int>>(samples), cpp11::as_cpp<cpp11::decay_t<std::string>>(record_name), cpp11::as_cpp<cpp11::decay_t<std::string>>(start_time), cpp11::as_cpp<cpp11::decay_t<cpp11::list>>(info_strings));
+    return R_NilValue;
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
     {"_EGM_calculate_approximate_entropy_cpp", (DL_FUNC) &_EGM_calculate_approximate_entropy_cpp, 3},
     {"_EGM_fun",                               (DL_FUNC) &_EGM_fun,                               0},
+    {"_EGM_read_header_native_cpp",            (DL_FUNC) &_EGM_read_header_native_cpp,            1},
+    {"_EGM_read_signal_native_cpp",            (DL_FUNC) &_EGM_read_signal_native_cpp,            11},
+    {"_EGM_write_wfdb_native_cpp",             (DL_FUNC) &_EGM_write_wfdb_native_cpp,             19},
     {NULL, NULL, 0}
 };
 }
