@@ -556,10 +556,24 @@ header_table <- function(record_name = character(), # Record line information
 	# Option characteristics
 
 	# Signal specifications
+	channel_count <- if (length(number_of_channels) == 0 || is.na(number_of_channels[1])) {
+		0L
+	} else {
+		as.integer(number_of_channels[1])
+	}
+	if (channel_count == 0L && length(storage_format) > 0) {
+		channel_count <- as.integer(length(storage_format))
+	}
+	channel_numbers <- if (channel_count > 0L) {
+		seq_len(channel_count)
+	} else {
+		integer()
+	}
+
 	x <- df_list(
 		"file_name" = ifelse(length(file_name) == 0, NA_character_, file_name),
 		"storage_format" = storage_format,
-		"number" = ifelse(length(number_of_channels) == 0, 0, 1:number_of_channels),
+		"number" = channel_numbers,
 		"ADC_gain" = ADC_gain,
 		"ADC_baseline" = ADC_baseline,
 		"ADC_units" = ADC_units,
@@ -581,6 +595,7 @@ header_table <- function(record_name = character(), # Record line information
 	# TODO
 	# Info strings
 
+	record_line$number_of_channels <- channel_count
 
 	# Construct new table
 	new_header_table(

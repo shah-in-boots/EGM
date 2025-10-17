@@ -317,7 +317,7 @@ cpp11::writable::list read_header_native_cpp(const std::string &header_path) {
                 label[i] = description;
         }
 
-        writable::list info_strings;
+        std::vector<writable::strings> info_values;
         std::vector<std::string> info_names;
         while (std::getline(stream, line)) {
                 if (line.empty()) {
@@ -342,10 +342,16 @@ cpp11::writable::list read_header_native_cpp(const std::string &header_path) {
                 for (size_t j = 0; j < values.size(); ++j) {
                         value_vector[j] = values[j];
                 }
-                info_strings.push_back(value_vector);
+                info_values.push_back(value_vector);
                 info_names.push_back(key);
         }
-        info_strings.names() = info_names;
+        writable::list info_strings(info_values.size());
+        for (size_t i = 0; i < info_values.size(); ++i) {
+                info_strings[i] = info_values[i];
+        }
+        if (!info_names.empty()) {
+                info_strings.names() = info_names;
+        }
 
         writable::list result;
         result.push_back(as_sexp(record_line));
@@ -775,14 +781,16 @@ void write_wfdb_native_cpp(const std::string &data_path,
                               << label_value << "\n";
         }
 
-        writable::strings info_names = info_strings.names();
+        cpp11::strings info_names(info_strings.names());
         for (int i = 0; i < info_strings.size(); ++i) {
-                std::string key = info_names[i];
+                cpp11::r_string key_proxy(info_names[i]);
+                std::string key = static_cast<std::string>(key_proxy);
                 cpp11::sexp value_sexp = info_strings[i];
-                writable::strings values(value_sexp);
+                cpp11::strings values(value_sexp);
                 header_stream << "# " << key;
                 for (int j = 0; j < values.size(); ++j) {
-                        std::string val = values[j];
+                        cpp11::r_string value_proxy(values[j]);
+                        std::string val = static_cast<std::string>(value_proxy);
                         header_stream << " " << val;
                 }
                 header_stream << "\n";

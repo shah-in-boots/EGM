@@ -229,10 +229,20 @@ write_wfdb_native <- function(data,
                 start_time_str <- format(start_time, "%H:%M:%OS %d/%m/%Y")
         }
 
-        record_name <- record_line$record_name
-        if (length(record_name) == 0 || is.na(record_name) || record_name == "") {
-                record_name <- record
+        original_record_name <- record_line$record_name
+        if (length(original_record_name) == 0) {
+                original_record_name <- NA_character_
+        } else {
+                original_record_name <- as.character(original_record_name)[1]
         }
+        record_name <- record
+        if (is.null(record_name) || length(record_name) == 0 || is.na(record_name) || record_name == "") {
+                record_name <- original_record_name
+        }
+        if (length(record_name) == 0 || is.na(record_name) || record_name == "") {
+                stop("`record` must be supplied or present in the header")
+        }
+        record_name <- as.character(record_name)[1]
 
         signal_dt <- data.table::as.data.table(signal)
         header_labels <- as.character(header$label)
@@ -256,9 +266,18 @@ write_wfdb_native <- function(data,
         label_output <- header_labels
         label_output[label_output == ""] <- paste0("CH", seq_along(label_output))
         signal_matrix <- as.matrix(as.data.frame(signal_dt[, channel_cols, with = FALSE]))
+        storage.mode(signal_matrix) <- "double"
 
         file_names <- as.character(header$file_name)
-        file_names[file_names == ""] <- paste0(record_name, ".dat")
+        file_names[is.na(file_names)] <- ""
+        default_file_name <- paste0(record_name, ".dat")
+        legacy_name <- paste0(original_record_name, ".dat")
+        replace_idx <- file_names == "" | (!is.na(original_record_name) & original_record_name != "" & file_names == legacy_name)
+        if (all(replace_idx)) {
+                file_names[] <- default_file_name
+        } else {
+                file_names[replace_idx] <- default_file_name
+        }
         unique_files <- unique(file_names)
         if (length(unique_files) > 1) {
                 stop("Multiple signal files per record are not currently supported")
@@ -288,7 +307,7 @@ write_wfdb_native <- function(data,
         }
 
         data_path <- fs::path(record_dir, unique_files[[1]])
-        header_path <- fs::path(record_dir, record, ext = "hea")
+        header_path <- fs::path(record_dir, record_name, ext = "hea")
 
         write_wfdb_native_cpp(
                 data_path = data_path,
