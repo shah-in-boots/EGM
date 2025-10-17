@@ -116,10 +116,10 @@ test_that("mixed storage formats are supported", {
 # Tests for native WFDB annotation readers and writers
 
 test_that("read_annotation_native parses annotations", {
-  data_dir <- testthat::test_path("..", "..", "inst", "extdata")
-  header <- read_header_native("muse-sinus", record_dir = data_dir)
+  data_dir <- testthat::test_path()
+  header <- read_header_native("ecg", record_dir = data_dir)
   ann <- read_annotation_native(
-    record = "muse-sinus",
+    record = "ecg",
     annotator = "ecgpuwave",
     record_dir = data_dir,
     header = header
@@ -127,7 +127,7 @@ test_that("read_annotation_native parses annotations", {
 
   # Should be similar even if header is not given
   ann2 <- read_annotation_native(
-    record = "muse-sinus",
+    record = "ecg",
     annotator = "ecgpuwave",
     record_dir = data_dir
   )
@@ -143,12 +143,12 @@ test_that("read_annotation_native parses annotations", {
 })
 
 test_that("read_annotation_native respects begin and end windows", {
-  data_dir <- testthat::test_path("..", "..", "inst", "extdata")
-  header <- read_header_native("muse-sinus", record_dir = data_dir)
+  data_dir <- testthat::test_path()
+  header <- read_header_native("ecg", record_dir = data_dir)
   frequency <- attr(header, "record_line")$frequency
 
   ann_window <- read_annotation_native(
-    record = "muse-sinus",
+    record = "ecg",
     annotator = "ecgpuwave",
     record_dir = data_dir,
     begin = 0.25,
@@ -165,10 +165,10 @@ test_that("read_annotation_native respects begin and end windows", {
 })
 
 test_that("write_annotation_native produces round-trip compatible files", {
-  data_dir <- testthat::test_path("..", "..", "inst", "extdata")
-  header <- read_header_native("muse-sinus", record_dir = data_dir)
+  data_dir <- testthat::test_path()
+  header <- read_header_native("ecg", record_dir = data_dir)
   ann <- read_annotation_native(
-    record = "muse-sinus",
+    record = "ecg",
     annotator = "ecgpuwave",
     record_dir = data_dir,
     header = header
@@ -178,12 +178,12 @@ test_that("write_annotation_native produces round-trip compatible files", {
   write_annotation_native(
     data = ann,
     annotator = "ecgpuwave",
-    record = "muse-native",
+    record = "ecg-native",
     record_dir = tmp_dir
   )
 
   ann_roundtrip <- read_annotation_native(
-    record = "muse-native",
+    record = "ecg-native",
     annotator = "ecgpuwave",
     record_dir = tmp_dir,
     header = header

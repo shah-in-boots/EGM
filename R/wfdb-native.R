@@ -342,8 +342,8 @@ write_wfdb_native <- function(data,
 #' external WFDB library. The returned objects are compatible with the
 #' [annotation_table()] class used throughout the package.
 #'
-#' @inheritParams read_annotation
-#' @inheritParams write_annotation
+#' @inheritParams wfdb_annotations
+#' @inheritParams wfdb_annotations
 #' @param header Optional [header_table()] used to supply metadata, including the
 #'   signal frequency. When omitted, [read_header_native()] is used to parse the
 #'   corresponding header file.
@@ -357,6 +357,7 @@ write_wfdb_native <- function(data,
 #' * `write_annotation_native()` invisibly returns the path to the written
 #'   annotation file.
 #'
+#' @rdname annotation_native
 #' @export
 read_annotation_native <- function(record,
                                    annotator,
@@ -456,7 +457,7 @@ read_annotation_native <- function(record,
         )
 }
 
-#' @rdname read_annotation_native
+#' @rdname annotation_native
 #' @export
 write_annotation_native <- function(data,
                                     annotator,
