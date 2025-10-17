@@ -16,6 +16,14 @@ read_signal_native_cpp <- function(data_path, number_of_channels, total_samples,
   .Call(`_EGM_read_signal_native_cpp`, data_path, number_of_channels, total_samples, storage_format, begin_sample, end_sample, channel_indices, adc_gain, adc_baseline, physical, channel_names)
 }
 
+read_annotation_native_cpp <- function(annotation_path) {
+  .Call(`_EGM_read_annotation_native_cpp`, annotation_path)
+}
+
 write_wfdb_native_cpp <- function(data_path, header_path, signal_matrix, channel_names, file_names, storage_format, adc_gain, adc_baseline, adc_units, adc_resolution, adc_zero, initial_value, checksum, blocksize, frequency, samples, record_name, start_time, info_strings) {
   invisible(.Call(`_EGM_write_wfdb_native_cpp`, data_path, header_path, signal_matrix, channel_names, file_names, storage_format, adc_gain, adc_baseline, adc_units, adc_resolution, adc_zero, initial_value, checksum, blocksize, frequency, samples, record_name, start_time, info_strings))
+}
+
+write_annotation_native_cpp <- function(annotation_path, samples, types, subtypes, channels, numbers) {
+  invisible(.Call(`_EGM_write_annotation_native_cpp`, annotation_path, samples, types, subtypes, channels, numbers))
 }

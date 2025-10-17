@@ -1,5 +1,6 @@
 #include <cpp11.hpp>
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <cstdint>
@@ -7,6 +8,7 @@
 #include <limits>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -206,6 +208,134 @@ void write_format212_pair(std::ostream &stream, int16_t first, int16_t second) {
         if (!stream) {
                 stop("Failed to write signal data");
         }
+}
+
+std::string annotation_symbol(int code) {
+        static const std::array<std::string, 50> symbols = {
+                " ", "N", "L", "R", "a", "V", "F", "J", "A", "S",
+                "E", "j", "/", "Q", "~", "",
+                "|", "", "s", "T", "*", "D", "\"", "=", "p", "B",
+                "^", "t", "+", "u", "?", "!",
+                "[", "]", "e", "n", "@", "x", "f", "(", ")", "r",
+                "", "", "", "", "", "", "", "", "", ""
+        };
+
+        if (code >= 0 && code < static_cast<int>(symbols.size())) {
+                const std::string &symbol = symbols[code];
+                if (!symbol.empty()) {
+                        return symbol;
+                }
+        }
+        return std::string("?");
+}
+
+int annotation_code(const std::string &symbol) {
+        static const std::unordered_map<std::string, int> code_map = {
+                {"", 0},   {" ", 0}, {"N", 1}, {"L", 2}, {"R", 3}, {"a", 4}, {"V", 5}, {"F", 6},
+                {"J", 7},  {"A", 8}, {"S", 9}, {"E", 10}, {"j", 11}, {"/", 12}, {"Q", 13},
+                {"~", 14}, {"|", 16}, {"s", 18}, {"T", 19}, {"*", 20}, {"D", 21}, {"\"", 22},
+                {"=", 23}, {"p", 24}, {"B", 25}, {"^", 26}, {"t", 27}, {"+", 28}, {"u", 29},
+                {"?", 30}, {"!", 31}, {"[", 32}, {"]", 33}, {"e", 34}, {"n", 35}, {"@", 36},
+                {"x", 37}, {"f", 38}, {"(", 39}, {")", 40}, {"r", 41}
+        };
+
+        auto it = code_map.find(symbol);
+        if (it != code_map.end()) {
+                return it->second;
+        }
+
+        if (symbol.size() == 1) {
+                std::string single(1, symbol[0]);
+                auto it_single = code_map.find(single);
+                if (it_single != code_map.end()) {
+                        return it_single->second;
+                }
+        }
+
+        stop("Unsupported annotation symbol '%s'", symbol.c_str());
+}
+
+int32_t read_skip_value(std::istream &stream) {
+        unsigned char buffer[4];
+        stream.read(reinterpret_cast<char *>(buffer), 4);
+        if (!stream) {
+                stop("Unexpected end of annotation file while reading SKIP value");
+        }
+
+        uint32_t high = static_cast<uint32_t>(buffer[0]) |
+                        (static_cast<uint32_t>(buffer[1]) << 8);
+        uint32_t low = static_cast<uint32_t>(buffer[2]) |
+                       (static_cast<uint32_t>(buffer[3]) << 8);
+
+        uint32_t combined = (high << 16) | low;
+        return static_cast<int32_t>(combined);
+}
+
+void write_skip_value(std::ostream &stream, int32_t value) {
+        unsigned char first[2] = {0, static_cast<unsigned char>(59 << 2)};
+        stream.write(reinterpret_cast<const char *>(first), 2);
+        if (!stream) {
+                        stop("Failed to write annotation data");
+        }
+
+        uint32_t encoded = static_cast<uint32_t>(value);
+        uint16_t high = static_cast<uint16_t>((encoded >> 16) & 0xFFFFu);
+        uint16_t low = static_cast<uint16_t>(encoded & 0xFFFFu);
+
+        unsigned char high_bytes[2] = {static_cast<unsigned char>(high & 0xFFu),
+                                       static_cast<unsigned char>((high >> 8) & 0xFFu)};
+        unsigned char low_bytes[2] = {static_cast<unsigned char>(low & 0xFFu),
+                                      static_cast<unsigned char>((low >> 8) & 0xFFu)};
+
+        stream.write(reinterpret_cast<const char *>(high_bytes), 2);
+        stream.write(reinterpret_cast<const char *>(low_bytes), 2);
+        if (!stream) {
+                stop("Failed to write annotation data");
+        }
+}
+
+void skip_auxiliary(std::istream &stream, int length) {
+        if (length <= 0) {
+                return;
+        }
+        std::vector<char> buffer(length);
+        stream.read(buffer.data(), length);
+        if (!stream) {
+                stop("Unexpected end of annotation file while reading AUX data");
+        }
+        if (length % 2 == 1) {
+                stream.get();
+                if (!stream) {
+                        stop("Unexpected end of annotation file while reading AUX padding");
+                }
+        }
+}
+
+void write_annotation_pair(std::ostream &stream, int code, int interval) {
+        if (interval < 0 || interval > 1023) {
+                stop("Annotation interval out of range");
+        }
+        if (code < 0 || code > 63) {
+                stop("Annotation code out of range");
+        }
+
+        unsigned char byte0 = static_cast<unsigned char>(interval & 0xFF);
+        unsigned char byte1 = static_cast<unsigned char>(((code & 0x3F) << 2) |
+                                                         ((interval >> 8) & 0x03));
+        unsigned char buffer[2] = {byte0, byte1};
+        stream.write(reinterpret_cast<const char *>(buffer), 2);
+        if (!stream) {
+                stop("Failed to write annotation data");
+        }
+}
+
+int encode_interval(std::ostream &stream, int diff) {
+        int final_interval = static_cast<int>(static_cast<uint32_t>(diff) & 0x3FFu);
+        int skip_value = diff - final_interval;
+        if (skip_value != 0) {
+                write_skip_value(stream, static_cast<int32_t>(skip_value));
+        }
+        return final_interval;
 }
 
 } // namespace
@@ -797,4 +927,194 @@ void write_wfdb_native_cpp(const std::string &data_path,
         }
 
         header_stream.close();
+}
+
+[[cpp11::register]]
+cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_path) {
+        std::ifstream stream(annotation_path, std::ios::binary);
+        ensure_can_open(stream, annotation_path);
+
+        std::vector<int> samples;
+        std::vector<std::string> types;
+        std::vector<int> subtypes;
+        std::vector<int> channels;
+        std::vector<int> numbers;
+
+        int32_t current_sample = 0;
+        int current_num = 0;
+        int current_channel = 0;
+        int pending_subtype = 0;
+        bool has_pending_subtype = false;
+
+        while (true) {
+                int first = stream.get();
+                if (!stream) {
+                        break;
+                }
+                int second = stream.get();
+                if (!stream) {
+                        stop("Unexpected end of annotation file");
+                }
+
+                int code = (second >> 2) & 0x3F;
+                int interval = ((second & 0x03) << 8) | (first & 0xFF);
+
+                if (code == 0 && interval == 0) {
+                        break;
+                }
+
+                if (code == 59) {
+                        int32_t skip = read_skip_value(stream);
+                        current_sample += skip;
+                        continue;
+                }
+
+                if (code == 60) {
+                        current_num = interval;
+                        continue;
+                }
+
+                if (code == 61) {
+                        pending_subtype = interval;
+                        has_pending_subtype = true;
+                        continue;
+                }
+
+                if (code == 62) {
+                        current_channel = interval;
+                        continue;
+                }
+
+                if (code == 63) {
+                        skip_auxiliary(stream, interval);
+                        continue;
+                }
+
+                current_sample += interval;
+                std::string symbol = annotation_symbol(code);
+                int subtype_value = has_pending_subtype ? pending_subtype : 0;
+
+                samples.push_back(current_sample);
+                types.push_back(symbol);
+                subtypes.push_back(subtype_value);
+                channels.push_back(current_channel);
+                numbers.push_back(current_num);
+
+                has_pending_subtype = false;
+        }
+
+        size_t n = samples.size();
+        cpp11::writable::integers sample_vec(n);
+        cpp11::writable::strings type_vec(n);
+        cpp11::writable::integers subtype_vec(n);
+        cpp11::writable::integers channel_vec(n);
+        cpp11::writable::integers number_vec(n);
+
+        for (size_t i = 0; i < n; ++i) {
+                sample_vec[i] = samples[i];
+                type_vec[i] = types[i];
+                subtype_vec[i] = subtypes[i];
+                channel_vec[i] = channels[i];
+                number_vec[i] = numbers[i];
+        }
+
+        cpp11::writable::list result;
+        result.push_back(sample_vec);
+        result.push_back(type_vec);
+        result.push_back(subtype_vec);
+        result.push_back(channel_vec);
+        result.push_back(number_vec);
+
+        cpp11::writable::strings names = {"sample", "type", "subtype", "channel", "number"};
+        result.names() = names;
+
+        return result;
+}
+
+[[cpp11::register]]
+void write_annotation_native_cpp(const std::string &annotation_path,
+                                 cpp11::integers samples,
+                                 cpp11::strings types,
+                                 cpp11::integers subtypes,
+                                 cpp11::integers channels,
+                                 cpp11::integers numbers) {
+        if (samples.size() != types.size()) {
+                stop("Samples and types must have the same length");
+        }
+
+        std::ofstream stream(annotation_path, std::ios::binary | std::ios::trunc);
+        if (!stream.is_open()) {
+                stop("Unable to open '%s' for writing", annotation_path.c_str());
+        }
+
+        int prev_sample = 0;
+        int current_num = 0;
+        int current_channel = 0;
+
+        auto get_value = [](const cpp11::integers &vec, int index) {
+                if (index >= vec.size()) {
+                        return 0;
+                }
+                int value = vec[index];
+                if (cpp11::is_na(value)) {
+                        return 0;
+                }
+                return value;
+        };
+
+        for (int i = 0; i < samples.size(); ++i) {
+                int sample = samples[i];
+                if (cpp11::is_na(sample)) {
+                        stop("Sample values must be finite integers");
+                }
+                if (sample < prev_sample) {
+                        stop("Annotation samples must be non-decreasing");
+                }
+
+                std::string symbol;
+                if (cpp11::is_na(types[i])) {
+                        symbol = "";
+                } else {
+                        symbol = static_cast<std::string>(types[i]);
+                }
+                int code = annotation_code(symbol);
+
+                int num_value = get_value(numbers, i);
+                if (num_value < 0 || num_value > 1023) {
+                        stop("Annotation number must be between 0 and 1023");
+                }
+                if (num_value != current_num) {
+                        write_annotation_pair(stream, 60, num_value);
+                        current_num = num_value;
+                }
+
+                int channel_value = get_value(channels, i);
+                if (channel_value < 0 || channel_value > 1023) {
+                        stop("Annotation channel must be between 0 and 1023");
+                }
+                if (channel_value != current_channel) {
+                        write_annotation_pair(stream, 62, channel_value);
+                        current_channel = channel_value;
+                }
+
+                int subtype_value = get_value(subtypes, i);
+                if (subtype_value < 0 || subtype_value > 1023) {
+                        stop("Annotation subtype must be between 0 and 1023");
+                }
+                if (subtype_value != 0) {
+                        write_annotation_pair(stream, 61, subtype_value);
+                }
+
+                int diff = sample - prev_sample;
+                int interval = encode_interval(stream, diff);
+                write_annotation_pair(stream, code, interval);
+
+                prev_sample = sample;
+        }
+
+        unsigned char terminator[2] = {0, 0};
+        stream.write(reinterpret_cast<const char *>(terminator), 2);
+        if (!stream) {
+                stop("Failed to finalize annotation file");
+        }
 }

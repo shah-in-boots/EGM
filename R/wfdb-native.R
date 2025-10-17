@@ -333,3 +333,214 @@ write_wfdb_native <- function(data,
 
         invisible(header_path)
 }
+
+#' Native WFDB annotation readers and writers
+#'
+#' @description
+#' These functions provide native replacements for the WFDB `rdann` and `wrann`
+#' utilities so that WFDB annotation files can be read and written without the
+#' external WFDB library. The returned objects are compatible with the
+#' [annotation_table()] class used throughout the package.
+#'
+#' @inheritParams read_annotation
+#' @inheritParams write_annotation
+#' @param header Optional [header_table()] used to supply metadata, including the
+#'   signal frequency. When omitted, [read_header_native()] is used to parse the
+#'   corresponding header file.
+#' @param begin,end Optional numeric values (in seconds) defining the time range
+#'   to read. When either value is supplied, the record header must include a
+#'   valid sampling frequency.
+#'
+#' @return
+#' * `read_annotation_native()` returns an [annotation_table()] with elapsed time
+#'   strings, sample indices, annotation types, and associated qualifiers.
+#' * `write_annotation_native()` invisibly returns the path to the written
+#'   annotation file.
+#'
+#' @export
+read_annotation_native <- function(record,
+                                   annotator,
+                                   record_dir = ".",
+                                   begin = 0,
+                                   end = NA_real_,
+                                   header = NULL) {
+
+        stopifnot("`record` must be a single character string" =
+                          is.character(record),
+                  "`annotator` must be a single character string" =
+                          is.character(annotator))
+
+        record <- record[[1]]
+        annotator <- annotator[[1]]
+        if (!nzchar(record)) {
+                stop("`record` must be provided")
+        }
+        if (!nzchar(annotator)) {
+                stop("`annotator` must be provided")
+        }
+
+        if (is.null(header)) {
+                header <- read_header_native(record = record, record_dir = record_dir)
+        } else if (!inherits(header, "header_table")) {
+                stop("`header` must be a `header_table` object")
+        }
+
+        begin <- as.numeric(begin)[1]
+        end <- as.numeric(end)[1]
+
+        annotation_path <- fs::path(record_dir, record, ext = annotator)
+        if (!fs::file_exists(annotation_path)) {
+                stop("Annotation file not found for ", record, " (", annotator, ")")
+        }
+
+        record_line <- attr(header, "record_line")
+        frequency <- record_line$frequency
+        if (length(frequency) == 0) {
+                frequency <- NA_real_
+        }
+        frequency <- as.numeric(frequency)
+
+        ann_list <- read_annotation_native_cpp(annotation_path)
+        samples <- as.integer(ann_list$sample)
+        types <- as.character(ann_list$type)
+        subtype <- as.integer(ann_list$subtype)
+        channel <- as.integer(ann_list$channel)
+        number <- as.integer(ann_list$number)
+
+        if (length(samples) == 0) {
+                return(annotation_table(annotator = annotator))
+        }
+
+        if (!is.na(begin)) {
+                if (is.na(frequency) || frequency <= 0) {
+                        stop("`begin` requires a positive sampling frequency in the header")
+                }
+                begin_sample <- as.integer(floor(begin * frequency))
+        } else {
+                begin_sample <- min(samples)
+        }
+        if (!is.na(end)) {
+                if (is.na(frequency) || frequency <= 0) {
+                        stop("`end` requires a positive sampling frequency in the header")
+                }
+                end_sample <- as.integer(ceiling(end * frequency))
+        } else {
+                end_sample <- max(samples)
+        }
+
+        selection <- samples >= begin_sample & samples <= end_sample
+        samples <- samples[selection]
+        types <- types[selection]
+        subtype <- subtype[selection]
+        channel <- channel[selection]
+        number <- number[selection]
+
+        time_strings <- if (!is.na(frequency) && frequency > 0) {
+                seconds <- samples / frequency
+                hours <- floor(seconds / 3600)
+                minutes <- floor((seconds - hours * 3600) / 60)
+                secs <- seconds - hours * 3600 - minutes * 60
+                sprintf("%02d:%02d:%06.3f", hours, minutes, secs)
+        } else {
+                rep("", length(samples))
+        }
+
+        annotation_table(
+                annotator = annotator,
+                time = time_strings,
+                sample = samples,
+                type = types,
+                subtype = subtype,
+                channel = channel,
+                number = number
+        )
+}
+
+#' @rdname read_annotation_native
+#' @export
+write_annotation_native <- function(data,
+                                    annotator,
+                                    record,
+                                    record_dir = ".") {
+
+        stopifnot("`record` must be a single character string" =
+                          is.character(record),
+                  "`annotator` must be a single character string" =
+                          is.character(annotator))
+
+        record <- record[[1]]
+        annotator <- annotator[[1]]
+        if (!nzchar(record)) {
+                stop("`record` must be provided")
+        }
+        if (!nzchar(annotator)) {
+                stop("`annotator` must be provided")
+        }
+
+        if (!fs::dir_exists(record_dir)) {
+                fs::dir_create(record_dir, recurse = TRUE)
+        }
+
+        if (!inherits(data, "annotation_table")) {
+                if (!is.data.frame(data)) {
+                        stop("`data` must be an `annotation_table` or data frame")
+                }
+                required_cols <- c("time", "sample", "type", "subtype", "channel", "number")
+                missing_cols <- setdiff(required_cols, names(data))
+                if (length(missing_cols) > 0) {
+                        stop("`data` is missing required columns: ", paste(missing_cols, collapse = ", "))
+                }
+                data <- annotation_table(
+                        annotator = annotator,
+                        time = as.character(data$time),
+                        sample = as.integer(data$sample),
+                        type = as.character(data$type),
+                        subtype = as.character(data$subtype),
+                        channel = as.integer(data$channel),
+                        number = as.integer(data$number)
+                )
+        }
+
+        ann_dt <- data.table::as.data.table(data)
+        if (!"sample" %in% names(ann_dt)) {
+                stop("`data` must contain a `sample` column")
+        }
+        ann_dt <- ann_dt[order(sample, seq_len(.N))]
+
+        samples <- as.integer(ann_dt$sample)
+        if (anyNA(samples)) {
+                stop("Annotation `sample` values must not contain missing data")
+        }
+        if (length(samples) > 0 && any(diff(samples) < 0)) {
+                stop("Annotation `sample` values must be non-decreasing")
+        }
+
+        types <- as.character(ann_dt$type)
+        types[is.na(types)] <- ""
+        types <- trimws(types)
+
+        parse_optional_int <- function(x) {
+                if (is.null(x)) {
+                        return(integer(length(samples)))
+                }
+                vals <- suppressWarnings(as.integer(as.character(x)))
+                vals[is.na(vals)] <- 0L
+                vals
+        }
+
+        subtype_vals <- parse_optional_int(ann_dt$subtype)
+        channel_vals <- parse_optional_int(ann_dt$channel)
+        number_vals <- parse_optional_int(ann_dt$number)
+
+        annotation_path <- fs::path(record_dir, record, ext = annotator)
+        write_annotation_native_cpp(
+                annotation_path = annotation_path,
+                samples = samples,
+                types = types,
+                subtypes = subtype_vals,
+                channels = channel_vals,
+                numbers = number_vals
+        )
+
+        invisible(annotation_path)
+}
