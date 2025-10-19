@@ -11,9 +11,8 @@
 write_wfdb(
   data,
   record,
-  record_dir,
-  wfdb_path = getOption("wfdb_path"),
-  header = list(frequency = 250, gain = 200L, label = character()),
+  record_dir = ".",
+  header = NULL,
   info_strings = list(),
   ...
 )
@@ -21,12 +20,11 @@ write_wfdb(
 read_wfdb(
   record,
   record_dir = ".",
-  annotator = NA_character_,
-  wfdb_path = getOption("wfdb_path"),
+  annotator = NULL,
   begin = 0,
   end = NA_integer_,
   interval = NA_integer_,
-  units = "digital",
+  units = c("digital", "physical"),
   channels = character(),
   ...
 )
@@ -34,16 +32,16 @@ read_wfdb(
 read_signal(
   record,
   record_dir = ".",
-  wfdb_path = getOption("wfdb_path"),
-  begin = 0L,
+  header = NULL,
+  begin = 0,
   end = NA_integer_,
   interval = NA_integer_,
-  units = "digital",
+  units = c("digital", "physical"),
   channels = character(),
   ...
 )
 
-read_header(record, record_dir = ".", wfdb_path = getOption("wfdb_path"), ...)
+read_header(record, record_dir = ".", ...)
 }
 \arguments{
 \item{data}{Can either be an \code{egm} object, or a \code{data.frame} (or similar)
@@ -60,10 +58,6 @@ acceptable, as well as hyphens (-) and underscores (_)}
 
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
-
-\item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
-device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
-system options on loading of the package, \code{getOption('wfdb_path')}}
 
 \item{header}{A header file is an optional named list of parameters that
 will be used to organize and describe the signal input from the \strong{data}

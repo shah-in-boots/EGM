@@ -69,240 +69,224 @@
 #' @export
 read_annotation <- function(
 	record,
-	record_dir = ".",
 	annotator,
-	wfdb_path = getOption("wfdb_path"),
-	begin = "00:00:00",
-	end = NA_character_,
-	...
+	record_dir = ".",
+	begin = 0,
+	end = NA_real_,
+	header = NULL
 ) {
-	# Validate:
-	#		WFDB software command
-	# 	Current or parent working directory
-	# 	Directory of the record/WFDB files
-	# 	Variable definitions
-	rdann <- find_wfdb_command('rdann', wfdb_path)
-
-	# If the annotation is inadequate, need to check here before going further
-	# Example would be a file that is very small
-	annPath <- fs::path(record_dir, record, ext = annotator)
-	fileSize <- fs::file_size(annPath) # returns in bytes
-
-	if (fileSize < 8) {
-		# Unlikely to be readable?
-		# If its only a few bytes then annotation is unlikely
-		message(
-			'The annotation for ',
-			record,
-			' is unlikely to be legible. ',
-			'An empty annotation table was returned instead.'
+	stopifnot(
+		"`record` must be a single character string" = is.character(
+			record
+		),
+		"`annotator` must be a single character string" = is.character(
+			annotator
 		)
-		return(annotation_table())
+	)
+
+	record <- record[[1]]
+	annotator <- annotator[[1]]
+	if (!nzchar(record)) {
+		stop("`record` must be provided")
+	}
+	if (!nzchar(annotator)) {
+		stop("`annotator` must be provided")
 	}
 
-	# Ensure appropriate working directory
-	if (fs::dir_exists(record_dir)) {
-		wd <- fs::path(record_dir)
+	if (is.null(header)) {
+		header <- read_header(
+			record = record,
+			record_dir = record_dir
+		)
+	} else if (!inherits(header, "header_table")) {
+		stop("`header` must be a `header_table` object")
+	}
+
+	begin <- as.numeric(begin)[1]
+	end <- as.numeric(end)[1]
+
+	annotation_path <- fs::path(record_dir, record, ext = annotator)
+	if (!fs::file_exists(annotation_path)) {
+		stop(
+			"Annotation file not found for ",
+			record,
+			" (",
+			annotator,
+			")"
+		)
+	}
+
+	record_line <- attr(header, "record_line")
+	frequency <- record_line$frequency
+	if (length(frequency) == 0) {
+		frequency <- NA_real_
+	}
+	frequency <- as.numeric(frequency)
+
+	ann_list <- read_annotation_native_cpp(annotation_path)
+	samples <- as.integer(ann_list$sample)
+	types <- as.character(ann_list$type)
+	subtype <- as.integer(ann_list$subtype)
+	channel <- as.integer(ann_list$channel)
+	number <- as.integer(ann_list$number)
+
+	if (length(samples) == 0) {
+		return(annotation_table(annotator = annotator))
+	}
+
+	if (!is.na(begin)) {
+		if (is.na(frequency) || frequency <= 0) {
+			stop(
+				"`begin` requires a positive sampling frequency in the header"
+			)
+		}
+		begin_sample <- as.integer(floor(begin * frequency))
 	} else {
-		wd <- getwd()
+		begin_sample <- min(samples)
+	}
+	if (!is.na(end)) {
+		if (is.na(frequency) || frequency <= 0) {
+			stop(
+				"`end` requires a positive sampling frequency in the header"
+			)
+		}
+		end_sample <- as.integer(ceiling(end * frequency))
+	} else {
+		end_sample <- max(samples)
 	}
 
-	stopifnot("Expected `character`" = is.character(begin))
-	stopifnot("Expected `character`" = is.character(end))
+	selection <- samples >= begin_sample & samples <= end_sample
+	samples <- samples[selection]
+	types <- types[selection]
+	subtype <- subtype[selection]
+	channel <- channel[selection]
+	number <- number[selection]
 
-	# Create all the necessary parameters for rdann
-	#		-f			Start time
-	#		-t			End time
-	#		-v			Column headings
-	#		-e			Elapsed time as (versus absolute time)
-	# TODO filtering flags not yet included
-	cmd <-
-		paste(rdann, '-r', record, '-a', annotator) |>
-		{
-			\(.) {
-				if (begin != 0) {
-					paste(., "-f", begin)
-				} else {
-					.
-				}
-			}
-		}() |>
-		{
-			\(.) {
-				if (!is.na(end)) {
-					paste(., "-t", end)
-				} else {
-					.
-				}
-			}
-		}() |>
-		paste('-e')
+	time_strings <- if (!is.na(frequency) && frequency > 0) {
+		seconds <- samples / frequency
+		hours <- floor(seconds / 3600)
+		minutes <- floor((seconds - hours * 3600) / 60)
+		secs <- seconds - hours * 3600 - minutes * 60
+		sprintf("%02d:%02d:%06.3f", hours, minutes, secs)
+	} else {
+		rep("", length(samples))
+	}
 
-	# Temporary local/working directory, to reset at end of function
-	withr::with_dir(new = wd, code = {
-		dat <-
-			data.table::fread(cmd = cmd, header = FALSE)
-	})
-
-	# Rename annotation table
-	names(dat) <- c("time", "sample", "type", "subtype", "channel", "number")
-
-	# The time is raw, and converted to HH:MM:SS.SSS format, without a date
-	# 	This could be just M:S format or H:M:S format
-	# This is a discrepancy between `rdann` and this software
-	# Can temporarily convert this to a POSIX format here
-	hea <- read_header(record, record_dir)
-	start_time <- attributes(hea)$record_line$start_time
-
-	# Extract time appropriately
-	# Also make sure the type is appropriate
-	timeType <- stringr::str_count(dat$time, ":")
-	dat$time <- ifelse(timeType == 1, paste0("0:", dat$time), dat$time)
-
-	# Now split the strings by the position and check the times
-	datHMS <-
-		stringr::str_split(dat$time, ":", simplify = TRUE) |>
-		as.data.frame()
-	hours <- as.numeric(datHMS[[1]])
-	minutes <- as.numeric(datHMS[[2]])
-	seconds <- as.numeric(datHMS[[3]])
-
-	# Convert to characters
-	hours <- ifelse(hours < 10, paste0("0", hours), hours)
-	minutes <- ifelse(minutes < 10, paste0("0", minutes), minutes)
-	seconds <- ifelse(seconds < 10, paste0("0", seconds), seconds)
-
-	dat$time <- paste0(hours, ":", minutes, ":", seconds)
-
-	# Return
-	new_annotation_table(df_list(dat), annotator)
+	annotation_table(
+		annotator = annotator,
+		time = time_strings,
+		sample = samples,
+		type = types,
+		subtype = subtype,
+		channel = channel,
+		number = number
+	)
 }
 
 #' @rdname wfdb_annotations
 #' @export
 write_annotation <- function(
-	data,
-	annotator,
-	record,
-	record_dir = ".",
-	wfdb_path = getOption("wfdb_path"),
-	...
+	data, 
+	annotator, 
+	record, 
+	record_dir = "."
 ) {
-	# Validate:
-	#		WFDB software command
-	# 	Current or parent working directory
-	# 	Variable definitions
-	wrann <- find_wfdb_command('wrann')
-
-	if (fs::dir_exists(record_dir)) {
-		wd <- fs::path(record_dir)
-	} else {
-		wd <- getwd()
-	}
-
-	stopifnot("Expected `data.frame`" = inherits(data, "data.frame"))
-
-	# Take annotation data and write to temporary file
-	# 	This later is sent to `wrann` through `cat` with a pipe
-	#		The temp file must be deleted after
-	tmpFile <- fs::file_temp("annotation_", ext = "txt")
-	withr::defer(fs::file_delete(tmpFile))
-
-	data |>
-		annotation_table_to_lines() |>
-		writeLines(tmpFile)
-
-	# Prepare the command for writing this into a WFDB format
-	#		Cat annotation file
-	#		Pipe
-	# 	Write out file
-	cat_cmd <- paste('cat', tmpFile)
-	wfdb_cmd <- paste(wrann, '-r', record, '-a', annotator)
-	cmd <- paste(cat_cmd, wfdb_cmd, sep = " | ")
-	withr::with_dir(new = wd, code = system(cmd))
-}
-
-#' @rdname wfdb_annotations
-#' @export
-annotate_wfdb <- function(
-	record,
-	record_dir,
-	annotator,
-	wfdb_path = getOption('wfdb_path'),
-	...
-) {
-	# Validate
-	# 	WFDB software - must be an ECG detector software
-	#		WFDB must be on path
-	# 	Reading/writing directory must be on path
-
-	if (fs::dir_exists(record_dir)) {
-		wd <- fs::path(record_dir)
-	} else {
-		wd <- getwd()
-	}
-
-	cmd <- find_wfdb_command(annotator)
-	rec <- paste("-r", record)
-	ann <- paste("-a", annotator)
-
-	# Switch based on annotator system
-	# Change working directory for writing purposes
-	# This should change back at end of writing process
-	switch(
-		annotator,
-		ecpugwave = {
-			withr::with_dir(new = wd, code = {
-				# System call to beat detector/annotator
-				system2(
-					command = cmd,
-					args = c(rec, ann),
-					stdout = FALSE,
-					stderr = FALSE
-				)
-
-				if (fs::file_exists('fort.20')) {
-					fs::file_delete('fort.20')
-				}
-				if (fs::file_exists('fort.21')) {
-					fs::file_delete('fort.21')
-				}
-			})
-		},
-		wqrs = {
-			withr::with_dir(
-				new = wd,
-				code = system2(
-					command = cmd,
-					args = c(rec, ann),
-					stdout = FALSE,
-					stderr = FALSE
-				)
-			)
-		},
-		gqrs = {
-			withr::with_dir(
-				new = wd,
-				code = system2(
-					command = cmd,
-					args = c(rec, ann),
-					stdout = FALSE,
-					stderr = FALSE
-				)
-			)
-		},
-		sqrs = {
-			withr::with_dir(
-				new = wd,
-				code = system2(
-					command = cmd,
-					args = c(rec, ann),
-					stdout = FALSE,
-					stderr = FALSE
-				)
-			)
-		},
+	stopifnot(
+		"`record` must be a single character string" = is.character(
+			record
+		),
+		"`annotator` must be a single character string" = is.character(
+			annotator
+		)
 	)
+
+	record <- record[[1]]
+	annotator <- annotator[[1]]
+	if (!nzchar(record)) {
+		stop("`record` must be provided")
+	}
+	if (!nzchar(annotator)) {
+		stop("`annotator` must be provided")
+	}
+
+	if (!fs::dir_exists(record_dir)) {
+		fs::dir_create(record_dir, recurse = TRUE)
+	}
+
+	if (!inherits(data, "annotation_table")) {
+		if (!is.data.frame(data)) {
+			stop(
+				"`data` must be an `annotation_table` or data frame"
+			)
+		}
+		required_cols <- c(
+			"time",
+			"sample",
+			"type",
+			"subtype",
+			"channel",
+			"number"
+		)
+		missing_cols <- setdiff(required_cols, names(data))
+		if (length(missing_cols) > 0) {
+			stop(
+				"`data` is missing required columns: ",
+				paste(missing_cols, collapse = ", ")
+			)
+		}
+		data <- annotation_table(
+			annotator = annotator,
+			time = as.character(data$time),
+			sample = as.integer(data$sample),
+			type = as.character(data$type),
+			subtype = as.character(data$subtype),
+			channel = as.integer(data$channel),
+			number = as.integer(data$number)
+		)
+	}
+
+	ann_dt <- data.table::as.data.table(data)
+	if (!"sample" %in% names(ann_dt)) {
+		stop("`data` must contain a `sample` column")
+	}
+	ann_dt <- ann_dt[order(sample, seq_len(.N))]
+
+	samples <- as.integer(ann_dt$sample)
+	if (anyNA(samples)) {
+		stop("Annotation `sample` values must not contain missing data")
+	}
+	if (length(samples) > 0 && any(diff(samples) < 0)) {
+		stop("Annotation `sample` values must be non-decreasing")
+	}
+
+	types <- as.character(ann_dt$type)
+	types[is.na(types)] <- ""
+	types <- trimws(types)
+
+	parse_optional_int <- function(x) {
+		if (is.null(x)) {
+			return(integer(length(samples)))
+		}
+		vals <- suppressWarnings(as.integer(as.character(x)))
+		vals[is.na(vals)] <- 0L
+		vals
+	}
+
+	subtype_vals <- parse_optional_int(ann_dt$subtype)
+	channel_vals <- parse_optional_int(ann_dt$channel)
+	number_vals <- parse_optional_int(ann_dt$number)
+
+	annotation_path <- fs::path(record_dir, record, ext = annotator)
+	write_annotation_native_cpp(
+		annotation_path = annotation_path,
+		samples = samples,
+		types = types,
+		subtypes = subtype_vals,
+		channels = channel_vals,
+		numbers = number_vals
+	)
+
+	invisible(annotation_path)
 }
 
 # Annotator Systems -----------------------------------------------------------

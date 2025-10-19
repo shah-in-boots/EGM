@@ -72,7 +72,7 @@ test_that('signal can be removed from egm object', {
 
 	# Matrix
 	raw <- extract_signal(object, data_format = 'matrix')
-	expect_type(raw, 'integer')
+	expect_type(raw, 'double')
 	expect_equal(class(raw)[1], 'matrix')
 	expect_equal(dim(raw)[1], 5000)
 	expect_equal(dim(raw)[2], 12)

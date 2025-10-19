@@ -4,59 +4,48 @@
 \alias{wfdb_annotations}
 \alias{read_annotation}
 \alias{write_annotation}
-\alias{annotate_wfdb}
 \title{Read WFDB-compatible annotation file}
 \usage{
 read_annotation(
   record,
-  record_dir = ".",
   annotator,
-  wfdb_path = getOption("wfdb_path"),
-  begin = "00:00:00",
-  end = NA_character_,
-  ...
+  record_dir = ".",
+  begin = 0,
+  end = NA_real_,
+  header = NULL
 )
 
-write_annotation(
-  data,
-  annotator,
-  record,
-  record_dir = ".",
-  wfdb_path = getOption("wfdb_path"),
-  ...
-)
-
-annotate_wfdb(
-  record,
-  record_dir,
-  annotator,
-  wfdb_path = getOption("wfdb_path"),
-  ...
-)
+write_annotation(data, annotator, record, record_dir = ".")
 }
 \arguments{
 \item{record}{String that will be used to name the WFDB record. Cannot
 include extensions, and is not a filepath. alphanumeric characters are
 acceptable, as well as hyphens (-) and underscores (_)}
 
-\item{record_dir}{File path of directory that should be used read and write
-files. Defaults to current directory.}
-
 \item{annotator}{String that is the name of a WFDB-compatible annotation
 type, serving as the extension for the file that is written containing that
 annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
 further details.}
 
-\item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
-device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
-system options on loading of the package, \code{getOption('wfdb_path')}}
+\item{record_dir}{File path of directory that should be used read and write
+files. Defaults to current directory.}
 
 \item{begin, end}{A \code{character} in the format of \emph{HH:MM:SS} that will be used
 to help parse the time of the annotation. These parameters together create
 the time range to extract. The default of \emph{0} is a shortcut for \emph{00:00:00}.
 The \emph{seconds} argument can include a decimal place.}
 
-\item{...}{Additional arguments to be passed to the function}
+\item{header}{A header file is an optional named list of parameters that
+will be used to organize and describe the signal input from the \strong{data}
+argument. If the \strong{type} is given, specific additional elements will be
+searched for, such as the low or high pass filters, colors, or other signal
+attributes. At minimum, the following elements are required (as cannot be
+calculated):
+\itemize{
+\item frequency = sample frequency in Hertz as \code{integer}
+\item label = vector of names for each channel as \code{character}
+\item start_time = date/time object
+}}
 
 \item{data}{An \code{annotation_table} containing the 6 invariant columns required
 by the \code{\link[=annotation_table]{annotation_table()}} function}

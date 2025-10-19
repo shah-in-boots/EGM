@@ -16,10 +16,6 @@ type, serving as the extension for the file that is written containing that
 annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
 further details.}
 
-\item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
-device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
-system options on loading of the package, \code{getOption('wfdb_path')}}
-
 \item{...}{Additional arguments to be passed to the function}
 }
 \description{
