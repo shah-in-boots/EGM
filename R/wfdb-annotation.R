@@ -130,7 +130,16 @@ read_annotation <- function(
 	channel <- as.integer(ann_list$channel)
 	number <- as.integer(ann_list$number)
 
+	# If annotation is empty, message user
+	# Return annotation table with name of annotator 
 	if (length(samples) == 0) {
+		message(
+			"Annotation file for ",
+			record,
+			" (",
+			annotator,
+			") contains no data"
+		)
 		return(annotation_table(annotator = annotator))
 	}
 
@@ -144,6 +153,7 @@ read_annotation <- function(
 	} else {
 		begin_sample <- min(samples)
 	}
+
 	if (!is.na(end)) {
 		if (is.na(frequency) || frequency <= 0) {
 			stop(

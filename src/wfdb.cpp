@@ -942,10 +942,12 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
         std::vector<int> numbers;
 
         int32_t current_sample = 0;
-        int current_num = 0;
-        int current_channel = 0;
+        int pending_num = 0;
+        bool has_pending_num = false;
         int pending_subtype = 0;
         bool has_pending_subtype = false;
+        int pending_channel = 0;
+        bool has_pending_channel = false;
 
         while (true) {
                 int first = stream.get();
@@ -971,18 +973,32 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 }
 
                 if (code == 60) {
-                        current_num = interval;
+                        if (!numbers.empty()) {
+                                numbers.back() = interval;
+                        } else {
+                                pending_num = interval;
+                                has_pending_num = true;
+                        }
                         continue;
                 }
 
                 if (code == 61) {
-                        pending_subtype = interval;
-                        has_pending_subtype = true;
+                        if (!subtypes.empty()) {
+                                subtypes.back() = interval;
+                        } else {
+                                pending_subtype = interval;
+                                has_pending_subtype = true;
+                        }
                         continue;
                 }
 
                 if (code == 62) {
-                        current_channel = interval;
+                        if (!channels.empty()) {
+                                channels.back() = interval;
+                        } else {
+                                pending_channel = interval;
+                                has_pending_channel = true;
+                        }
                         continue;
                 }
 
@@ -994,14 +1010,18 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 current_sample += interval;
                 std::string symbol = annotation_symbol(code);
                 int subtype_value = has_pending_subtype ? pending_subtype : 0;
+                int channel_value = has_pending_channel ? pending_channel : 0;
+                int num_value = has_pending_num ? pending_num : 0;
 
                 samples.push_back(current_sample);
                 types.push_back(symbol);
                 subtypes.push_back(subtype_value);
-                channels.push_back(current_channel);
-                numbers.push_back(current_num);
+                channels.push_back(channel_value);
+                numbers.push_back(num_value);
 
+                has_pending_num = false;
                 has_pending_subtype = false;
+                has_pending_channel = false;
         }
 
         size_t n = samples.size();
@@ -1049,8 +1069,6 @@ void write_annotation_native_cpp(const std::string &annotation_path,
         }
 
         int prev_sample = 0;
-        int current_num = 0;
-        int current_channel = 0;
 
         auto get_value = [](const cpp11::integers &vec, int index) {
                 if (index >= vec.size()) {
@@ -1080,23 +1098,9 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                 }
                 int code = annotation_code(symbol);
 
-                int num_value = get_value(numbers, i);
-                if (num_value < 0 || num_value > 1023) {
-                        stop("Annotation number must be between 0 and 1023");
-                }
-                if (num_value != current_num) {
-                        write_annotation_pair(stream, 60, num_value);
-                        current_num = num_value;
-                }
-
-                int channel_value = get_value(channels, i);
-                if (channel_value < 0 || channel_value > 1023) {
-                        stop("Annotation channel must be between 0 and 1023");
-                }
-                if (channel_value != current_channel) {
-                        write_annotation_pair(stream, 62, channel_value);
-                        current_channel = channel_value;
-                }
+                int diff = sample - prev_sample;
+                int interval = encode_interval(stream, diff);
+                write_annotation_pair(stream, code, interval);
 
                 int subtype_value = get_value(subtypes, i);
                 if (subtype_value < 0 || subtype_value > 1023) {
@@ -1106,9 +1110,21 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                         write_annotation_pair(stream, 61, subtype_value);
                 }
 
-                int diff = sample - prev_sample;
-                int interval = encode_interval(stream, diff);
-                write_annotation_pair(stream, code, interval);
+                int channel_value = get_value(channels, i);
+                if (channel_value < 0 || channel_value > 1023) {
+                        stop("Annotation channel must be between 0 and 1023");
+                }
+                if (channel_value != 0) {
+                        write_annotation_pair(stream, 62, channel_value);
+                }
+
+                int num_value = get_value(numbers, i);
+                if (num_value < 0 || num_value > 1023) {
+                        stop("Annotation number must be between 0 and 1023");
+                }
+                if (num_value != 0) {
+                        write_annotation_pair(stream, 60, num_value);
+                }
 
                 prev_sample = sample;
         }
