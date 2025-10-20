@@ -1,7 +1,6 @@
 test_that("ECGs can be windowed", {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	rec <- "ecg"
 	dir <- test_path()
@@ -25,8 +24,7 @@ test_that("ECGs can be windowed", {
 
 test_that("Basic `windowed` specific functions work", {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	rec <- "ecg"
 	dir <- test_path()

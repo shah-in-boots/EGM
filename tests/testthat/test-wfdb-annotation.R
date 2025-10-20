@@ -1,7 +1,6 @@
 test_that("can read in annotation files", {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	x <- read_annotation(
 		record = "300",
@@ -20,8 +19,7 @@ test_that("can read in annotation files", {
 
 test_that("can read in faulty signal safely", {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	# Bad ECG that has no signal
 	record <- "bad-ecg"
@@ -40,8 +38,7 @@ test_that("can read in faulty signal safely", {
 
 test_that("annotation read in uses appropriate header data", {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	hea <- read_header("ecg", test_path())
 
