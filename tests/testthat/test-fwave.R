@@ -2,8 +2,7 @@
 
 test_that("extract_f_waves works with default parameters", {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	# Object for mock testing
 	mock_af <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
@@ -21,8 +20,7 @@ test_that("extract_f_waves works with default parameters", {
 })
 
 test_that("extract_f_waves handles invalid input", {
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	# Object for mock testing
 	mock_af <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
@@ -63,9 +61,8 @@ test_that("detect_QRS finds peaks", {
 
 test_that("QRS removal functions work appropriately", {
 
-	# Skip on WFDB datasets
-	skip_on_cran()
-	skip_on_ci()
+# Skip on WFDB datasets
+skip_on_ci()
 
 	mock_af <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
 

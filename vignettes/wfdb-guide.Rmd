@@ -18,33 +18,34 @@ knitr::opts_chunk$set(
 library(EGM)
 ```
 
-The package relies and is augmented heavily by the [Waveform Database (WFDB) software package](https://physionet.org/content/wfdb/10.7.0/), which is a well-documented and well-developed ecosystem of software applications, primarily written in `C` and `C++` that manage the storage, reading, writing, and interaction with electrical signal data.
-This software is mostly external to the `{EGM}` package, and is used to supplement and expand the software.
+Historically `{EGM}` wrapped the [Waveform Database (WFDB) software package](https://physionet.org/content/wfdb/10.7.0/), a well documented suite of `C` and `C++` applications for interacting with signal data.
+Recent releases of `{EGM}` now provide native readers, writers, and annotation utilities implemented directly in `R` and `C++`, so the core functionality of the package no longer depends on an external WFDB installation.
+You can work with WFDB headers, signals, and annotations on any system where `{EGM}` is installed, including CRAN environments.
 
-__DISCLAIMER__: The software required to use annotations has not yet been re-written into a `C` backend for `R`, and thus requires using a local installation of `WFDB` for functionality. 
-To build online vignettes and articles, where the software package is not available, I only demonstrate non-running examples.
+__Note__: Utilities such as `find_wfdb_software()` and `set_wfdb_path()` remain available for users who still maintain a local WFDB installation or need to call command-line tooling for legacy workflows, but they are optional.
 
-# Installation
+# Installation options
 
-To install the `WFDB` software in its traditional, `C`-based format, I have found it easiest with teh instructions from the [Github](https://github.com/bemoody/wfdb) source. 
-The installation instructions are relatively clear across multiple operating systems.
+Because `{EGM}` ships its own WFDB readers and writers, no additional system dependencies are required to begin analysing WFDB data in `R`.
+Installing `{EGM}` from CRAN (or the development version from GitHub) is sufficient for the examples in this guide to run end-to-end on any platform.
 
-`WFDB` is easiest to install on a Unix-based system, such as Linux or MacOS. 
-For Windows, I have found that using [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) is the most consistent and supported way to utilize the software.
-When hidden on WSL, the path must be specified explicitly using the `set_wfdb_path()` function using the command from Powershell, for example, to switch to a WSL command environment.
+If you would still like to interface with the traditional `C`-based WFDB tools—for example to compare results or to call PhysioNet utilities that have not yet been ported—you can follow the instructions in the [WFDB GitHub repository](https://github.com/bemoody/wfdb).
+When using an external installation you may set the binary location once per session so that helper wrappers continue to function:
 
 ```{r, eval=FALSE}
-set_wfdb_path("wsl /usr/local/bin")
+set_wfdb_path("/usr/local/bin")
 ```
 
-Once this is in place, you should be able to work with `WFDB` files directly from `R` without significant overhead costs, while also gaining access to a variety of software applications.
+On Windows the binaries are often accessed through [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) or similar tooling; simply point `set_wfdb_path()` to the appropriate command shim or directory.
+Even with a system installation available, the native `{EGM}` readers and writers will be used by default unless you explicitly opt-in to the command-line backends.
 
 # Annotations
 
 The WFDB software package utilizes a binary format to store annotations.
-Annotations are essentially markers or qualifiers of specific components of a signal, specifying both the specific time or position in the plot, and what channel the annotation refers to. 
-Annotations are polymorphic, and multiple can be applied to a single signal dataset. 
-The credit for this work goes directly to the original software creators, as this is just a wrapper to allow for flexible integration into `R`. 
+Annotations are essentially markers or qualifiers of specific components of a signal, specifying both the specific time or position in the plot, and what channel the annotation refers to.
+Annotations are polymorphic, and multiple can be applied to a single signal dataset.
+The credit for this work goes directly to the original software creators, as this is just a wrapper to allow for flexible integration into `R`.
+All of the demonstrations below rely on the native `{EGM}` parsers, so they run identically whether or not external WFDB binaries are present.
 
 To begin, let's take an example of a simple ECG dataset.
 This data is included in the package, and can be accessed as below.
