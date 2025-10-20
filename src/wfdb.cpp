@@ -15,6 +15,11 @@
 using namespace cpp11;
 
 namespace {
+// trim ----------------------------------------------------------------------
+// Remove leading and trailing whitespace characters from a line read from a
+// WFDB header file.  Header parsing relies heavily on splitting tokens and the
+// reference format allows optional spacing, so we defensively normalise every
+// string field before interpretation.
 std::string trim(const std::string &input) {
         auto begin = input.begin();
         while (begin != input.end() && std::isspace(static_cast<unsigned char>(*begin))) {
@@ -33,6 +38,11 @@ std::string trim(const std::string &input) {
         return std::string(begin, end + 1);
 }
 
+// parse_double ---------------------------------------------------------------
+// Convert a token extracted from the header file into a numeric value.  The
+// WFDB specification allows missing values, which the R interface represents
+// with NA.  Rather than forcing callers to handle exceptions we intercept any
+// conversion error and return NA directly.
 double parse_double(const std::string &value) {
         try {
                 return std::stod(value);
@@ -41,6 +51,10 @@ double parse_double(const std::string &value) {
         }
 }
 
+// parse_int ------------------------------------------------------------------
+// Same as parse_double() but for integer fields (e.g. ADC resolution).  These
+// fields may be empty in legacy headers, therefore NA is the most informative
+// failure mode for the R side of the API.
 int parse_int(const std::string &value) {
         try {
                 return std::stoi(value);
@@ -49,17 +63,28 @@ int parse_int(const std::string &value) {
         }
 }
 
+// ensure_can_open ------------------------------------------------------------
+// Guard utility that throws a descriptive error when a file cannot be opened.
+// All entry points call this immediately after constructing an ifstream so that
+// downstream logic can assume a valid stream object.
 void ensure_can_open(const std::ifstream &stream, const std::string &path) {
         if (!stream.is_open()) {
                 stop("Unable to open '%s'", path.c_str());
         }
 }
 
+// FormatSize -----------------------------------------------------------------
+// Helper for format_size(); numerator/denominator pairs are used to keep track
+// of how many bytes are consumed by a sample for a particular storage format.
 struct FormatSize {
         int numerator;
         int denominator;
 };
 
+// format_size ----------------------------------------------------------------
+// Translate WFDB storage format identifiers into byte sizes.  Some formats,
+// notably 212, span multiple channels and therefore require fractional values
+// until we combine them later using an LCM (see lcm_ll()).
 FormatSize format_size(int storage_format) {
         switch (storage_format) {
         case 8:
@@ -78,6 +103,10 @@ FormatSize format_size(int storage_format) {
         }
 }
 
+// gcd_ll / lcm_ll ------------------------------------------------------------
+// Compute greatest common divisor / least common multiple for 64-bit integers.
+// The sample-width computation uses these helpers to find a common denominator
+// across channels that store different numbers of bytes per sample.
 long long gcd_ll(long long a, long long b) {
         while (b != 0) {
                 long long t = a % b;
@@ -94,6 +123,10 @@ long long lcm_ll(long long a, long long b) {
         return (a / gcd_ll(a, b)) * b;
 }
 
+// Binary readers -------------------------------------------------------------
+// The following helpers read signed integers encoded in little-endian order
+// from the WFDB signal file.  Each function performs the read, checks for early
+// EOF, and returns the correctly sign-extended value.
 int8_t read_int8(std::istream &stream) {
         unsigned char buffer;
         stream.read(reinterpret_cast<char *>(&buffer), 1);
@@ -138,6 +171,10 @@ int32_t read_int32_little(std::istream &stream) {
                                     (static_cast<int32_t>(buffer[3]) << 24));
 }
 
+// read_format212_pair --------------------------------------------------------
+// WFDB storage format 212 stores two 12-bit samples across three bytes.  This
+// routine unpacks the bit fields into a pair of 16-bit integers while applying
+// two's-complement sign extension to match the original values.
 std::pair<int16_t, int16_t> read_format212_pair(std::istream &stream) {
         unsigned char buffer[3];
         stream.read(reinterpret_cast<char *>(buffer), 3);
@@ -158,6 +195,9 @@ std::pair<int16_t, int16_t> read_format212_pair(std::istream &stream) {
         return {static_cast<int16_t>(raw_first), static_cast<int16_t>(raw_second)};
 }
 
+// Binary writers -------------------------------------------------------------
+// Counterparts to the reader helpers above.  Each method writes a value back to
+// disk in the WFDB-prescribed layout and surfaces any I/O failure immediately.
 void write_int16_little(std::ostream &stream, int16_t value) {
         unsigned char buffer[2];
         buffer[0] = static_cast<unsigned char>(value & 0xFF);
@@ -191,6 +231,10 @@ void write_int32_little(std::ostream &stream, int32_t value) {
         }
 }
 
+// write_format212_pair -------------------------------------------------------
+// Mirror of read_format212_pair(); converts two samples into the packed
+// 3-byte representation while clamping the range to +/- 2048 as required by the
+// original WFDB specification.
 void write_format212_pair(std::ostream &stream, int16_t first, int16_t second) {
         int value1 = std::max<int>(-2048, std::min<int>(2047, first));
         int value2 = std::max<int>(-2048, std::min<int>(2047, second));
@@ -210,6 +254,10 @@ void write_format212_pair(std::ostream &stream, int16_t first, int16_t second) {
         }
 }
 
+// annotation_symbol / annotation_code ---------------------------------------
+// Bidirectional conversion between WFDB numeric annotation codes and their
+// textual representations.  These helpers centralise the mapping used by both
+// the reader and writer to remain consistent with upstream tools.
 std::string annotation_symbol(int code) {
         static const std::array<const char *, 64> symbols = {{
                 " ", "N", "L", "R", "a", "V", "F", "J", "A", "S",
@@ -256,6 +304,10 @@ int annotation_code(const std::string &symbol) {
         stop("Unsupported annotation symbol '%s'", symbol.c_str());
 }
 
+// read_skip_value ------------------------------------------------------------
+// Annotation files use code 59 to encode "SKIP" records that store a 32-bit
+// offset in a slightly unusual high/low word order.  This helper decodes the
+// value and reports a clear error when the file terminates unexpectedly.
 int32_t read_skip_value(std::istream &stream) {
         unsigned char buffer[4];
         stream.read(reinterpret_cast<char *>(buffer), 4);
@@ -272,6 +324,9 @@ int32_t read_skip_value(std::istream &stream) {
         return static_cast<int32_t>(combined);
 }
 
+// write_skip_value -----------------------------------------------------------
+// Serialise a SKIP record (code 59).  The WFDB format inserts the code header
+// first, followed by the high and low halves of the offset.
 void write_skip_value(std::ostream &stream, int32_t value) {
         unsigned char first[2] = {0, static_cast<unsigned char>(59 << 2)};
         stream.write(reinterpret_cast<const char *>(first), 2);
@@ -295,6 +350,10 @@ void write_skip_value(std::ostream &stream, int32_t value) {
         }
 }
 
+// skip_auxiliary -------------------------------------------------------------
+// Code 63 annotations carry arbitrary auxiliary data.  We intentionally ignore
+// these payloads for now but must consume the byte stream (with odd-length
+// padding) to keep subsequent reads aligned.
 void skip_auxiliary(std::istream &stream, int length) {
         if (length <= 0) {
                 return;
@@ -312,6 +371,10 @@ void skip_auxiliary(std::istream &stream, int length) {
         }
 }
 
+// write_annotation_pair ------------------------------------------------------
+// Write a single two-byte annotation entry consisting of a 10-bit interval and
+// a 6-bit code.  Validation ensures that a corrupted annotation table is caught
+// before any data is flushed to disk.
 void write_annotation_pair(std::ostream &stream, int code, int interval) {
         if (interval < 0 || interval > 1023) {
                 stop("Annotation interval out of range");
@@ -330,6 +393,10 @@ void write_annotation_pair(std::ostream &stream, int code, int interval) {
         }
 }
 
+// encode_interval ------------------------------------------------------------
+// Encode the elapsed sample count between annotations.  When the difference is
+// larger than 10 bits we emit a separate SKIP record to preserve the full
+// distance and return the remaining lower bits for the actual annotation pair.
 int encode_interval(std::ostream &stream, int diff) {
         int final_interval = static_cast<int>(static_cast<uint32_t>(diff) & 0x3FFu);
         int skip_value = diff - final_interval;
@@ -346,6 +413,11 @@ cpp11::writable::list read_header_native_cpp(const std::string &header_path) {
         std::ifstream stream(header_path);
         ensure_can_open(stream, header_path);
 
+        // The first line of a WFDB header summarises the record level metadata
+        // (record name, channel count, sampling frequency, etc.).  Subsequent
+        // lines describe individual channels.  Each branch below mirrors the
+        // layout documented in the WFDB specification so that the R front-end
+        // can expose a tidy header_table object.
         std::string record_line;
         if (!std::getline(stream, record_line)) {
                 stop("Header file '%s' is empty", header_path.c_str());
@@ -376,6 +448,10 @@ cpp11::writable::list read_header_native_cpp(const std::string &header_path) {
 
         std::string line;
         for (int i = 0; i < number_of_channels; ++i) {
+                // Each channel line is tokenised in a WFDB-specific order.  We
+                // read mandatory pieces first, then progressively parse the
+                // optional gain/baseline/units components while gracefully
+                // falling back to NA when the data is absent.
                 if (!std::getline(stream, line)) {
                         stop("Header file '%s' ended unexpectedly while reading channel specifications", header_path.c_str());
                 }
@@ -430,6 +506,10 @@ cpp11::writable::list read_header_native_cpp(const std::string &header_path) {
                 std::string checksum_token;
                 std::string blocksize_token;
 
+                // Remaining fields follow the ADC specification and can be
+                // empty depending on the recording system.  parse_int/double
+                // return NA which ensures the R side receives explicit missing
+                // values rather than hard failures.
                 line_stream >> resolution_token;
                 line_stream >> zero_token;
                 line_stream >> initial_token;
@@ -527,6 +607,10 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
         std::ifstream stream(data_path, std::ios::binary);
         ensure_can_open(stream, data_path);
 
+        // Determine how many bytes of raw data correspond to a single sample.
+        // The computation accounts for the paired-channel 212 format by
+        // expressing everything as fractions and then finding the common
+        // denominator across the recording.
         std::vector<FormatSize> sizes(number_of_channels);
         long long denom_lcm = 1;
         for (int i = 0; i < number_of_channels; ++i) {
@@ -545,6 +629,9 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
         }
 
         if (total_samples <= 0) {
+                // Some headers omit the sample count; in that case we infer the
+                // number of samples by dividing the file size by the bytes per
+                // sample ratio computed above.
                 stream.seekg(0, std::ios::end);
                 std::streamoff bytes = stream.tellg();
                 if ((bytes * denom_lcm) % bytes_per_sample_num != 0) {
@@ -573,6 +660,9 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                 sample_column[i] = begin_sample + i;
         }
 
+        // Pre-compute the subset of channels requested by the caller.  channel
+        // indices are zero-based by convention in the native code to match the
+        // binary format, hence the subtraction in the caller.
         int output_channels = channel_indices.size();
         std::vector<int> requested_channels(output_channels);
         for (int i = 0; i < output_channels; ++i) {
@@ -608,6 +698,10 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                 }
                                 auto values = read_format212_pair(stream);
 
+                                // Each pair contains two consecutive channels.
+                                // We normalise to physical units and copy the
+                                // values into every column that requested the
+                                // channel (channel_map handles duplicates).
                                 if (store_row && !channel_map[channel_idx].empty()) {
                                         double value = static_cast<double>(values.first);
                                         int baseline_value = adc_baseline[channel_idx];
@@ -666,6 +760,11 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                         }
 
                         if (store_row && !channel_map[channel_idx].empty()) {
+                                // Formats other than 212 map directly to a
+                                // single channel.  The conversion logic is the
+                                // same: subtract baseline if present and, when
+                                // physical units are requested, divide by the
+                                // gain to convert from digital counts.
                                 double value = raw_value;
                                 int baseline_value = adc_baseline[channel_idx];
                                 if (baseline_value != NA_INTEGER) {
@@ -726,6 +825,10 @@ void write_wfdb_native_cpp(const std::string &data_path,
                            const std::string &record_name,
                            const std::string &start_time,
                            cpp11::list info_strings) {
+        // Validate shape first: the matrix is expected to contain one column
+        // per channel and at least one row.  Any mismatch between the matrix and
+        // the declared metadata is caught here to avoid writing malformed WFDB
+        // files to disk.
         int number_of_channels = signal_matrix.ncol();
         if (samples <= 0) {
                 samples = signal_matrix.nrow();
@@ -751,6 +854,9 @@ void write_wfdb_native_cpp(const std::string &data_path,
                         double value = signal_matrix(i, channel_idx);
                         long long scaled = static_cast<long long>(std::llround(value));
                         int fmt = format_vec[channel_idx];
+                        // Clamp to the legal range of the target storage format
+                        // before casting down to the native integer width.  The
+                        // ranges here mirror the limits enforced by the reader.
                         switch (fmt) {
                         case 8:
                         case 80:
@@ -801,6 +907,9 @@ void write_wfdb_native_cpp(const std::string &data_path,
 
                 for (int channel_idx = 0; channel_idx < number_of_channels;) {
                         int fmt = format_vec[channel_idx];
+                        // Serialise each channel using the appropriate helper.
+                        // Format 212 consumes two channels at a time, hence the
+                        // manual increment when writing those pairs.
                         switch (fmt) {
                         case 8:
                         case 80:
@@ -843,12 +952,16 @@ void write_wfdb_native_cpp(const std::string &data_path,
                         stop("Unable to open '%s' for writing", header_path.c_str());
         }
 
+        // Record line --------------------------------------------------------
+        // Assemble the first line in the WFDB header.  Optional start time is
+        // appended when supplied.
         header_stream << record_name << " " << number_of_channels << " " << frequency << " " << samples;
         if (!start_time.empty()) {
                 header_stream << " " << start_time;
         }
         header_stream << "\n";
 
+        // Channel specifications --------------------------------------------
         for (int channel_idx = 0; channel_idx < number_of_channels; ++channel_idx) {
                 std::string adc_spec;
                 double gain_value = adc_gain[channel_idx];
@@ -912,6 +1025,10 @@ void write_wfdb_native_cpp(const std::string &data_path,
                               << label_value << "\n";
         }
 
+        // Info strings -------------------------------------------------------
+        // Additional metadata is written as `# key value` lines.  This mirrors
+        // the behaviour of upstream WFDB tools and allows R callers to roundtrip
+        // arbitrary channel annotations.
         cpp11::strings info_names(info_strings.names());
         for (int i = 0; i < info_strings.size(); ++i) {
                 cpp11::r_string key_proxy(info_names[i]);
@@ -935,6 +1052,9 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
         std::ifstream stream(annotation_path, std::ios::binary);
         ensure_can_open(stream, annotation_path);
 
+        // The annotation reader keeps track of the running sample position.
+        // Special codes (59-63) mutate state rather than producing actual
+        // annotations, so the logic below resembles a small state machine.
         std::vector<int> samples;
         std::vector<std::string> types;
         std::vector<int> subtypes;
@@ -1081,6 +1201,9 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                 return value;
         };
 
+        // Emit annotations in order, encoding the sample delta relative to the
+        // previous entry.  Optional subtype/channel/number fields are only
+        // written when non-zero to keep the output compact.
         for (int i = 0; i < samples.size(); ++i) {
                 int sample = samples[i];
                 if (cpp11::is_na(sample)) {

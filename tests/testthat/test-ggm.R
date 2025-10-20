@@ -25,8 +25,7 @@ test_that("plots can be generated easily", {
 })
 
 test_that('header and labels work fluidly when plotting', {
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	data <- read_wfdb(
 		record = 'ludb-ecg',

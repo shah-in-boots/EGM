@@ -1,7 +1,6 @@
 test_that("signal table class can be made", {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	expect_equal(signal_table(), new_signal_table())
 	expect_output(print(signal_table()), "signal_table")

@@ -2,8 +2,7 @@
 
 test_that('can convert bard to wfdb with wrsamp', {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	# Convert a bard text file into a WFDB compatible format
 	wd <- getwd()
@@ -24,8 +23,7 @@ test_that('can convert bard to wfdb with wrsamp', {
 
 test_that('R data objects can be converted or written to WFDB format', {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	file <- test_path('bard-egm.txt')
 	sig <- read_bard_signal(file)
@@ -58,8 +56,7 @@ test_that('R data objects can be converted or written to WFDB format', {
 
 test_that('rdsamp can read in WFDB formatted files for signal data', {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	# Reads in EGM data (which is an EP study)
 	x <- read_signal(
@@ -156,8 +153,7 @@ test_that('internals of `read_header()` can create `header_table` from bard data
 
 test_that('can read in WFDB file into `egm` directly', {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	# Basics
 	record = 'ecg'
@@ -192,8 +188,7 @@ test_that('can read in WFDB file into `egm` directly', {
 
 test_that('can read in MUSE ECG header', {
 
-	skip_on_cran()
-	skip_on_ci()
+skip_on_ci()
 
 	# Simple header
 	hea <- read_header("ecg", record_dir = test_path())
@@ -249,8 +244,7 @@ test_that("native reader returns an egm object", {
 })
 
 test_that("native writer produces WFDB files", {
-        skip_on_cran()
-        skip_if_not_installed("withr")
+skip_if_not_installed("withr")
 
         fp <- system.file("extdata", "muse-sinus.dat", package = "EGM")
         dir <- fs::path_dir(fp)
@@ -268,8 +262,7 @@ test_that("native writer produces WFDB files", {
 })
 
 test_that("format 212 records roundtrip correctly", {
-        skip_on_cran()
-        skip_if_not_installed("withr")
+skip_if_not_installed("withr")
 
         header <- header_table(
                 record_name = "pair",
@@ -299,8 +292,7 @@ test_that("format 212 records roundtrip correctly", {
 })
 
 test_that("mixed storage formats are supported", {
-        skip_on_cran()
-        skip_if_not_installed("withr")
+skip_if_not_installed("withr")
 
         header <- header_table(
                 record_name = "mixed",
