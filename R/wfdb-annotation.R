@@ -93,21 +93,21 @@ read_annotation <- function(
 		stop("`annotator` must be provided")
 	}
 
-	if (is.null(header)) {
-		header <- read_header(
-			record = record,
-			record_dir = record_dir
-		)
-	} else if (!inherits(header, "header_table")) {
-		stop("`header` must be a `header_table` object")
-	}
+        if (is.null(header)) {
+                header <- read_header(
+                        record = record,
+                        record_dir = record_dir
+                )
+        } else if (!inherits(header, "header_table")) {
+                stop("`header` must be a `header_table` object")
+        }
 
-	begin <- as.numeric(begin)[1]
-	end <- as.numeric(end)[1]
+        begin <- as.numeric(begin)[1]
+        end <- as.numeric(end)[1]
 
-	annotation_path <- fs::path(record_dir, record, ext = annotator)
-	if (!fs::file_exists(annotation_path)) {
-		stop(
+        annotation_path <- fs::path(record_dir, record, ext = annotator)
+        if (!fs::file_exists(annotation_path)) {
+                stop(
 			"Annotation file not found for ",
 			record,
 			" (",
@@ -123,12 +123,15 @@ read_annotation <- function(
 	}
 	frequency <- as.numeric(frequency)
 
-	ann_list <- read_annotation_native_cpp(annotation_path)
-	samples <- as.integer(ann_list$sample)
-	types <- as.character(ann_list$type)
-	subtype <- as.integer(ann_list$subtype)
-	channel <- as.integer(ann_list$channel)
-	number <- as.integer(ann_list$number)
+        # The native reader returns raw vectors extracted from the binary WFDB
+        # annotation file. These are converted into the strongly-typed columns of
+        # an `annotation_table` below.
+        ann_list <- read_annotation_native_cpp(annotation_path)
+        samples <- as.integer(ann_list$sample)
+        types <- as.character(ann_list$type)
+        subtype <- as.integer(ann_list$subtype)
+        channel <- as.integer(ann_list$channel)
+        number <- as.integer(ann_list$number)
 
 	# If annotation is empty, message user
 	# Return annotation table with name of annotator 
@@ -143,34 +146,36 @@ read_annotation <- function(
 		return(annotation_table(annotator = annotator))
 	}
 
-	if (!is.na(begin)) {
-		if (is.na(frequency) || frequency <= 0) {
-			stop(
-				"`begin` requires a positive sampling frequency in the header"
-			)
-		}
-		begin_sample <- as.integer(floor(begin * frequency))
-	} else {
-		begin_sample <- min(samples)
-	}
+        if (!is.na(begin)) {
+                # Time bounds are converted into sample numbers so we can filter
+                # the annotations before constructing the table returned to R.
+                if (is.na(frequency) || frequency <= 0) {
+                        stop(
+                                "`begin` requires a positive sampling frequency in the header"
+                        )
+                }
+                begin_sample <- as.integer(floor(begin * frequency))
+        } else {
+                begin_sample <- min(samples)
+        }
 
-	if (!is.na(end)) {
-		if (is.na(frequency) || frequency <= 0) {
-			stop(
-				"`end` requires a positive sampling frequency in the header"
-			)
-		}
+        if (!is.na(end)) {
+                if (is.na(frequency) || frequency <= 0) {
+                        stop(
+                                "`end` requires a positive sampling frequency in the header"
+                        )
+                }
 		end_sample <- as.integer(ceiling(end * frequency))
 	} else {
 		end_sample <- max(samples)
 	}
 
-	selection <- samples >= begin_sample & samples <= end_sample
-	samples <- samples[selection]
-	types <- types[selection]
-	subtype <- subtype[selection]
-	channel <- channel[selection]
-	number <- number[selection]
+        selection <- samples >= begin_sample & samples <= end_sample
+        samples <- samples[selection]
+        types <- types[selection]
+        subtype <- subtype[selection]
+        channel <- channel[selection]
+        number <- number[selection]
 
 	time_strings <- if (!is.na(frequency) && frequency > 0) {
 		seconds <- samples / frequency
@@ -219,12 +224,14 @@ write_annotation <- function(
 		stop("`annotator` must be provided")
 	}
 
-	if (!fs::dir_exists(record_dir)) {
-		fs::dir_create(record_dir, recurse = TRUE)
-	}
+        if (!fs::dir_exists(record_dir)) {
+                # Match the behaviour of write_wfdb() by creating the directory
+                # before invoking the native writer.
+                fs::dir_create(record_dir, recurse = TRUE)
+        }
 
-	if (!inherits(data, "annotation_table")) {
-		if (!is.data.frame(data)) {
+        if (!inherits(data, "annotation_table")) {
+                if (!is.data.frame(data)) {
 			stop(
 				"`data` must be an `annotation_table` or data frame"
 			)
@@ -244,27 +251,31 @@ write_annotation <- function(
 				paste(missing_cols, collapse = ", ")
 			)
 		}
-		data <- annotation_table(
-			annotator = annotator,
-			time = as.character(data$time),
-			sample = as.integer(data$sample),
-			type = as.character(data$type),
-			subtype = as.character(data$subtype),
+                # Normalise arbitrary data frames into the strongly-typed
+                # annotation_table class expected elsewhere in the package.
+                data <- annotation_table(
+                        annotator = annotator,
+                        time = as.character(data$time),
+                        sample = as.integer(data$sample),
+                        type = as.character(data$type),
+                        subtype = as.character(data$subtype),
 			channel = as.integer(data$channel),
 			number = as.integer(data$number)
 		)
 	}
 
-	ann_dt <- data.table::as.data.table(data)
-	if (!"sample" %in% names(ann_dt)) {
-		stop("`data` must contain a `sample` column")
-	}
-	ann_dt <- ann_dt[order(sample, seq_len(.N))]
+        ann_dt <- data.table::as.data.table(data)
+        if (!"sample" %in% names(ann_dt)) {
+                stop("`data` must contain a `sample` column")
+        }
+        # Keep annotations in chronological order; ties fall back to the row
+        # position to preserve stable ordering for duplicate sample numbers.
+        ann_dt <- ann_dt[order(sample, seq_len(.N))]
 
-	samples <- as.integer(ann_dt$sample)
-	if (anyNA(samples)) {
-		stop("Annotation `sample` values must not contain missing data")
-	}
+        samples <- as.integer(ann_dt$sample)
+        if (anyNA(samples)) {
+                stop("Annotation `sample` values must not contain missing data")
+        }
 	if (length(samples) > 0 && any(diff(samples) < 0)) {
 		stop("Annotation `sample` values must be non-decreasing")
 	}
@@ -286,12 +297,14 @@ write_annotation <- function(
 	channel_vals <- parse_optional_int(ann_dt$channel)
 	number_vals <- parse_optional_int(ann_dt$number)
 
-	annotation_path <- fs::path(record_dir, record, ext = annotator)
-	write_annotation_native_cpp(
-		annotation_path = annotation_path,
-		samples = samples,
-		types = types,
-		subtypes = subtype_vals,
+        annotation_path <- fs::path(record_dir, record, ext = annotator)
+        # Offload the binary encoding to the native implementation which shares
+        # logic with the reader, ensuring the two functions round-trip cleanly.
+        write_annotation_native_cpp(
+                annotation_path = annotation_path,
+                samples = samples,
+                types = types,
+                subtypes = subtype_vals,
 		channels = channel_vals,
 		numbers = number_vals
 	)

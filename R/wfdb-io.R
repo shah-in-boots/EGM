@@ -136,6 +136,14 @@ NULL
 #'   output an extension of a `data.table` object reflecting the underlying
 #'   function (e.g. `signal_table()` will return an object of class).
 #'
+#' @details
+#' The `begin`, `end`, and `interval` arguments are converted into sample
+#' positions using the sampling frequency declared in the WFDB header. The
+#' reader first determines the starting sample from `begin`, then gives
+#' precedence to `interval` (when supplied) before falling back to `end`. Any
+#' request that extends beyond the recorded range is clamped so that the caller
+#' still receives all available data without a hard failure.
+#' 
 #' @name wfdb_io
 NULL
 
@@ -144,18 +152,20 @@ NULL
 #'
 #' @export
 write_wfdb <- function(
-	data,
-	record,
-	record_dir = ".",
-	header = NULL,
-	info_strings = list(),
-	...
+        data,
+        record,
+        record_dir = ".",
+        header = NULL,
+        info_strings = list(),
+        ...
 ) {
-	if (!fs::dir_exists(record_dir)) {
-		fs::dir_create(record_dir, recurse = TRUE)
-	}
+        # Create the output directory up-front so subsequent file writes do not
+        # fail midway through the export pipeline.
+        if (!fs::dir_exists(record_dir)) {
+                fs::dir_create(record_dir, recurse = TRUE)
+        }
 
-	if (inherits(data, "egm")) {
+        if (inherits(data, "egm")) {
 		signal <- data$signal
 		header <- data$header
 	} else {
@@ -171,20 +181,25 @@ write_wfdb <- function(
 		stop("`header` must be a `header_table` object")
 	}
 
-	record_line <- attr(header, "record_line")
-	frequency <- record_line$frequency
-	start_time <- record_line$start_time
-	if (!inherits(start_time, "POSIXt") || is.na(start_time)) {
-		start_time_str <- ""
-	} else {
-		start_time_str <- format(start_time, "%H:%M:%OS %d/%m/%Y")
-	}
+        # The parsed record line is stored as an attribute, allowing us to reuse
+        # metadata calculated during header import without reparsing the file.
+        record_line <- attr(header, "record_line")
+        frequency <- record_line$frequency
+        start_time <- record_line$start_time
+        if (!inherits(start_time, "POSIXt") || is.na(start_time)) {
+                start_time_str <- ""
+        } else {
+                start_time_str <- format(start_time, "%H:%M:%OS %d/%m/%Y")
+        }
 
-	original_record_name <- record_line$record_name
-	if (length(original_record_name) == 0) {
-		original_record_name <- NA_character_
-	} else {
-		original_record_name <- as.character(original_record_name)[1]
+        # Fall back to the original record name stored in the header when the
+        # caller does not supply one explicitly. This preserves compatibility
+        # with existing WFDB datasets that expect a specific prefix.
+        original_record_name <- record_line$record_name
+        if (length(original_record_name) == 0) {
+                original_record_name <- NA_character_
+        } else {
+                original_record_name <- as.character(original_record_name)[1]
 	}
 	record_name <- record
 	if (
@@ -204,12 +219,15 @@ write_wfdb <- function(
 	}
 	record_name <- as.character(record_name)[1]
 
-	signal_dt <- data.table::as.data.table(signal)
-	header_labels <- as.character(header$label)
-	header_labels[is.na(header_labels)] <- ""
-	if (all(header_labels == "")) {
-		header_labels <- paste0("CH", header$number)
-	}
+        # Align the signal table to the header ordering. WFDB requires the
+        # sample column followed by one column per channel in the same order as
+        # the header entries.
+        signal_dt <- data.table::as.data.table(signal)
+        header_labels <- as.character(header$label)
+        header_labels[is.na(header_labels)] <- ""
+        if (all(header_labels == "")) {
+                header_labels <- paste0("CH", header$number)
+        }
 	signal_cols <- setdiff(names(signal_dt), "sample")
 	if (length(signal_cols) == 0) {
 		stop("Signal data must contain at least one channel")
@@ -254,12 +272,15 @@ write_wfdb <- function(
 		)
 	}
 
-	storage_format <- as.integer(header$storage_format)
-	storage_format[is.na(storage_format)] <- 16L
-	adc_gain <- as.numeric(header$ADC_gain)
-	adc_baseline <- as.integer(header$ADC_baseline)
-	adc_units <- as.character(header$ADC_units)
-	adc_resolution <- as.integer(header$ADC_resolution)
+        # Coerce channel metadata to basic vectors and replace missing values
+        # with sensible defaults so the C++ writer receives explicit parameters
+        # for every field it expects.
+        storage_format <- as.integer(header$storage_format)
+        storage_format[is.na(storage_format)] <- 16L
+        adc_gain <- as.numeric(header$ADC_gain)
+        adc_baseline <- as.integer(header$ADC_baseline)
+        adc_units <- as.character(header$ADC_units)
+        adc_resolution <- as.integer(header$ADC_resolution)
 	adc_zero <- as.integer(header$ADC_zero)
 	initial_value <- as.integer(header$initial_value)
 	checksum <- as.integer(header$checksum)
@@ -269,12 +290,15 @@ write_wfdb <- function(
 	if (is.null(existing_info)) {
 		existing_info <- list()
 	}
-	combined_info <- c(existing_info, info_strings)
-	if (length(combined_info) > 0) {
-		if (
-			is.null(names(combined_info)) ||
-				any(names(combined_info) == "")
-		) {
+        # Merge the info strings bundled with the header and any additions from
+        # the caller. The WFDB header syntax requires each entry to be named so
+        # we validate that before writing anything to disk.
+        combined_info <- c(existing_info, info_strings)
+        if (length(combined_info) > 0) {
+                if (
+                        is.null(names(combined_info)) ||
+                                any(names(combined_info) == "")
+                ) {
 			stop("All info strings must be named")
 		}
 		combined_info <- lapply(combined_info, as.character)
@@ -283,12 +307,14 @@ write_wfdb <- function(
 	data_path <- fs::path(record_dir, unique_files[[1]])
 	header_path <- fs::path(record_dir, record_name, ext = "hea")
 
-	write_wfdb_native_cpp(
-		data_path = data_path,
-		header_path = header_path,
-		signal_matrix = signal_matrix,
-		channel_names = label_output,
-		file_names = file_names,
+        # The heavy lifting happens inside the native writer, which handles the
+        # byte-level encoding for both the signal and header files.
+        write_wfdb_native_cpp(
+                data_path = data_path,
+                header_path = header_path,
+                signal_matrix = signal_matrix,
+                channel_names = label_output,
+                file_names = file_names,
 		storage_format = storage_format,
 		adc_gain = adc_gain,
 		adc_baseline = adc_baseline,
@@ -317,22 +343,24 @@ write_wfdb <- function(
 #'
 #' @export
 read_wfdb <- function(
-	record,
-	record_dir = ".",
-	annotator = NULL,
-	begin = 0,
+        record,
+        record_dir = ".",
+        annotator = NULL,
+        begin = 0,
 	end = NA_integer_,
 	interval = NA_integer_,
 	units = c("digital", "physical"),
 	channels = character(),
 	...
 ) {
-	header <- read_header(record = record, record_dir = record_dir)
+        # Load the shared header once so it can be passed to both the signal and
+        # optional annotation readers without re-parsing the file.
+        header <- read_header(record = record, record_dir = record_dir)
 
-	signal <- read_signal(
-		record = record,
-		record_dir = record_dir,
-		header = header,
+        signal <- read_signal(
+                record = record,
+                record_dir = record_dir,
+                header = header,
 		begin = begin,
 		end = end,
 		interval = interval,
@@ -340,12 +368,12 @@ read_wfdb <- function(
 		channels = channels
 	)
 
-	# If annotatator is present, read annotation in as well
-	if (!is.null(annotator)) {
-		annotation <- read_annotation(
-			record = record,
-			record_dir = record_dir,
-			annotator = annotator,
+        # If annotatator is present, read annotation in as well
+        if (!is.null(annotator)) {
+                annotation <- read_annotation(
+                        record = record,
+                        record_dir = record_dir,
+                        annotator = annotator,
 			header = header
 		)
 	} else {
@@ -380,17 +408,20 @@ read_signal <- function(
 			record_dir = record_dir
 		)
 	}
-	record_line <- attr(header, "record_line")
-	frequency <- record_line$frequency
-	total_samples <- record_line$samples
-	number_of_channels <- record_line$number_of_channels
+        record_line <- attr(header, "record_line")
+        frequency <- record_line$frequency
+        total_samples <- record_line$samples
+        number_of_channels <- record_line$number_of_channels
 
-	begin_sample <- as.integer(round(begin * frequency))
-	if (is.na(begin_sample) || begin_sample < 0) {
-		begin_sample <- 0L
-	}
+        # Translate the requested time window into sample indices using the
+        # header frequency. Missing or negative inputs default to the start of
+        # the record so the native reader always receives a valid range.
+        begin_sample <- as.integer(round(begin * frequency))
+        if (is.na(begin_sample) || begin_sample < 0) {
+                begin_sample <- 0L
+        }
 
-	if (!is.na(interval)) {
+        if (!is.na(interval)) {
 		end_sample <- begin_sample +
 			as.integer(round(interval * frequency))
 	} else if (!is.na(end)) {
@@ -402,11 +433,14 @@ read_signal <- function(
 		end_sample <- total_samples
 	}
 
-	labels <- as.character(header$label)
-	labels[is.na(labels)] <- ""
-	if (length(labels) == 0) {
-		labels <- paste0("CH", seq_len(nrow(header)))
-	}
+        # Determine which channels to retrieve by matching the caller's request
+        # against the header labels. Matching is forgiving to case differences
+        # and supports both numeric indices and character names.
+        labels <- as.character(header$label)
+        labels[is.na(labels)] <- ""
+        if (length(labels) == 0) {
+                labels <- paste0("CH", seq_len(nrow(header)))
+        }
 
 	if (length(channels) == 0) {
 		selection <- seq_len(nrow(header))
@@ -445,12 +479,15 @@ read_signal <- function(
 		)
 	}
 
-	signal_list <- read_signal_native_cpp(
-		data_path = fs::path(record_dir, file_names),
-		number_of_channels = number_of_channels,
-		total_samples = total_samples,
-		storage_format = as.integer(header$storage_format),
-		begin_sample = begin_sample,
+        # Delegate decoding of the binary signal file to the C++ implementation.
+        # Channel indices are converted to zero-based offsets to match the WFDB
+        # on-disk layout.
+        signal_list <- read_signal_native_cpp(
+                data_path = fs::path(record_dir, file_names),
+                number_of_channels = number_of_channels,
+                total_samples = total_samples,
+                storage_format = as.integer(header$storage_format),
+                begin_sample = begin_sample,
 		end_sample = end_sample,
 		channel_indices = as.integer(header$number[selection] - 1L),
 		adc_gain = as.numeric(header$ADC_gain),
@@ -475,11 +512,14 @@ read_header <- function(record, record_dir = ".", ...) {
 		stop(record, " not found in ", record_dir)
 	}
 
-	header_info <- read_header_native_cpp(header_path)
-	start_time <- parse_date_and_time(header_info$record_line)
-	if (is.na(start_time)) {
-		start_time <- formals(header_table)$start_time
-	}
+        # Parse the header using the C++ helper which mirrors the WFDB
+        # specification. The resulting list is then massaged into the structured
+        # `header_table` S3 class returned to R callers.
+        header_info <- read_header_native_cpp(header_path)
+        start_time <- parse_date_and_time(header_info$record_line)
+        if (is.na(start_time)) {
+                start_time <- formals(header_table)$start_time
+        }
 
 	info_strings <- header_info$info_strings
 	if (!is.null(info_strings) && length(info_strings) > 0) {
