@@ -25,11 +25,11 @@ test_that('R data objects can be converted or written to WFDB format', {
 
 skip_on_ci()
 
-	file <- test_path('bard-egm.txt')
-	sig <- read_bard_signal(file)
-	hea <- read_bard_header(file)
-	rec <- attributes(hea)$record_line
-	data <- egm(sig, hea)
+        file <- test_path('bard-egm.txt')
+        sig <- read_bard_signal(file)
+        hea <- read_bard_header(file)
+        rec <- attributes(hea)$record_line
+        data <- egm(sig, hea)
 
 	write_wfdb(
 		data = data,
@@ -49,6 +49,81 @@ skip_on_ci()
 		record = 'ecg',
 		record_dir = test_path()
 	)
+
+})
+
+test_that('write_wfdb honours explicit headers and preserves integer storage', {
+
+        skip_if_not_installed('withr')
+
+        sig <- signal_table(channel = 0:4)
+        default_header <- header_table(
+                record_name = 'base',
+                number_of_channels = 1L,
+                frequency = 250L,
+                samples = nrow(sig),
+                storage_format = 16L,
+                label = 'BASE'
+        )
+        egm_obj <- egm(sig, default_header)
+
+        override_header <- header_table(
+                record_name = 'override',
+                number_of_channels = 1L,
+                frequency = 360L,
+                samples = nrow(sig),
+                storage_format = 16L,
+                label = 'BASE'
+        )
+
+        tmp <- withr::local_tempdir()
+        captured <- NULL
+
+        expect_warning(
+                with_mocked_bindings(
+                        write_wfdb_native_cpp = function(data_path,
+                                header_path,
+                                signal_matrix,
+                                channel_names,
+                                file_names,
+                                storage_format,
+                                adc_gain,
+                                adc_baseline,
+                                adc_units,
+                                adc_resolution,
+                                adc_zero,
+                                initial_value,
+                                checksum,
+                                blocksize,
+                                frequency,
+                                samples,
+                                record_name,
+                                start_time,
+                                info_strings) {
+                                captured <<- list(
+                                        signal_matrix = signal_matrix,
+                                        frequency = frequency
+                                )
+                                invisible(NULL)
+                        },
+                        {
+                                write_wfdb(
+                                        egm_obj,
+                                        record = 'custom',
+                                        record_dir = tmp,
+                                        header = override_header
+                                )
+                        }
+                ),
+                "`header` argument is ignored when `data` is an `egm` object"
+        )
+
+        expect_false(is.null(captured))
+        expect_true(is.integer(captured$signal_matrix))
+        expect_equal(
+                captured$frequency,
+                attr(default_header, 'record_line')$frequency
+        )
 
 })
 
