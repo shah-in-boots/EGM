@@ -115,6 +115,14 @@ recording systems, as indicated in the details section. Writing WFDB leads to
 creation of both a \strong{dat} (signal) and \strong{hea} (header) file. These are both
 required for reading in files as well.
 }
+\details{
+The \code{begin}, \code{end}, and \code{interval} arguments are converted into sample
+positions using the sampling frequency declared in the WFDB header. The
+reader first determines the starting sample from \code{begin}, then gives
+precedence to \code{interval} (when supplied) before falling back to \code{end}. Any
+request that extends beyond the recorded range is clamped so that the caller
+still receives all available data without a hard failure.
+}
 \section{Functions}{
 \itemize{
 \item \code{write_wfdb()}: Writes out signal and header data into a WFDB-compatible

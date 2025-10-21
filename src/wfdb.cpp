@@ -12,6 +12,8 @@
 #include <utility>
 #include <vector>
 
+// Code attempted to be written by a non-native C++ user
+// Last updated: 2025-10-20
 using namespace cpp11;
 
 namespace {

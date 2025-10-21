@@ -224,12 +224,14 @@ annotation_table <- function(annotator = character(),
 
 	# Sample/time are more complicated
 	# Sample can be given, and if so, time can be imputed if frequency is known
-	if (length(time) == 0 & length(sample) > 0) {
-		if (length(frequency) == 0) {
-			stop("Frequency must be given to impute time from sample")
+	if (length(time) == 0 && length(sample) > 0) {
+		freq_values <- suppressWarnings(as.numeric(frequency))
+		freq <- if (length(freq_values) > 0) freq_values[[1]] else NA_real_
+		if (is.na(freq) || freq <= 0) {
+			time <- rep("", length(sample))
 		} else {
 			# These periods are the time points in seconds
-			timePoints <- sample / frequency
+			timePoints <- sample / freq
 
 			# Hours
 			hours <- floor(timePoints / 3600)
