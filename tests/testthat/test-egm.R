@@ -61,19 +61,28 @@ test_that('signal can be removed from egm object', {
 
 skip_on_ci()
 
-	object <- read_wfdb('ecg', test_path())
-	expect_s3_class(object, 'egm')
+        object <- read_wfdb('ecg', test_path())
+        expect_s3_class(object, 'egm')
 
-	# Default = data.frame
-	raw <- extract_signal(object)
-	expect_s3_class(raw, 'data.frame')
-	expect_length(raw, 13)
+        # Default = data.frame
+        raw <- extract_signal(object)
+        expect_s3_class(raw, 'data.frame')
+        expect_length(raw, 13)
 
-	# Matrix
-	raw <- extract_signal(object, data_format = 'matrix')
-	expect_type(raw, 'double')
-	expect_equal(class(raw)[1], 'matrix')
-	expect_equal(dim(raw)[1], 5000)
-	expect_equal(dim(raw)[2], 12)
+        # Matrix
+        raw <- extract_signal(object, data_format = 'matrix')
+        expect_type(raw, 'double')
+        expect_equal(class(raw)[1], 'matrix')
+        expect_equal(dim(raw)[1], 5000)
+        expect_equal(dim(raw)[2], 12)
+
+        # Array
+        raw_array <- extract_signal(object, data_format = 'array')
+        expect_equal(dim(raw_array), c(5000, 12))
+        expect_identical(dimnames(raw_array)[[2]], names(object$signal)[-1])
+
+        # Invalid option
+        expect_error(extract_signal(object, data_format = 'invalid'),
+                "'data_format' should be one of")
 
 })

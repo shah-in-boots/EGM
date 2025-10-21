@@ -136,36 +136,35 @@ is_egm <- function(x) {
 #'
 #' @export
 extract_signal <- function(object,
-													 data_format = c("data.frame", "matrix", "array"),
-													 ...) {
+                                                                                                         data_format = c("data.frame", "matrix", "array"),
+                                                                                                         ...) {
 
-	stopifnot("Requires object of `egm` class for evaluation"
-						= inherits(object, "egm"))
+        stopifnot("Requires object of `egm` class for evaluation"
+                                                = inherits(object, "egm"))
 
-	# Get string, defaults to `matrix`
-	data_format <- data_format[1]
+        data_format <- match.arg(data_format)
 
-	# Raw signal
-	sig <- data.frame(object$signal[, -1])
-	sig <- data.frame(object$signal)
+        sig <- data.frame(object$signal)
+        signal_only <- sig[, -1, drop = FALSE]
 
-	switch(data_format,
-				 array = {
-				 	# Drop sample names
-				 	out <- array(sig[, -1], dimnames = list(names(sig[, -1])))
+        switch(
+                data_format,
+                array = {
+                        channel_names <- names(signal_only)
+                        out <- array(
+                                data = as.matrix(signal_only),
+                                dim = c(nrow(signal_only), ncol(signal_only)),
+                                dimnames = list(NULL, channel_names)
+                        )
+                },
+                matrix = {
+                        out <- as.matrix(signal_only)
+                },
+                data.frame = {
+                        out <- sig
+                }
+        )
 
-				 },
-				 matrix = {
-				 	# Drop sample names
-				 	out <- as.matrix(sig[, -1])
-
-				 },
-				 data.frame = {
-				 	# Keep samples
-				 	out <- as.data.frame(sig)
-				 })
-
-	# Return
-	out
+        out
 
 }
