@@ -178,11 +178,8 @@ read_annotation <- function(
         number <- number[selection]
 
 	time_strings <- if (!is.na(frequency) && frequency > 0) {
-		seconds <- samples / frequency
-		hours <- floor(seconds / 3600)
-		minutes <- floor((seconds - hours * 3600) / 60)
-		secs <- seconds - hours * 3600 - minutes * 60
-		sprintf("%02d:%02d:%06.3f", hours, minutes, secs)
+		# Use centralized time conversion function for consistency
+		.samples_to_time_string(samples, frequency)
 	} else {
 		rep("", length(samples))
 	}

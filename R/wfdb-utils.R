@@ -142,3 +142,73 @@ parse_date_and_time <- function(x) {
 	as.POSIXct(strptime(paste(tm[1], dt[1]), "%H:%M:%OS %d/%m/%Y"))
 
 }
+
+#' Convert sample numbers to WFDB-compatible time strings
+#'
+#' @description
+#' Converts sample indices to time strings in the WFDB standard format
+#' of `HH:MM:SS.SSS`. This format is required for compatibility with
+#' WFDB annotation files and ensures consistent time representation
+#' throughout the package.
+#'
+#' @param samples Integer or numeric vector of sample numbers. Can be
+#'   fractional to represent sub-sample precision.
+#' @param frequency Numeric sampling frequency in Hz. Must be positive.
+#'
+#' @returns Character vector of time strings in `HH:MM:SS.SSS` format,
+#'   where hours, minutes, and seconds are zero-padded to 2 digits, and
+#'   milliseconds are zero-padded to 3 decimal places.
+#'
+#' @details
+#' The conversion follows WFDB conventions:
+#' - Time starts at `00:00:00.000`
+#' - Hours can exceed 24 (e.g., `25:30:15.000` for long recordings)
+#' - Precision is maintained to 3 decimal places (milliseconds)
+#'
+#' This function is used internally by both [annotation_table()] and
+#' [read_annotation()] to ensure consistent time formatting across the package.
+#'
+#' @examples
+#' \dontrun{
+#' # At 250 Hz sampling rate
+#' .samples_to_time_string(c(0, 250, 500), 250)
+#' # Returns: "00:00:00.000" "00:00:01.000" "00:00:02.000"
+#'
+#' # Fractional seconds
+#' .samples_to_time_string(625, 250)
+#' # Returns: "00:00:02.500"
+#'
+#' # Hours beyond 24
+#' .samples_to_time_string(25 * 3600 * 250, 250)
+#' # Returns: "25:00:00.000"
+#' }
+#'
+#' @keywords internal
+#' @noRd
+.samples_to_time_string <- function(samples, frequency) {
+
+	# Input validation
+	if (length(frequency) == 0 || is.na(frequency) || frequency <= 0) {
+		stop(
+			"frequency must be a positive number, got: ",
+			if (length(frequency) == 0) "empty vector" else frequency
+		)
+	}
+
+	if (length(samples) == 0) {
+		return(character(0))
+	}
+
+	# Convert samples to total seconds (can be fractional)
+	total_seconds <- samples / frequency
+
+	# Extract time components
+	hours <- floor(total_seconds / 3600)
+	minutes <- floor((total_seconds - hours * 3600) / 60)
+	secs <- total_seconds - hours * 3600 - minutes * 60
+
+	# Format as HH:MM:SS.SSS with proper zero-padding
+	# %02d = zero-pad integers to 2 digits
+	# %06.3f = zero-pad floats to 6 characters total (XX.XXX) with 3 decimal places
+	sprintf("%02d:%02d:%06.3f", hours, minutes, secs)
+}

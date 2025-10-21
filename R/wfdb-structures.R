@@ -228,24 +228,9 @@ annotation_table <- function(annotator = character(),
 		if (length(frequency) == 0) {
 			stop("Frequency must be given to impute time from sample")
 		} else {
-			# These periods are the time points in seconds
-			timePoints <- sample / frequency
-
-			# Hours
-			hours <- floor(timePoints / 3600)
-
-			# Minutes
-			minutes <- floor((timePoints - (hours * 3600)) / 60)
-
-			# Seconds
-			seconds <- timePoints - (hours * 3600) - (minutes * 60)
-
-			# Convert to characters
-			hours <- ifelse(hours < 10, paste0("0", hours), hours)
-			minutes <- ifelse(minutes < 10, paste0("0", minutes), minutes)
-			seconds <- ifelse(seconds < 10, paste0("0", seconds), seconds)
-
-			time <- paste0(hours, ":", minutes, ":", seconds)
+			# Use centralized time conversion function for consistency
+			# This ensures format matches read_annotation() output (HH:MM:SS.SSS)
+			time <- .samples_to_time_string(sample, frequency)
 		}
 	}
 
