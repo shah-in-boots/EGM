@@ -166,11 +166,16 @@ write_wfdb <- function(
         }
 
         if (inherits(data, "egm")) {
-		signal <- data$signal
-		header <- data$header
-	} else {
-		signal <- signal_table(data)
-	}
+                if (!is.null(header)) {
+                        message(
+                                "Ignoring the supplied `header` because `data` is an `egm` object; its embedded header already contains the metadata required for WFDB exports."
+                        )
+                }
+                signal <- data$signal
+                header <- data$header
+        } else {
+                signal <- signal_table(data)
+        }
 
 	if (is.null(header)) {
 		stop(
@@ -246,13 +251,19 @@ write_wfdb <- function(
 		"CH",
 		seq_along(label_output)
 	)
-	signal_matrix <- as.matrix(as.data.frame(signal_dt[,
-		channel_cols,
-		with = FALSE
-	]))
-	storage.mode(signal_matrix) <- "double"
+        channel_data <- signal_dt[,
+                channel_cols,
+                with = FALSE
+        ]
+        channel_list <- as.list(channel_data)
+        signal_matrix <- matrix(
+                data = unlist(channel_list, use.names = FALSE),
+                nrow = nrow(channel_data),
+                ncol = length(channel_cols),
+                dimnames = list(NULL, channel_cols)
+        )
 
-	file_names <- as.character(header$file_name)
+        file_names <- as.character(header$file_name)
 	file_names[is.na(file_names)] <- ""
 	default_file_name <- paste0(record_name, ".dat")
 	legacy_name <- paste0(original_record_name, ".dat")
