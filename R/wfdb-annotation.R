@@ -68,248 +68,248 @@
 #' @name wfdb_annotations
 #' @export
 read_annotation <- function(
-	record,
-	annotator,
-	record_dir = ".",
-	begin = 0,
-	end = NA_real_,
-	header = NULL
+  record,
+  annotator,
+  record_dir = ".",
+  begin = 0,
+  end = NA_real_,
+  header = NULL
 ) {
-	stopifnot(
-		"`record` must be a single character string" = is.character(
-			record
-		),
-		"`annotator` must be a single character string" = is.character(
-			annotator
-		)
-	)
+  stopifnot(
+    "`record` must be a single character string" = is.character(
+      record
+    ),
+    "`annotator` must be a single character string" = is.character(
+      annotator
+    )
+  )
 
-	record <- record[[1]]
-	annotator <- annotator[[1]]
-	if (!nzchar(record)) {
-		stop("`record` must be provided")
-	}
-	if (!nzchar(annotator)) {
-		stop("`annotator` must be provided")
-	}
+  record <- record[[1]]
+  annotator <- annotator[[1]]
+  if (!nzchar(record)) {
+    stop("`record` must be provided")
+  }
+  if (!nzchar(annotator)) {
+    stop("`annotator` must be provided")
+  }
 
-        if (is.null(header)) {
-                header <- read_header(
-                        record = record,
-                        record_dir = record_dir
-                )
-        } else if (!inherits(header, "header_table")) {
-                stop("`header` must be a `header_table` object")
-        }
+  if (is.null(header)) {
+    header <- read_header(
+      record = record,
+      record_dir = record_dir
+    )
+  } else if (!inherits(header, "header_table")) {
+    stop("`header` must be a `header_table` object")
+  }
 
-        begin <- as.numeric(begin)[1]
-        end <- as.numeric(end)[1]
+  begin <- as.numeric(begin)[1]
+  end <- as.numeric(end)[1]
 
-        annotation_path <- fs::path(record_dir, record, ext = annotator)
-        if (!fs::file_exists(annotation_path)) {
-                stop(
-			"Annotation file not found for ",
-			record,
-			" (",
-			annotator,
-			")"
-		)
-	}
+  annotation_path <- fs::path(record_dir, record, ext = annotator)
+  if (!fs::file_exists(annotation_path)) {
+    stop(
+      "Annotation file not found for ",
+      record,
+      " (",
+      annotator,
+      ")"
+    )
+  }
 
-	record_line <- attr(header, "record_line")
-	frequency <- record_line$frequency
-	if (length(frequency) == 0) {
-		frequency <- NA_real_
-	}
-	frequency <- as.numeric(frequency)
+  record_line <- attr(header, "record_line")
+  frequency <- record_line$frequency
+  if (length(frequency) == 0) {
+    frequency <- NA_real_
+  }
+  frequency <- as.numeric(frequency)
 
-        # The native reader returns raw vectors extracted from the binary WFDB
-        # annotation file. These are converted into the strongly-typed columns of
-        # an `annotation_table` below.
-        ann_list <- read_annotation_native_cpp(annotation_path)
-        samples <- as.integer(ann_list$sample)
-        types <- as.character(ann_list$type)
-        subtype <- as.integer(ann_list$subtype)
-        channel <- as.integer(ann_list$channel)
-        number <- as.integer(ann_list$number)
+  # The native reader returns raw vectors extracted from the binary WFDB
+  # annotation file. These are converted into the strongly-typed columns of
+  # an `annotation_table` below.
+  ann_list <- read_annotation_native_cpp(annotation_path)
+  samples <- as.integer(ann_list$sample)
+  types <- as.character(ann_list$type)
+  subtype <- as.integer(ann_list$subtype)
+  channel <- as.integer(ann_list$channel)
+  number <- as.integer(ann_list$number)
 
-	# If annotation is empty, message user
-	# Return annotation table with name of annotator 
-	if (length(samples) == 0) {
-		message(
-			"Annotation file for ",
-			record,
-			" (",
-			annotator,
-			") contains no data"
-		)
-		return(annotation_table(annotator = annotator))
-	}
+  # If annotation is empty, message user
+  # Return annotation table with name of annotator
+  if (length(samples) == 0) {
+    message(
+      "Annotation file for ",
+      record,
+      " (",
+      annotator,
+      ") contains no data"
+    )
+    return(annotation_table(annotator = annotator))
+  }
 
-        if (!is.na(begin)) {
-                # Time bounds are converted into sample numbers so we can filter
-                # the annotations before constructing the table returned to R.
-                if (is.na(frequency) || frequency <= 0) {
-                        stop(
-                                "`begin` requires a positive sampling frequency in the header"
-                        )
-                }
-                begin_sample <- as.integer(floor(begin * frequency))
-        } else {
-                begin_sample <- min(samples)
-        }
+  if (!is.na(begin)) {
+    # Time bounds are converted into sample numbers so we can filter
+    # the annotations before constructing the table returned to R.
+    if (is.na(frequency) || frequency <= 0) {
+      stop(
+        "`begin` requires a positive sampling frequency in the header"
+      )
+    }
+    begin_sample <- as.integer(floor(begin * frequency))
+  } else {
+    begin_sample <- min(samples)
+  }
 
-        if (!is.na(end)) {
-                if (is.na(frequency) || frequency <= 0) {
-                        stop(
-                                "`end` requires a positive sampling frequency in the header"
-                        )
-                }
-		end_sample <- as.integer(ceiling(end * frequency))
-	} else {
-		end_sample <- max(samples)
-	}
+  if (!is.na(end)) {
+    if (is.na(frequency) || frequency <= 0) {
+      stop(
+        "`end` requires a positive sampling frequency in the header"
+      )
+    }
+    end_sample <- as.integer(ceiling(end * frequency))
+  } else {
+    end_sample <- max(samples)
+  }
 
-        selection <- samples >= begin_sample & samples <= end_sample
-        samples <- samples[selection]
-        types <- types[selection]
-        subtype <- subtype[selection]
-        channel <- channel[selection]
-        number <- number[selection]
+  selection <- samples >= begin_sample & samples <= end_sample
+  samples <- samples[selection]
+  types <- types[selection]
+  subtype <- subtype[selection]
+  channel <- channel[selection]
+  number <- number[selection]
 
-	time_strings <- if (!is.na(frequency) && frequency > 0) {
-		seconds <- samples / frequency
-		hours <- floor(seconds / 3600)
-		minutes <- floor((seconds - hours * 3600) / 60)
-		secs <- seconds - hours * 3600 - minutes * 60
-		sprintf("%02d:%02d:%06.3f", hours, minutes, secs)
-	} else {
-		rep("", length(samples))
-	}
+  time_strings <- if (!is.na(frequency) && frequency > 0) {
+    seconds <- samples / frequency
+    hours <- floor(seconds / 3600)
+    minutes <- floor((seconds - hours * 3600) / 60)
+    secs <- seconds - hours * 3600 - minutes * 60
+    sprintf("%02d:%02d:%06.3f", hours, minutes, secs)
+  } else {
+    rep("", length(samples))
+  }
 
-	annotation_table(
-		annotator = annotator,
-		time = time_strings,
-		sample = samples,
-		type = types,
-		subtype = subtype,
-		channel = channel,
-		number = number
-	)
+  annotation_table(
+    annotator = annotator,
+    time = time_strings,
+    sample = samples,
+    type = types,
+    subtype = subtype,
+    channel = channel,
+    number = number
+  )
 }
 
 #' @rdname wfdb_annotations
 #' @export
 write_annotation <- function(
-	data, 
-	annotator, 
-	record, 
-	record_dir = "."
+  data,
+  annotator,
+  record,
+  record_dir = "."
 ) {
-	stopifnot(
-		"`record` must be a single character string" = is.character(
-			record
-		),
-		"`annotator` must be a single character string" = is.character(
-			annotator
-		)
-	)
+  stopifnot(
+    "`record` must be a single character string" = is.character(
+      record
+    ),
+    "`annotator` must be a single character string" = is.character(
+      annotator
+    )
+  )
 
-	record <- record[[1]]
-	annotator <- annotator[[1]]
-	if (!nzchar(record)) {
-		stop("`record` must be provided")
-	}
-	if (!nzchar(annotator)) {
-		stop("`annotator` must be provided")
-	}
+  record <- record[[1]]
+  annotator <- annotator[[1]]
+  if (!nzchar(record)) {
+    stop("`record` must be provided")
+  }
+  if (!nzchar(annotator)) {
+    stop("`annotator` must be provided")
+  }
 
-        if (!fs::dir_exists(record_dir)) {
-                # Match the behaviour of write_wfdb() by creating the directory
-                # before invoking the native writer.
-                fs::dir_create(record_dir, recurse = TRUE)
-        }
+  if (!fs::dir_exists(record_dir)) {
+    # Match the behaviour of write_wfdb() by creating the directory
+    # before invoking the native writer.
+    fs::dir_create(record_dir, recurse = TRUE)
+  }
 
-        if (!inherits(data, "annotation_table")) {
-                if (!is.data.frame(data)) {
-			stop(
-				"`data` must be an `annotation_table` or data frame"
-			)
-		}
-		required_cols <- c(
-			"time",
-			"sample",
-			"type",
-			"subtype",
-			"channel",
-			"number"
-		)
-		missing_cols <- setdiff(required_cols, names(data))
-		if (length(missing_cols) > 0) {
-			stop(
-				"`data` is missing required columns: ",
-				paste(missing_cols, collapse = ", ")
-			)
-		}
-                # Normalise arbitrary data frames into the strongly-typed
-                # annotation_table class expected elsewhere in the package.
-                data <- annotation_table(
-                        annotator = annotator,
-                        time = as.character(data$time),
-                        sample = as.integer(data$sample),
-                        type = as.character(data$type),
-                        subtype = as.character(data$subtype),
-			channel = as.integer(data$channel),
-			number = as.integer(data$number)
-		)
-	}
+  if (!inherits(data, "annotation_table")) {
+    if (!is.data.frame(data)) {
+      stop(
+        "`data` must be an `annotation_table` or data frame"
+      )
+    }
+    required_cols <- c(
+      "time",
+      "sample",
+      "type",
+      "subtype",
+      "channel",
+      "number"
+    )
+    missing_cols <- setdiff(required_cols, names(data))
+    if (length(missing_cols) > 0) {
+      stop(
+        "`data` is missing required columns: ",
+        paste(missing_cols, collapse = ", ")
+      )
+    }
+    # Normalise arbitrary data frames into the strongly-typed
+    # annotation_table class expected elsewhere in the package.
+    data <- annotation_table(
+      annotator = annotator,
+      time = as.character(data$time),
+      sample = as.integer(data$sample),
+      type = as.character(data$type),
+      subtype = as.character(data$subtype),
+      channel = as.integer(data$channel),
+      number = as.integer(data$number)
+    )
+  }
 
-        ann_dt <- data.table::as.data.table(data)
-        if (!"sample" %in% names(ann_dt)) {
-                stop("`data` must contain a `sample` column")
-        }
-        # Keep annotations in chronological order; ties fall back to the row
-        # position to preserve stable ordering for duplicate sample numbers.
-        ann_dt <- ann_dt[order(sample, seq_len(.N))]
+  ann_dt <- data.table::as.data.table(data)
+  if (!"sample" %in% names(ann_dt)) {
+    stop("`data` must contain a `sample` column")
+  }
+  # Keep annotations in chronological order; ties fall back to the row
+  # position to preserve stable ordering for duplicate sample numbers.
+  ann_dt <- ann_dt[order(sample, seq_len(.N))]
 
-        samples <- as.integer(ann_dt$sample)
-        if (anyNA(samples)) {
-                stop("Annotation `sample` values must not contain missing data")
-        }
-	if (length(samples) > 0 && any(diff(samples) < 0)) {
-		stop("Annotation `sample` values must be non-decreasing")
-	}
+  samples <- as.integer(ann_dt$sample)
+  if (anyNA(samples)) {
+    stop("Annotation `sample` values must not contain missing data")
+  }
+  if (length(samples) > 0 && any(diff(samples) < 0)) {
+    stop("Annotation `sample` values must be non-decreasing")
+  }
 
-	types <- as.character(ann_dt$type)
-	types[is.na(types)] <- ""
-	types <- trimws(types)
+  types <- as.character(ann_dt$type)
+  types[is.na(types)] <- ""
+  types <- trimws(types)
 
-	parse_optional_int <- function(x) {
-		if (is.null(x)) {
-			return(integer(length(samples)))
-		}
-		vals <- suppressWarnings(as.integer(as.character(x)))
-		vals[is.na(vals)] <- 0L
-		vals
-	}
+  parse_optional_int <- function(x) {
+    if (is.null(x)) {
+      return(integer(length(samples)))
+    }
+    vals <- suppressWarnings(as.integer(as.character(x)))
+    vals[is.na(vals)] <- 0L
+    vals
+  }
 
-	subtype_vals <- parse_optional_int(ann_dt$subtype)
-	channel_vals <- parse_optional_int(ann_dt$channel)
-	number_vals <- parse_optional_int(ann_dt$number)
+  subtype_vals <- parse_optional_int(ann_dt$subtype)
+  channel_vals <- parse_optional_int(ann_dt$channel)
+  number_vals <- parse_optional_int(ann_dt$number)
 
-        annotation_path <- fs::path(record_dir, record, ext = annotator)
-        # Offload the binary encoding to the native implementation which shares
-        # logic with the reader, ensuring the two functions round-trip cleanly.
-        write_annotation_native_cpp(
-                annotation_path = annotation_path,
-                samples = samples,
-                types = types,
-                subtypes = subtype_vals,
-		channels = channel_vals,
-		numbers = number_vals
-	)
+  annotation_path <- fs::path(record_dir, record, ext = annotator)
+  # Offload the binary encoding to the native implementation which shares
+  # logic with the reader, ensuring the two functions round-trip cleanly.
+  write_annotation_native_cpp(
+    annotation_path = annotation_path,
+    samples = samples,
+    types = types,
+    subtypes = subtype_vals,
+    channels = channel_vals,
+    numbers = number_vals
+  )
 
-	invisible(annotation_path)
+  invisible(annotation_path)
 }
 
 # Annotator Systems -----------------------------------------------------------
@@ -323,94 +323,229 @@ NULL
 # Annotation reference --------------------------------------------------------
 
 .wfdb_annotation_label_table <- local({
+  label_store <- c(
+    0L,
+    1L,
+    2L,
+    3L,
+    4L,
+    5L,
+    6L,
+    7L,
+    8L,
+    9L,
+    10L,
+    11L,
+    12L,
+    13L,
+    14L,
+    16L,
+    18L,
+    19L,
+    20L,
+    21L,
+    22L,
+    23L,
+    24L,
+    25L,
+    26L,
+    27L,
+    28L,
+    29L,
+    30L,
+    31L,
+    32L,
+    33L,
+    34L,
+    35L,
+    36L,
+    37L,
+    38L,
+    39L,
+    40L,
+    41L
+  )
 
-        label_store <- c(
-                0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L,
-                10L, 11L, 12L, 13L, 14L, 16L, 18L, 19L, 20L,
-                21L, 22L, 23L, 24L, 25L, 26L, 27L, 28L, 29L,
-                30L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L,
-                39L, 40L, 41L
-        )
+  symbol <- c(
+    " ",
+    "N",
+    "L",
+    "R",
+    "a",
+    "V",
+    "F",
+    "J",
+    "A",
+    "S",
+    "E",
+    "j",
+    "/",
+    "Q",
+    "~",
+    "|",
+    "s",
+    "T",
+    "*",
+    "D",
+    "\"",
+    "=",
+    "p",
+    "B",
+    "^",
+    "t",
+    "+",
+    "u",
+    "?",
+    "!",
+    "[",
+    "]",
+    "e",
+    "n",
+    "@",
+    "x",
+    "f",
+    "(",
+    ")",
+    "r"
+  )
 
-        symbol <- c(
-                " ", "N", "L", "R", "a", "V", "F", "J", "A", "S",
-                "E", "j", "/", "Q", "~", "|", "s", "T", "*",
-                "D", "\"", "=", "p", "B", "^", "t", "+", "u",
-                "?", "!", "[", "]", "e", "n", "@", "x", "f",
-                "(", ")", "r"
-        )
+  mnemonic <- c(
+    "NOTANN",
+    "NORMAL",
+    "LBBB",
+    "RBBB",
+    "ABERR",
+    "PVC",
+    "FUSION",
+    "NPC",
+    "APC",
+    "SVPB",
+    "VESC",
+    "NESC",
+    "PACE",
+    "UNKNOWN",
+    "NOISE",
+    "ARFCT",
+    "STCH",
+    "TCH",
+    "SYSTOLE",
+    "DIASTOLE",
+    "NOTE",
+    "MEASURE",
+    "PWAVE",
+    "BBB",
+    "PACESP",
+    "TWAVE",
+    "RHYTHM",
+    "UWAVE",
+    "LEARN",
+    "FLWAV",
+    "VFON",
+    "VFOFF",
+    "AESC",
+    "SVESC",
+    "LINK",
+    "NAPC",
+    "PFUS",
+    "WFON",
+    "WFOFF",
+    "RONT"
+  )
 
-        mnemonic <- c(
-                "NOTANN", "NORMAL", "LBBB", "RBBB", "ABERR",
-                "PVC", "FUSION", "NPC", "APC", "SVPB",
-                "VESC", "NESC", "PACE", "UNKNOWN", "NOISE",
-                "ARFCT", "STCH", "TCH", "SYSTOLE",
-                "DIASTOLE", "NOTE", "MEASURE", "PWAVE", "BBB",
-                "PACESP", "TWAVE", "RHYTHM", "UWAVE", "LEARN",
-                "FLWAV", "VFON", "VFOFF", "AESC", "SVESC",
-                "LINK", "NAPC", "PFUS", "WFON", "WFOFF",
-                "RONT"
-        )
+  description <- c(
+    "Not an actual annotation",
+    "Normal beat",
+    "Left bundle branch block beat",
+    "Right bundle branch block beat",
+    "Aberrated atrial premature beat",
+    "Premature ventricular contraction",
+    "Fusion of ventricular and normal beat",
+    "Nodal (junctional) premature beat",
+    "Atrial premature contraction",
+    "Premature or ectopic supraventricular beat",
+    "Ventricular escape beat",
+    "Nodal (junctional) escape beat",
+    "Paced beat",
+    "Unclassifiable beat",
+    "Signal quality change",
+    "Isolated QRS-like artifact",
+    "ST change",
+    "T-wave change",
+    "Systole",
+    "Diastole",
+    "Comment annotation",
+    "Measurement annotation",
+    "P-wave peak",
+    "Left or right bundle branch block",
+    "Non-conducted pacer spike",
+    "T-wave peak",
+    "Rhythm change",
+    "U-wave peak",
+    "Learning",
+    "Ventricular flutter wave",
+    "Start of ventricular flutter/fibrillation",
+    "End of ventricular flutter/fibrillation",
+    "Atrial escape beat",
+    "Supraventricular escape beat",
+    "Link to external data (aux_note contains URL)",
+    "Non-conducted P-wave (blocked APB)",
+    "Fusion of paced and normal beat",
+    "Waveform onset",
+    "Waveform end",
+    "R-on-T premature ventricular contraction"
+  )
 
-        description <- c(
-                "Not an actual annotation",
-                "Normal beat",
-                "Left bundle branch block beat",
-                "Right bundle branch block beat",
-                "Aberrated atrial premature beat",
-                "Premature ventricular contraction",
-                "Fusion of ventricular and normal beat",
-                "Nodal (junctional) premature beat",
-                "Atrial premature contraction",
-                "Premature or ectopic supraventricular beat",
-                "Ventricular escape beat",
-                "Nodal (junctional) escape beat",
-                "Paced beat",
-                "Unclassifiable beat",
-                "Signal quality change",
-                "Isolated QRS-like artifact",
-                "ST change",
-                "T-wave change",
-                "Systole",
-                "Diastole",
-                "Comment annotation",
-                "Measurement annotation",
-                "P-wave peak",
-                "Left or right bundle branch block",
-                "Non-conducted pacer spike",
-                "T-wave peak",
-                "Rhythm change",
-                "U-wave peak",
-                "Learning",
-                "Ventricular flutter wave",
-                "Start of ventricular flutter/fibrillation",
-                "End of ventricular flutter/fibrillation",
-                "Atrial escape beat",
-                "Supraventricular escape beat",
-                "Link to external data (aux_note contains URL)",
-                "Non-conducted P-wave (blocked APB)",
-                "Fusion of paced and normal beat",
-                "Waveform onset",
-                "Waveform end",
-                "R-on-T premature ventricular contraction"
-        )
+  is_qrs <- c(
+    FALSE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    TRUE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    TRUE,
+    TRUE,
+    FALSE,
+    FALSE,
+    TRUE,
+    TRUE,
+    FALSE,
+    FALSE,
+    TRUE,
+    FALSE,
+    FALSE,
+    TRUE
+  )
 
-        is_qrs <- c(
-                FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE,
-                TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE,
-                FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,
-                FALSE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE,
-                FALSE, TRUE, FALSE, FALSE, TRUE
-        )
-
-        data.frame(
-                label_store = label_store,
-                symbol = symbol,
-                mnemonic = mnemonic,
-                description = description,
-                is_qrs = is_qrs,
-                stringsAsFactors = FALSE
-        )
+  data.frame(
+    label_store = label_store,
+    symbol = symbol,
+    mnemonic = mnemonic,
+    description = description,
+    is_qrs = is_qrs,
+    stringsAsFactors = FALSE
+  )
 })
 
 #' Standard WFDB annotation nomenclature
@@ -466,60 +601,58 @@ NULL
 #'
 #' @export
 wfdb_annotation_labels <- function(symbol = NULL, label_store = NULL) {
+  labels <- .wfdb_annotation_label_table
 
-        labels <- .wfdb_annotation_label_table
+  if (!is.null(symbol)) {
+    symbol <- as.character(symbol)
+    labels <- labels[labels$symbol %in% symbol, , drop = FALSE]
+  }
 
-        if (!is.null(symbol)) {
-                symbol <- as.character(symbol)
-                labels <- labels[labels$symbol %in% symbol, , drop = FALSE]
-        }
+  if (!is.null(label_store)) {
+    label_store <- as.integer(label_store)
+    labels <- labels[labels$label_store %in% label_store, , drop = FALSE]
+  }
 
-        if (!is.null(label_store)) {
-                label_store <- as.integer(label_store)
-                labels <- labels[labels$label_store %in% label_store, , drop = FALSE]
-        }
-
-        rownames(labels) <- NULL
-        labels
+  rownames(labels) <- NULL
+  labels
 }
 
 #' @rdname wfdb_annotation_labels
 #' @export
 wfdb_annotation_decode <- function(annotation, column = "type") {
+  if (missing(annotation)) {
+    stop("`annotation` must be supplied")
+  }
 
-        if (missing(annotation)) {
-                stop("`annotation` must be supplied")
-        }
+  if (!is.data.frame(annotation)) {
+    stop("`annotation` must be a data frame or annotation_table")
+  }
 
-        if (!is.data.frame(annotation)) {
-                stop("`annotation` must be a data frame or annotation_table")
-        }
+  if (!column %in% names(annotation)) {
+    stop("Column `", column, "` was not found in `annotation`")
+  }
 
-        if (!column %in% names(annotation)) {
-                stop("Column `", column, "` was not found in `annotation`")
-        }
+  labels <- .wfdb_annotation_label_table
 
-        labels <- .wfdb_annotation_label_table
+  annotation$`..row_id..` <- seq_len(nrow(annotation))
 
-        annotation$`..row_id..` <- seq_len(nrow(annotation))
+  key_column <- if (is.numeric(annotation[[column]])) {
+    "label_store"
+  } else {
+    "symbol"
+  }
 
-        key_column <- if (is.numeric(annotation[[column]])) {
-                "label_store"
-        } else {
-                "symbol"
-        }
+  merged <- merge(
+    annotation,
+    labels,
+    by.x = column,
+    by.y = key_column,
+    all.x = TRUE,
+    sort = FALSE
+  )
 
-        merged <- merge(
-                annotation,
-                labels,
-                by.x = column,
-                by.y = key_column,
-                all.x = TRUE,
-                sort = FALSE
-        )
+  merged <- merged[order(merged$`..row_id..`), , drop = FALSE]
+  merged$`..row_id..` <- NULL
 
-        merged <- merged[order(merged$`..row_id..`), , drop = FALSE]
-        merged$`..row_id..` <- NULL
-
-        merged
+  merged
 }

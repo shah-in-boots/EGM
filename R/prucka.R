@@ -65,167 +65,169 @@ NULL
 #' @rdname prucka
 #' @export
 read_prucka <- function(signal_file, header_file = NULL, n = Inf) {
+  # If header_file not provided, construct from signal_file
+  if (is.null(header_file)) {
+    header_file <- sub("\\.txt$", ".inf", signal_file, ignore.case = TRUE)
+    if (!file.exists(header_file)) {
+      stop("Cannot find corresponding .inf file: ", header_file)
+    }
+  }
 
-	# If header_file not provided, construct from signal_file
-	if (is.null(header_file)) {
-		header_file <- sub("\\.txt$", ".inf", signal_file, ignore.case = TRUE)
-		if (!file.exists(header_file)) {
-			stop("Cannot find corresponding .inf file: ", header_file)
-		}
-	}
+  # Read signal and header
+  sig <- read_prucka_signal(signal_file, n = n)
+  hea <- read_prucka_header(header_file)
 
-	# Read signal and header
-	sig <- read_prucka_signal(signal_file, n = n)
-	hea <- read_prucka_header(header_file)
+  # Ensure that the number of channels labeled matches number in signal file
+  if ((ncol(sig) - 1) != attributes(hea)$record_line$number_of_channels) {
+    warning(
+      "Number of channels in signal file (",
+      ncol(sig) - 1,
+      ") does not match number in header (",
+      attributes(hea)$record_line$number_of_channels,
+      ")"
+    )
+  }
 
-	# Ensure that the number of channels labeled matches number in signal file
-	if ((ncol(sig) - 1) != attributes(hea)$record_line$number_of_channels) {
-		warning(
-			"Number of channels in signal file (",
-			ncol(sig) - 1,
-			") does not match number in header (",
-			attributes(hea)$record_line$number_of_channels,
-			")"
-		)
-	}
+  # Assign channel names from header
+  names(sig) <- c('sample', as.character(hea$label))
 
-	# Assign channel names from header
-	names(sig) <- c('sample', as.character(hea$label))
-
-	# Return as egm object
-	egm(signal = sig, header = hea)
+  # Return as egm object
+  egm(signal = sig, header = hea)
 }
 
 
 #' @rdname prucka
 #' @export
 read_prucka_header <- function(header_file) {
+  if (!file.exists(header_file)) {
+    stop("File not found: ", header_file)
+  }
 
-	if (!file.exists(header_file)) {
-		stop("File not found: ", header_file)
-	}
+  # Read all lines
+  lines <- readLines(header_file)
 
-	# Read all lines
-	lines <- readLines(header_file)
+  # Extract record name from filename
+  record_name <- fs::path_ext_remove(fs::path_file(header_file))
+  file_name <- paste0(record_name, '.dat')
 
-	# Extract record name from filename
-	record_name <- fs::path_ext_remove(fs::path_file(header_file))
-	file_name <- paste0(record_name, '.dat')
+  # Parse key-value pairs (lines with "=")
+  # Creates a list of metadata (split at the `=` sign)
+  metadata <- lines[grepl("=", lines)]
+  meta_list <- lapply(metadata, function(x) {
+    parts <- strsplit(trimws(x), "\\s*=\\s*")[[1]]
+    if (length(parts) == 2) {
+      list(key = trimws(parts[1]), value = trimws(parts[2]))
+    } else {
+      NULL
+    }
+  })
+  # Trim away null values
+  meta_list <- Filter(Negate(is.null), meta_list)
 
-	# Parse key-value pairs (lines with "=")
-	# Creates a list of metadata (split at the `=` sign)
-	metadata <- lines[grepl("=", lines)]
-	meta_list <- lapply(metadata, function(x) {
-		parts <- strsplit(trimws(x), "\\s*=\\s*")[[1]]
-		if (length(parts) == 2) {
-			list(key = trimws(parts[1]), value = trimws(parts[2]))
-		} else {
-			NULL
-		}
-	})
-	# Trim away null values
-	meta_list <- Filter(Negate(is.null), meta_list)
+  # Extract key metadata
+  get_meta <- function(key) {
+    idx <- which(sapply(meta_list, function(x) x$key == key))
+    if (length(idx) > 0) meta_list[[idx[1]]]$value else NA
+  }
 
-	# Extract key metadata
-	get_meta <- function(key) {
-		idx <- which(sapply(meta_list, function(x) x$key == key))
-		if (length(idx) > 0) meta_list[[idx[1]]]$value else NA
-	}
+  number_of_channels <- as.integer(get_meta("Number of Channel"))
+  samples <- as.integer(get_meta("Points for Each Channel"))
 
-	number_of_channels <- as.integer(get_meta("Number of Channel"))
-	samples <- as.integer(get_meta("Points for Each Channel"))
+  # Parse sampling rate (e.g., "977 points/second")
+  rate_str <- get_meta("Data Sampling Rate")
+  frequency <- as.numeric(sub("\\s*points.*", "", rate_str))
 
-	# Parse sampling rate (e.g., "977 points/second")
-	rate_str <- get_meta("Data Sampling Rate")
-	frequency <- as.numeric(sub("\\s*points.*", "", rate_str))
+  # Parse date and time
+  start_str <- get_meta("Start Time")
+  start_time <- tryCatch(
+    as.POSIXct(start_str, format = "%m/%d/%Y %I:%M:%S %p"),
+    error = function(e) as.POSIXct(NA)
+  )
 
-	# Parse date and time
-	start_str <- get_meta("Start Time")
-	start_time <- tryCatch(
-		as.POSIXct(start_str, format = "%m/%d/%Y %I:%M:%S %p"),
-		error = function(e) as.POSIXct(NA)
-	)
+  # ADC saturation (Prucka typically uses 16-bit)
+  # This is an estimate, would have to clarify with CardioLab
+  ADC_saturation <- 32768
 
-	# ADC saturation (Prucka typically uses 16-bit)
-	# This is an estimate, would have to clarify with CardioLab
-	ADC_saturation <- 32768
+  # Find channel information section
+  ch_start <- grep("^Channel Number", lines)
+  if (length(ch_start) == 0) {
+    stop("Cannot find channel information in .inf file")
+  }
 
-	# Find channel information section
-	ch_start <- grep("^Channel Number", lines)
-	if (length(ch_start) == 0) {
-		stop("Cannot find channel information in .inf file")
-	}
+  # Parse channel data (starts after "Channel Number  Channel Label" line)
+  ch_lines <- lines[(ch_start + 1):length(lines)]
+  ch_lines <- ch_lines[nchar(trimws(ch_lines)) > 0] # Remove empty lines
 
-	# Parse channel data (starts after "Channel Number  Channel Label" line)
-	ch_lines <- lines[(ch_start + 1):length(lines)]
-	ch_lines <- ch_lines[nchar(trimws(ch_lines)) > 0]  # Remove empty lines
+  # Parse channel number and label
+  # Creates a paired value list
+  ch_data <- lapply(ch_lines, function(line) {
+    parts <- strsplit(trimws(line), "\\s+")[[1]]
+    if (length(parts) >= 2) {
+      list(
+        number = as.integer(parts[1]),
+        label = paste(parts[-1], collapse = " ")
+      )
+    } else {
+      NULL
+    }
+  })
+  ch_data <- Filter(Negate(is.null), ch_data)
 
-	# Parse channel number and label
-	# Creates a paired value list
-	ch_data <- lapply(ch_lines, function(line) {
-		parts <- strsplit(trimws(line), "\\s+")[[1]]
-		if (length(parts) >= 2) {
-			list(
-				number = as.integer(parts[1]),
-				label = paste(parts[-1], collapse = " ")
-			)
-		} else {
-			NULL
-		}
-	})
-	ch_data <- Filter(Negate(is.null), ch_data)
+  # Create channel vectors
+  channel_numbers <- sapply(ch_data, function(x) x$number)
+  channel_labels <- sapply(ch_data, function(x) x$label)
 
-	# Create channel vectors
-	channel_numbers <- sapply(ch_data, function(x) x$number)
-	channel_labels <- sapply(ch_data, function(x) x$label)
+  # Sort by channel number to ensure correct order
+  sort_idx <- order(channel_numbers)
+  channel_labels <- channel_labels[sort_idx]
 
-	# Sort by channel number to ensure correct order
-	sort_idx <- order(channel_numbers)
-	channel_labels <- channel_labels[sort_idx]
+  # Verify we have the expected number of channels
+  if (length(channel_labels) != number_of_channels) {
+    warning(
+      "Number of channel labels (",
+      length(channel_labels),
+      ") doesn't match declared channel count (",
+      number_of_channels,
+      ")"
+    )
+  }
 
-	# Verify we have the expected number of channels
-	if (length(channel_labels) != number_of_channels) {
-		warning("Number of channel labels (", length(channel_labels),
-						") doesn't match declared channel count (", number_of_channels, ")")
-	}
-
-	# Return header_table
-	header_table(
-		record_name = record_name,
-		file_name = file_name,
-		number_of_channels = number_of_channels,
-		samples = samples,
-		start_time = start_time,
-		frequency = frequency,
-		ADC_saturation = ADC_saturation,
-		label = channel_labels,
-		additional_gain = rep(1.0, length(channel_labels)),
-		low_pass = integer(length(channel_labels)),
-		high_pass = integer(length(channel_labels)),
-		color = rep('#000000', length(channel_labels))  # Default black for Prucka
-	)
+  # Return header_table
+  header_table(
+    record_name = record_name,
+    file_name = file_name,
+    number_of_channels = number_of_channels,
+    samples = samples,
+    start_time = start_time,
+    frequency = frequency,
+    ADC_saturation = ADC_saturation,
+    label = channel_labels,
+    additional_gain = rep(1.0, length(channel_labels)),
+    low_pass = integer(length(channel_labels)),
+    high_pass = integer(length(channel_labels)),
+    color = rep('#000000', length(channel_labels)) # Default black for Prucka
+  )
 }
 
 
 #' @rdname prucka
 #' @export
 read_prucka_signal <- function(signal_file, n = Inf) {
+  if (!file.exists(signal_file)) {
+    stop("File not found: ", signal_file)
+  }
 
-	if (!file.exists(signal_file)) {
-		stop("File not found: ", signal_file)
-	}
+  # Read space-delimited signal data
+  # The data appears to have:
+  # - First column: sample number/index
+  # - Remaining columns: channel data
+  sig <- data.table::fread(
+    signal_file,
+    header = FALSE,
+    nrows = n,
+    sep = " "
+  )
 
-	# Read space-delimited signal data
-	# The data appears to have:
-	# - First column: sample number/index
-	# - Remaining columns: channel data
-	sig <- data.table::fread(
-		signal_file,
-		header = FALSE,
-		nrows = n,
-		sep = " "
-	)
-
-	# Convert to signal_table
-	signal_table(sig)
+  # Convert to signal_table
+  signal_table(sig)
 }

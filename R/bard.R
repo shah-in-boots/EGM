@@ -92,139 +92,144 @@ NULL
 #' @rdname bard
 #' @export
 read_bard <- function(file, n = Inf) {
+  # Read in the bard data and package it into a simple "EGM" table
+  # This is to ensure class safety when plotting
+  sig <- read_bard_signal(file = file, n = n)
+  hea <- read_bard_header(file = file)
 
-	# Read in the bard data and package it into a simple "EGM" table
-	# This is to ensure class safety when plotting
-	sig <- read_bard_signal(file = file, n = n)
-	hea <- read_bard_header(file = file)
+  # Ensure that the number of channels labeled matches number in signal file
+  if ((ncol(sig) - 1) != attributes(hea)$record_line$number_of_channels) {
+    warning(
+      "Number of channels in signal file (",
+      ncol(sig) - 1,
+      ") does not match number in header (",
+      attributes(hea)$record_line$number_of_channels,
+      ")"
+    )
+  }
 
-	# Ensure that the number of channels labeled matches number in signal file
-	if ((ncol(sig) - 1) != attributes(hea)$record_line$number_of_channels) {
-		warning(
-			"Number of channels in signal file (",
-			ncol(sig) - 1,
-			") does not match number in header (",
-			attributes(hea)$record_line$number_of_channels,
-			")"
-		)
-	}
+  # Assign channel names from header
+  names(sig) <- c('sample', as.character(hea$label))
 
-	# Assign channel names from header
-	names(sig) <- c('sample', as.character(hea$label))
-
-	egm(signal = sig, header = hea)
-
+  egm(signal = sig, header = hea)
 }
 
 #' @rdname bard
 #' @export
 read_bard_header <- function(file) {
+  record_name <- fs::path_ext_remove(fs::path_file(file))
+  file_name <- paste0(record_name, '.dat')
 
-	record_name <- fs::path_ext_remove(fs::path_file(file))
-	file_name <- paste0(record_name, '.dat')
+  hea <-
+    readLines(file, n = 13) |>
+    tstrsplit(split = ":\ ", fill = NA) |>
+    {
+      \(.x) {
+        data.table(description = .x[[1]], value = .x[[2]])
+      }
+    }() |>
+    {
+      \(.y) {
+        list(
+          number_of_channels = as.numeric(.y$value[
+            .y$description == "Channels exported"
+          ]),
+          samples = {
+            s <- .y$value[.y$description == "Samples per channel"]
+            if (grepl(":", s)) {
+              substr(s, start = 1, stop = nchar(s) - 8) |>
+                as.numeric()
+            } else {
+              as.numeric(s)
+            }
+          },
+          start_time = as.POSIXct(strptime(
+            .y$value[.y$description == "Start time"],
+            format = "%H:%M:%S"
+          )),
+          frequency = {
+            f <- .y$value[.y$description == "Sample Rate"]
+            if (grepl("Hz", f)) {
+              gsub("Hz", "", f) |>
+                as.numeric()
+            } else {
+              as.numeric(f)
+            }
+          }
+        )
+      }
+    }()
 
-	hea <-
-		readLines(file, n = 13) |>
-		tstrsplit(split = ":\ ", fill = NA) |>
-		{\(.x)
-			data.table(description = .x[[1]], value = .x[[2]])
-		}() |>
-		{\(.y)
-			list(
-				number_of_channels = as.numeric(.y$value[.y$description == "Channels exported"]),
-				samples = {
-					s <- .y$value[.y$description == "Samples per channel"]
-					if (grepl(":", s)) {
-						substr(s, start = 1, stop = nchar(s) - 8) |>
-							as.numeric()
-					} else {
-						as.numeric(s)
-					}
-				},
-				start_time = as.POSIXct(strptime(.y$value[.y$description == "Start time"], format = "%H:%M:%S")),
-				frequency = {
-					f <- .y$value[.y$description == "Sample Rate"]
-					if (grepl("Hz", f)) {
-						gsub("Hz", "", f) |>
-							as.numeric()
-					} else {
-						as.numeric(f)
-					}
-				}
-			)
-		}()
+  # Data is given in 16-bit integer format
+  # Convert to milivolts from ADC units
+  # [mV] = [ADC value] * [Range or gain in mV] / 32768
+  hea$ADC_saturation <- 32768
 
-	# Data is given in 16-bit integer format
-	# Convert to milivolts from ADC units
-	# [mV] = [ADC value] * [Range or gain in mV] / 32768
-	hea$ADC_saturation <- 32768
+  # Individual channel data, 8 elements each
+  # Written after header/channel info (13 + 8 * n + 2) ... Blank + [Data] Line
+  ch_list <- list()
+  for (i in 1:hea$number_of_channels) {
+    ch_list[[i]] <-
+      fread(
+        file,
+        skip = 13 + (i - 1) * 8,
+        nrows = 8,
+        sep = NULL,
+        header = FALSE
+      ) |>
+      unlist() |>
+      tstrsplit(split = ":\ ") |>
+      {
+        \(.x) {
+          data.table(description = .x[[1]], value = .x[[2]])
+        }
+      }() |>
+      {
+        \(.y) {
+          list(
+            number = as.numeric(.y[1, 2]),
+            label = as.character(.y[2, 2]),
+            gain = as.numeric(gsub("mv", "", .y[3, 2])),
+            low = as.numeric(gsub("Hz", "", .y[4, 2])),
+            high = as.numeric(gsub("Hz", "", .y[5, 2])),
+            frequency = as.numeric(gsub("Hz", "", .y[6, 2])),
+            color = paste0("#", .y[7, 2]),
+            scale = as.numeric(.y[8, 2])
+          )
+        }
+      }()
+  }
 
-	# Individual channel data, 8 elements each
-	# Written after header/channel info (13 + 8 * n + 2) ... Blank + [Data] Line
-	ch_list <- list()
-	for (i in 1:hea$number_of_channels) {
-		ch_list[[i]] <-
-			fread(
-				file,
-				skip = 13 + (i - 1) * 8,
-				nrows = 8,
-				sep = NULL,
-				header = FALSE
-			) |>
-			unlist() |>
-			tstrsplit(split = ":\ ") |>
-			{
-				\(.x)
-				data.table(description = .x[[1]], value = .x[[2]])
-			}() |>
-			{
-				\(.y)
-				list(
-					number = as.numeric(.y[1, 2]),
-					label = as.character(.y[2, 2]),
-					gain = as.numeric(gsub("mv", "", .y[3, 2])),
-					low = as.numeric(gsub("Hz", "", .y[4, 2])),
-					high = as.numeric(gsub("Hz", "", .y[5, 2])),
-					frequency = as.numeric(gsub("Hz", "", .y[6, 2])),
-					color = paste0("#", .y[7, 2]),
-					scale = as.numeric(.y[8, 2])
-				)
-			}()
-	}
+  channels <- rbindlist(ch_list)
 
-	channels <- rbindlist(ch_list)
-
-	# Return
-	header_table(
-		record_name = record_name,
-		file_name = file_name,
-		number_of_channels = hea$number_of_channels,
-		samples = hea$samples,
-		start_time = hea$start_time,
-		frequency = hea$frequency,
-		ADC_saturation = hea$ADC_saturation,
-		label = channels$label,
-		additional_gain = channels$gain,
-		low_pass = channels$low,
-		high_pass = channels$high,
-		color = channels$color
-	)
-
+  # Return
+  header_table(
+    record_name = record_name,
+    file_name = file_name,
+    number_of_channels = hea$number_of_channels,
+    samples = hea$samples,
+    start_time = hea$start_time,
+    frequency = hea$frequency,
+    ADC_saturation = hea$ADC_saturation,
+    label = channels$label,
+    additional_gain = channels$gain,
+    low_pass = channels$low,
+    high_pass = channels$high,
+    color = channels$color
+  )
 }
 
 #' @rdname bard
 #' @export
 read_bard_signal <- function(file, n = Inf) {
+  # Read in the CSV-styled signal data quickly
+  sig <-
+    fread(
+      file,
+      skip = "[Data]",
+      header = FALSE,
+      nrows = n
+    )
 
-	# Read in the CSV-styled signal data quickly
-	sig <-
-		fread(
-			file,
-			skip = "[Data]",
-			header = FALSE,
-			nrows = n
-		)
-
-	signal_table(sig)
-
+  signal_table(sig)
 }

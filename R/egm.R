@@ -47,62 +47,60 @@
 #'
 #' @name egm
 #' @export
-egm <- function(signal = signal_table(),
-								header = header_table(),
-								annotation = annotation_table(),
-								...) {
+egm <- function(
+  signal = signal_table(),
+  header = header_table(),
+  annotation = annotation_table(),
+  ...
+) {
+  # Signal data will be in multi-channel format for EPS data, e.g. data.table
+  # Header will be  a list
 
-	# Signal data will be in multi-channel format for EPS data, e.g. data.table
-	# Header will be  a list
-
-	new_egm(signal,
-					header = header,
-					annotation = annotation)
+  new_egm(signal, header = header, annotation = annotation)
 }
 
 #' @keywords internal
-new_egm <- function(signal = signal_table(),
-										header = header_table(),
-										annotation = annotation_table(),
-										...) {
-
-	# Signal will become a data frame (coerced into a data table)
-	structure(
-		list(
-			signal = signal,
-			header = header,
-			annotation = annotation
-		),
-		class = c('egm', 'list')
-	)
-
+new_egm <- function(
+  signal = signal_table(),
+  header = header_table(),
+  annotation = annotation_table(),
+  ...
+) {
+  # Signal will become a data frame (coerced into a data table)
+  structure(
+    list(
+      signal = signal,
+      header = header,
+      annotation = annotation
+    ),
+    class = c('egm', 'list')
+  )
 }
 
 #' @export
 format.egm <- function(x, ...) {
-	hea <- x$header
-	rec <- attributes(hea)$record_line
-	ann <- x$annotation # May be empty table
+  hea <- x$header
+  rec <- attributes(hea)$record_line
+  ann <- x$annotation # May be empty table
 
-	cat('<Electrogram>\n')
-	cat('-------------------\n')
-	cat('Recording Duration: ', rec$samples / rec$frequency, 'seconds\n' )
-	cat('Recording frequency ', rec$frequency, ' hz\n')
-	cat('Number of channels: ', rec$number_of_channels, '\n')
-	cat('Channel Names: ', paste(hea$label), '\n')
-	cat('Annotation: ', paste(attributes(ann)$annotator), '\n')
-
+  cat('<Electrogram>\n')
+  cat('-------------------\n')
+  cat('Recording Duration: ', rec$samples / rec$frequency, 'seconds\n')
+  cat('Recording frequency ', rec$frequency, ' hz\n')
+  cat('Number of channels: ', rec$number_of_channels, '\n')
+  cat('Channel Names: ', paste(hea$label), '\n')
+  cat('Annotation: ', paste(attributes(ann)$annotator), '\n')
 }
 
 #' @export
 print.egm <- function(x, ...) {
-	format(x)
+  format(x)
 }
 
 #' @export
 #' @rdname egm
 is_egm <- function(x) {
-	inherits(x, "egm")
+  inherits(x, "egm")
 }
 
 # Helper functions -------------------------------------------------------------
@@ -135,36 +133,37 @@ is_egm <- function(x) {
 #' @returns An object as described by the __format__ option
 #'
 #' @export
-extract_signal <- function(object,
-                                                                                                         data_format = c("data.frame", "matrix", "array"),
-                                                                                                         ...) {
+extract_signal <- function(
+  object,
+  data_format = c("data.frame", "matrix", "array"),
+  ...
+) {
+  stopifnot(
+    "Requires object of `egm` class for evaluation" = inherits(object, "egm")
+  )
 
-        stopifnot("Requires object of `egm` class for evaluation"
-                                                = inherits(object, "egm"))
+  data_format <- match.arg(data_format)
 
-        data_format <- match.arg(data_format)
+  sig <- data.frame(object$signal)
+  signal_only <- sig[, -1, drop = FALSE]
 
-        sig <- data.frame(object$signal)
-        signal_only <- sig[, -1, drop = FALSE]
+  switch(
+    data_format,
+    array = {
+      channel_names <- names(signal_only)
+      out <- array(
+        data = as.matrix(signal_only),
+        dim = c(nrow(signal_only), ncol(signal_only)),
+        dimnames = list(NULL, channel_names)
+      )
+    },
+    matrix = {
+      out <- as.matrix(signal_only)
+    },
+    data.frame = {
+      out <- sig
+    }
+  )
 
-        switch(
-                data_format,
-                array = {
-                        channel_names <- names(signal_only)
-                        out <- array(
-                                data = as.matrix(signal_only),
-                                dim = c(nrow(signal_only), ncol(signal_only)),
-                                dimnames = list(NULL, channel_names)
-                        )
-                },
-                matrix = {
-                        out <- as.matrix(signal_only)
-                },
-                data.frame = {
-                        out <- sig
-                }
-        )
-
-        out
-
+  out
 }

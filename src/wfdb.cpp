@@ -810,7 +810,7 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
 [[cpp11::register]]
 void write_wfdb_native_cpp(const std::string &data_path,
                            const std::string &header_path,
-                           cpp11::doubles_matrix<> signal_matrix,
+                           cpp11::sexp signal_matrix_sexp,
                            cpp11::strings channel_names,
                            cpp11::strings file_names,
                            cpp11::integers storage_format,
@@ -827,15 +827,30 @@ void write_wfdb_native_cpp(const std::string &data_path,
                            const std::string &record_name,
                            const std::string &start_time,
                            cpp11::list info_strings) {
-        // Validate shape first: the matrix is expected to contain one column
-        // per channel and at least one row.  Any mismatch between the matrix and
-        // the declared metadata is caught here to avoid writing malformed WFDB
-        // files to disk.
-        int number_of_channels = signal_matrix.ncol();
-        if (samples <= 0) {
-                samples = signal_matrix.nrow();
+        // Accept both integer and double matrices since WFDB signals can be
+        // provided as either digital units (integers) or physical units (doubles).
+        // On disk, WFDB always stores signals as integers, but the in-memory
+        // representation in R may be either type.
+        bool is_integer_matrix = TYPEOF(signal_matrix_sexp) == INTSXP;
+        bool is_double_matrix = TYPEOF(signal_matrix_sexp) == REALSXP;
+
+        if (!is_integer_matrix && !is_double_matrix) {
+                stop("Signal matrix must be either integer or double type");
         }
-        if (signal_matrix.nrow() != samples) {
+
+        // Extract dimensions using the appropriate accessor
+        SEXP dims = Rf_getAttrib(signal_matrix_sexp, R_DimSymbol);
+        if (Rf_length(dims) != 2) {
+                stop("Signal matrix must be a 2-dimensional matrix");
+        }
+        int nrow = INTEGER(dims)[0];
+        int ncol = INTEGER(dims)[1];
+        int number_of_channels = ncol;
+
+        if (samples <= 0) {
+                samples = nrow;
+        }
+        if (nrow != samples) {
                 stop("Signal matrix rows do not match the expected number of samples");
         }
 
@@ -851,9 +866,21 @@ void write_wfdb_native_cpp(const std::string &data_path,
 
         std::vector<int32_t> digital_row(number_of_channels);
 
+        // Pre-extract the raw data pointers for efficient access
+        const int *int_data = is_integer_matrix ? INTEGER(signal_matrix_sexp) : nullptr;
+        const double *dbl_data = is_double_matrix ? REAL(signal_matrix_sexp) : nullptr;
+
         for (int i = 0; i < samples; ++i) {
                 for (int channel_idx = 0; channel_idx < number_of_channels; ++channel_idx) {
-                        double value = signal_matrix(i, channel_idx);
+                        // Extract value from either integer or double matrix
+                        // Matrix is stored in column-major order: index = row + col * nrow
+                        int matrix_index = i + channel_idx * nrow;
+                        double value;
+                        if (is_integer_matrix) {
+                                value = static_cast<double>(int_data[matrix_index]);
+                        } else {
+                                value = dbl_data[matrix_index];
+                        }
                         long long scaled = static_cast<long long>(std::llround(value));
                         int fmt = format_vec[channel_idx];
                         // Clamp to the legal range of the target storage format
