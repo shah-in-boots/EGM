@@ -49,6 +49,3 @@ tests/.DS_store
 inst/doc
 docs
 
-# Hidden files
-.claude
-.claude/*

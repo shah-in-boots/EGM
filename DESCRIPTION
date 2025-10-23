@@ -32,7 +32,6 @@ Imports:
     checkmate,
     stringr,
     signal,
-    cpp11,
 Suggests: 
     covr,
     knitr,
