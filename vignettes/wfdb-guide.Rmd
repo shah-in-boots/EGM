@@ -39,6 +39,205 @@ set_wfdb_path("/usr/local/bin")
 On Windows the binaries are often accessed through [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) or similar tooling; simply point `set_wfdb_path()` to the appropriate command shim or directory.
 Even with a system installation available, the native `{EGM}` readers and writers will be used by default unless you explicitly opt-in to the command-line backends.
 
+# Digital vs Physical Units
+
+One of the most important concepts when working with WFDB files is understanding the difference between **digital** and **physical** units.
+This distinction is fundamental to preserving data fidelity and avoiding cumulative rounding errors during read/write operations.
+
+## Understanding the WFDB Storage Format
+
+WFDB files store signal data as **integer values** (called digital units or ADC counts) in binary `.dat` files.
+These integers represent the raw output from an analog-to-digital converter (ADC).
+To convert these integer values to meaningful physical units (like millivolts), the WFDB header file (`.hea`) contains conversion metadata:
+
+- **`gain`**: ADC units per physical unit (e.g., 200 ADC units per mV)
+- **`baseline`**: The ADC value corresponding to 0 physical units
+- **`units`**: The physical unit name (e.g., "mV")
+
+The conversion formula between digital and physical units is:
+
+$$\text{physical} = \frac{\text{digital} - \text{baseline}}{\text{gain}}$$
+
+And the inverse formula for writing:
+
+$$\text{digital} = (\text{physical} \times \text{gain}) + \text{baseline}$$
+
+## Reading Data in Different Units
+
+The `read_wfdb()` and `read_signal()` functions support a `units` parameter that controls how signal data is returned:
+
+- `units = "digital"` (default): Returns raw ADC counts as stored in the file
+- `units = "physical"`: Returns values converted to physical units (e.g., mV)
+
+Let's demonstrate this concept using a WFDB file:
+
+```{r, eval=TRUE}
+# Locate the WFDB files in the package
+wfdb_path <- system.file('extdata', package = 'EGM')
+
+# Read the same data in both digital and physical units
+ecg_digital <- read_wfdb(
+  record = "muse-sinus",
+  record_dir = wfdb_path,
+  units = "digital"
+)
+
+ecg_physical <- read_wfdb(
+  record = "muse-sinus",
+  record_dir = wfdb_path,
+  units = "physical"
+)
+
+# Examine the header to see the conversion parameters
+head(ecg_digital$header)
+#>   file_name storage_format ADC_gain ADC_baseline ADC_units ADC_resolution
+#> 1  muse-sinus.dat      16      200            0        mV             16
+#> 2  muse-sinus.dat      16      200            0        mV             16
+#> 3  muse-sinus.dat      16      200            0        mV             16
+#> 4  muse-sinus.dat      16      200            0        mV             16
+#> 5  muse-sinus.dat      16      200            0        mV             16
+#> 6  muse-sinus.dat      16      200            0        mV             16
+```
+
+Notice the `ADC_gain` and `ADC_baseline` columns in the header.
+In this example, all channels have a gain of 200 ADC units/mV and a baseline of 0.
+However, many real-world recordings have non-zero baseline values to account for DC offsets in the recording equipment.
+
+## Comparing Digital and Physical Values
+
+Let's compare the first few samples from lead II in both formats:
+
+```{r, eval=TRUE}
+# Extract the first 10 samples from lead II
+digital_values <- ecg_digital$signal$II[1:10]
+physical_values <- ecg_physical$signal$II[1:10]
+
+# Get the conversion parameters for lead II from the header
+lead_ii_row <- ecg_digital$header[ecg_digital$header$label == "II", ]
+gain <- lead_ii_row$ADC_gain
+baseline <- lead_ii_row$ADC_baseline
+
+# Create a comparison table
+comparison <- data.frame(
+  Sample = 1:10,
+  Digital = digital_values,
+  Physical = round(physical_values, 3),
+  Calculated = round((digital_values - baseline) / gain, 3)
+)
+
+print(comparison)
+#>    Sample Digital Physical Calculated
+#> 1       1       5    0.025      0.025
+#> 2       2       5    0.025      0.025
+#> 3       3       5    0.025      0.025
+#> 4       4      10    0.050      0.050
+#> 5       5      10    0.050      0.050
+#> 6       6      10    0.050      0.050
+#> 7       7      10    0.050      0.050
+#> 8       8      15    0.075      0.075
+#> 9       9      20    0.100      0.100
+#> 10     10      24    0.120      0.120
+
+# Verify the conversion formula
+cat("\nLead II conversion parameters:\n")
+cat("  Gain:", gain, "ADC units/mV\n")
+cat("  Baseline:", baseline, "ADC units\n")
+#> Lead II conversion parameters:
+#>   Gain: 200 ADC units/mV
+#>   Baseline: 0 ADC units
+```
+
+The "Calculated" column shows that we can manually apply the conversion formula to digital values and get the same result as reading with `units = "physical"`.
+
+## Visualizing the Difference
+
+Here's how the same signal looks in both digital and physical units:
+
+```{r, eval=TRUE}
+# Extract 500 samples (1 second at 500 Hz) from lead II
+samples <- 1:500
+time_sec <- (samples - 1) / 500  # Convert to seconds
+
+digital_segment <- ecg_digital$signal$II[samples]
+physical_segment <- ecg_physical$signal$II[samples]
+
+# Plot both representations
+par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
+
+# Digital units plot
+plot(time_sec, digital_segment, type = "l",
+     main = "Lead II - Digital Units (Raw ADC Counts)",
+     xlab = "Time (seconds)", ylab = "ADC Counts",
+     col = "steelblue", lwd = 1.5)
+grid()
+
+# Physical units plot
+plot(time_sec, physical_segment, type = "l",
+     main = "Lead II - Physical Units (Millivolts)",
+     xlab = "Time (seconds)", ylab = "Millivolts (mV)",
+     col = "darkred", lwd = 1.5)
+grid()
+```
+
+Both plots show the same waveform shape, but the y-axis scales are vastly different.
+The digital plot shows raw integer ADC counts ranging from approximately -50 to 200, while the physical plot shows calibrated voltage measurements in millivolts (approximately -0.25 to 1.0 mV).
+
+## Round-Trip Preservation
+
+A key advantage of the digital format is perfect round-trip preservation.
+When you read in digital units and write back to WFDB format, the exact ADC values are preserved:
+
+```{r, eval=TRUE}
+# Read in digital units
+ecg_original <- read_wfdb(
+  record = "muse-sinus",
+  record_dir = wfdb_path,
+  units = "digital"
+)
+
+# Write to a new location (digital format is default)
+temp_dir <- tempdir()
+write_wfdb(
+  data = ecg_original,
+  record = "roundtrip-test",
+  record_dir = temp_dir,
+  units = "digital"  # Default: preserves raw ADC values
+)
+
+# Read back
+ecg_roundtrip <- read_wfdb(
+  record = "roundtrip-test",
+  record_dir = temp_dir,
+  units = "digital"
+)
+
+# Verify exact preservation
+all.equal(ecg_original$signal$II, ecg_roundtrip$signal$II)
+# [1] TRUE - exact match, no rounding errors
+```
+
+## Writing Data in Physical Units
+
+If you have signal data in physical units (e.g., from analysis or simulation), you can write it directly by specifying `units = "physical"`:
+
+```{r, eval=TRUE}
+# Suppose you have processed data in mV
+processed_ecg <- ecg_physical  # Already in physical units
+
+# Write back, specifying that input is in physical units
+write_wfdb(
+  data = processed_ecg,
+  record = "processed-ecg",
+  record_dir = temp_dir,
+  units = "physical"  # Converts to digital before writing
+)
+
+# The function automatically applies the inverse conversion:
+# digital = (physical * gain) + baseline
+```
+
+This automatic conversion ensures that the data is correctly stored as integers in the `.dat` file while preserving the physical values you provide.
+
 # Annotations
 
 The WFDB software package utilizes a binary format to store annotations.

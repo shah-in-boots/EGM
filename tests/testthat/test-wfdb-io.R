@@ -95,7 +95,8 @@ test_that('write_wfdb honours explicit headers and preserves integer storage', {
         samples,
         record_name,
         start_time,
-        info_strings
+        info_strings,
+        physical = FALSE
       ) {
         captured <<- list(
           signal_matrix = signal_matrix_sexp,
@@ -467,4 +468,215 @@ test_that("write_annotation produces round-trip compatible files", {
   expect_equal(ann_roundtrip$subtype, ann$subtype)
   expect_equal(ann_roundtrip$channel, ann$channel)
   expect_equal(ann_roundtrip$number, ann$number)
+})
+
+# Digital/Physical Units and Baseline Handling ----
+
+test_that('digital units preserve raw ADC values with non-zero baseline', {
+  skip_if_not_installed('withr')
+
+  tmp_dir <- withr::local_tempdir()
+
+  # Create signal with known ADC values
+  signal <- signal_table(data.table::data.table(
+    sample = 0:9,
+    I = as.integer(c(1024, 1124, 1224, 1324, 1424, 1524, 1624, 1724, 1824, 1924)),
+    II = as.integer(c(2048, 2148, 2248, 2348, 2448, 2548, 2648, 2748, 2848, 2948))
+  ))
+
+  # Create header with non-zero baseline
+  header <- header_table(
+    record_name = 'baseline-test',
+    number_of_channels = 2L,
+    frequency = 250,
+    samples = nrow(signal),
+    storage_format = c(16L, 16L),
+    ADC_gain = c(200, 200),
+    ADC_baseline = c(1024L, 2048L),  # Non-zero baselines
+    ADC_units = c("mV", "mV"),
+    label = c("I", "II")
+  )
+
+  egm_obj <- egm(signal, header)
+
+  # Write in digital units (default)
+  write_wfdb(
+    data = egm_obj,
+    record = 'baseline-test',
+    record_dir = tmp_dir,
+    units = "digital"
+  )
+
+  # Read back in digital units
+  egm_read <- read_wfdb(
+    record = 'baseline-test',
+    record_dir = tmp_dir,
+    units = "digital"
+  )
+
+  # Digital units should preserve exact raw ADC values
+  expect_equal(egm_read$signal$I, signal$I)
+  expect_equal(egm_read$signal$II, signal$II)
+  expect_equal(egm_read$header$ADC_baseline, c(1024L, 2048L))
+})
+
+test_that('physical units apply correct conversion with baseline and gain', {
+  skip_if_not_installed('withr')
+
+  tmp_dir <- withr::local_tempdir()
+
+  # Create signal with known ADC values
+  # Channel I: ADC=1024, baseline=1024, gain=200 -> physical=0.0
+  # Channel I: ADC=1224, baseline=1024, gain=200 -> physical=1.0
+  signal <- signal_table(data.table::data.table(
+    sample = 0:4,
+    I = as.integer(c(1024, 1124, 1224, 1324, 1424)),
+    II = as.integer(c(2048, 2248, 2448, 2648, 2848))
+  ))
+
+  header <- header_table(
+    record_name = 'physical-test',
+    number_of_channels = 2L,
+    frequency = 250,
+    samples = nrow(signal),
+    storage_format = c(16L, 16L),
+    ADC_gain = c(200, 200),
+    ADC_baseline = c(1024L, 2048L),
+    ADC_units = c("mV", "mV"),
+    label = c("I", "II")
+  )
+
+  egm_obj <- egm(signal, header)
+
+  # Write in digital units
+  write_wfdb(
+    data = egm_obj,
+    record = 'physical-test',
+    record_dir = tmp_dir,
+    units = "digital"
+  )
+
+  # Read in physical units
+  egm_physical <- read_wfdb(
+    record = 'physical-test',
+    record_dir = tmp_dir,
+    units = "physical"
+  )
+
+  # Check conversion: physical = (digital - baseline) / gain
+  # For channel I: (1024 - 1024) / 200 = 0.0
+  expect_equal(egm_physical$signal$I[1], 0.0, tolerance = 1e-10)
+  # For channel I: (1224 - 1024) / 200 = 1.0
+  expect_equal(egm_physical$signal$I[3], 1.0, tolerance = 1e-10)
+
+  # For channel II: (2048 - 2048) / 200 = 0.0
+  expect_equal(egm_physical$signal$II[1], 0.0, tolerance = 1e-10)
+  # For channel II: (2448 - 2048) / 200 = 2.0
+  expect_equal(egm_physical$signal$II[3], 2.0, tolerance = 1e-10)
+})
+
+test_that('physical units round-trip preserves values', {
+  skip_if_not_installed('withr')
+
+  tmp_dir <- withr::local_tempdir()
+
+  # Create signal in physical units (mV)
+  signal_physical <- signal_table(data.table::data.table(
+    sample = 0:4,
+    I = c(-1.0, -0.5, 0.0, 0.5, 1.0),
+    II = c(-2.0, -1.0, 0.0, 1.0, 2.0)
+  ))
+
+  header <- header_table(
+    record_name = 'physical-roundtrip',
+    number_of_channels = 2L,
+    frequency = 250,
+    samples = nrow(signal_physical),
+    storage_format = c(16L, 16L),
+    ADC_gain = c(200, 200),
+    ADC_baseline = c(1024L, 2048L),
+    ADC_units = c("mV", "mV"),
+    label = c("I", "II")
+  )
+
+  egm_obj <- egm(signal_physical, header)
+
+  # Write in physical units (should convert to digital internally)
+  write_wfdb(
+    data = egm_obj,
+    record = 'physical-roundtrip',
+    record_dir = tmp_dir,
+    units = "physical"
+  )
+
+  # Read back in physical units
+  egm_read <- read_wfdb(
+    record = 'physical-roundtrip',
+    record_dir = tmp_dir,
+    units = "physical"
+  )
+
+  # Physical values should round-trip accurately (within rounding error)
+  expect_equal(egm_read$signal$I, signal_physical$I, tolerance = 1e-2)
+  expect_equal(egm_read$signal$II, signal_physical$II, tolerance = 1e-2)
+})
+
+test_that('digital-to-physical-to-digital round-trip is exact', {
+  skip_if_not_installed('withr')
+
+  tmp_dir <- withr::local_tempdir()
+
+  # Start with digital values
+  signal_digital <- signal_table(data.table::data.table(
+    sample = 0:4,
+    I = as.integer(c(1024, 1124, 1224, 1324, 1424)),
+    II = as.integer(c(2048, 2248, 2448, 2648, 2848))
+  ))
+
+  header <- header_table(
+    record_name = 'full-roundtrip',
+    number_of_channels = 2L,
+    frequency = 250,
+    samples = nrow(signal_digital),
+    storage_format = c(16L, 16L),
+    ADC_gain = c(200, 200),
+    ADC_baseline = c(1024L, 2048L),
+    ADC_units = c("mV", "mV"),
+    label = c("I", "II")
+  )
+
+  # Write digital
+  egm_obj <- egm(signal_digital, header)
+  write_wfdb(
+    data = egm_obj,
+    record = 'full-roundtrip',
+    record_dir = tmp_dir,
+    units = "digital"
+  )
+
+  # Read as physical
+  egm_physical <- read_wfdb(
+    record = 'full-roundtrip',
+    record_dir = tmp_dir,
+    units = "physical"
+  )
+
+  # Write physical back
+  write_wfdb(
+    data = egm_physical,
+    record = 'full-roundtrip-2',
+    record_dir = tmp_dir,
+    units = "physical"
+  )
+
+  # Read as digital
+  egm_digital_final <- read_wfdb(
+    record = 'full-roundtrip-2',
+    record_dir = tmp_dir,
+    units = "digital"
+  )
+
+  # Should get back original digital values (within rounding)
+  expect_equal(egm_digital_final$signal$I, signal_digital$I, tolerance = 1)
+  expect_equal(egm_digital_final$signal$II, signal_digital$II, tolerance = 1)
 })

@@ -701,21 +701,23 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                 auto values = read_format212_pair(stream);
 
                                 // Each pair contains two consecutive channels.
-                                // We normalise to physical units and copy the
-                                // values into every column that requested the
+                                // We copy the values into every column that requested the
                                 // channel (channel_map handles duplicates).
+                                // Conversion to physical units is applied if requested.
                                 if (store_row && !channel_map[channel_idx].empty()) {
                                         double value = static_cast<double>(values.first);
-                                        int baseline_value = adc_baseline[channel_idx];
-                                        if (baseline_value != NA_INTEGER) {
-                                                value -= static_cast<double>(baseline_value);
-                                        }
                                         if (physical) {
+                                                // Convert to physical units: (digital - baseline) / gain
+                                                int baseline_value = adc_baseline[channel_idx];
+                                                if (baseline_value != NA_INTEGER) {
+                                                        value -= static_cast<double>(baseline_value);
+                                                }
                                                 double gain_value = adc_gain[channel_idx];
                                                 if (gain_value != NA_REAL && gain_value != 0.0) {
                                                         value /= gain_value;
                                                 }
                                         }
+                                        // If not physical, value remains as raw ADC count (digital units)
                                         for (size_t output_idx : channel_map[channel_idx]) {
                                                 output_columns[output_idx][output_index] = value;
                                         }
@@ -723,16 +725,18 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
 
                                 if (store_row && !channel_map[channel_idx + 1].empty()) {
                                         double value = static_cast<double>(values.second);
-                                        int baseline_value = adc_baseline[channel_idx + 1];
-                                        if (baseline_value != NA_INTEGER) {
-                                                value -= static_cast<double>(baseline_value);
-                                        }
                                         if (physical) {
+                                                // Convert to physical units: (digital - baseline) / gain
+                                                int baseline_value = adc_baseline[channel_idx + 1];
+                                                if (baseline_value != NA_INTEGER) {
+                                                        value -= static_cast<double>(baseline_value);
+                                                }
                                                 double gain_value = adc_gain[channel_idx + 1];
                                                 if (gain_value != NA_REAL && gain_value != 0.0) {
                                                         value /= gain_value;
                                                 }
                                         }
+                                        // If not physical, value remains as raw ADC count (digital units)
                                         for (size_t output_idx : channel_map[channel_idx + 1]) {
                                                 output_columns[output_idx][output_index] = value;
                                         }
@@ -762,22 +766,21 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                         }
 
                         if (store_row && !channel_map[channel_idx].empty()) {
-                                // Formats other than 212 map directly to a
-                                // single channel.  The conversion logic is the
-                                // same: subtract baseline if present and, when
-                                // physical units are requested, divide by the
-                                // gain to convert from digital counts.
+                                // Formats other than 212 map directly to a single channel.
+                                // For digital units, preserve raw ADC counts.
+                                // For physical units, apply conversion: (digital - baseline) / gain
                                 double value = raw_value;
-                                int baseline_value = adc_baseline[channel_idx];
-                                if (baseline_value != NA_INTEGER) {
-                                        value -= static_cast<double>(baseline_value);
-                                }
                                 if (physical) {
+                                        int baseline_value = adc_baseline[channel_idx];
+                                        if (baseline_value != NA_INTEGER) {
+                                                value -= static_cast<double>(baseline_value);
+                                        }
                                         double gain_value = adc_gain[channel_idx];
                                         if (gain_value != NA_REAL && gain_value != 0.0) {
                                                 value /= gain_value;
                                         }
                                 }
+                                // If not physical, value remains as raw ADC count (digital units)
                                 for (size_t output_idx : channel_map[channel_idx]) {
                                         output_columns[output_idx][output_index] = value;
                                 }
@@ -826,7 +829,8 @@ void write_wfdb_native_cpp(const std::string &data_path,
                            int samples,
                            const std::string &record_name,
                            const std::string &start_time,
-                           cpp11::list info_strings) {
+                           cpp11::list info_strings,
+                           bool physical = false) {
         // Accept both integer and double matrices since WFDB signals can be
         // provided as either digital units (integers) or physical units (doubles).
         // On disk, WFDB always stores signals as integers, but the in-memory
@@ -881,6 +885,21 @@ void write_wfdb_native_cpp(const std::string &data_path,
                         } else {
                                 value = dbl_data[matrix_index];
                         }
+
+                        // Convert from physical to digital units if needed
+                        // Formula: digital = (physical * gain) + baseline
+                        if (physical) {
+                                double gain_value = adc_gain[channel_idx];
+                                int baseline_value = adc_baseline[channel_idx];
+                                if (gain_value != NA_REAL && gain_value != 0.0) {
+                                        value *= gain_value;
+                                }
+                                if (baseline_value != NA_INTEGER) {
+                                        value += static_cast<double>(baseline_value);
+                                }
+                        }
+                        // If not physical, value is already in digital units (raw ADC counts)
+
                         long long scaled = static_cast<long long>(std::llround(value));
                         int fmt = format_vec[channel_idx];
                         // Clamp to the legal range of the target storage format

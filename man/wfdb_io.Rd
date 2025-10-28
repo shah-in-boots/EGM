@@ -14,6 +14,7 @@ write_wfdb(
   record_dir = ".",
   header = NULL,
   info_strings = list(),
+  units = c("digital", "physical"),
   ...
 )
 
@@ -75,6 +76,18 @@ calculated):
 to the header file, usually containing information about the channels,
 (e.g. list of colors, extra labels, etc).}
 
+\item{units}{A \code{character} string representing either \emph{digital} (DEFAULT) or \emph{physical}
+units that should be used for signal values.
+\itemize{
+\item \code{"digital"} = Returns raw ADC (analog-to-digital converter) counts as stored
+in the .dat file. These are integer values representing the digitized signal
+without any scaling applied. Use this to preserve exact round-trip fidelity.
+\item \code{"physical"} = Returns signal values converted to physical units (e.g., mV)
+using the formula: \code{physical = (digital - baseline) / gain}, where \code{baseline}
+and \code{gain} are specified in the header file. This is the human-readable format
+for analysis.
+}}
+
 \item{...}{Additional arguments to be passed to the function}
 
 \item{annotator}{String that is the name of a WFDB-compatible annotation
@@ -88,15 +101,6 @@ default is to start at the beginning of the record. If \code{end} or \code{inter
 are given, the earlier of the two will be returned. The \code{end} argument
 gives a time index to read until. The \code{interval} argument is the length of
 time past the start point.}
-
-\item{units}{A \code{character} string representing either \emph{digital} (DEFAULT) or \emph{physical}
-units that should be used, if available.
-\itemize{
-\item digital = Index in sample number, signal in integers (A/D units)
-\item physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
-This will \strong{include 1 additional row over the header/column names} that
-describes units
-}}
 
 \item{channels}{Either the signal/channel in a \code{character} vector as a name or number.
 Allows for duplication of signal or to re-order signal if needed. If
@@ -126,7 +130,10 @@ still receives all available data without a hard failure.
 \section{Functions}{
 \itemize{
 \item \code{write_wfdb()}: Writes out signal and header data into a WFDB-compatible
-format from R.
+format from R. The \code{units} parameter indicates whether the input signal data
+is in digital (raw ADC counts) or physical units. When \code{units="physical"},
+the function automatically converts to digital units using the inverse formula:
+\code{digital = (physical * gain) + baseline} before writing to disk.
 
 \item \code{read_wfdb()}: Reads a multicomponent WFDB-formatted set of files
 directly into an \code{egm} object. This serves to pull together

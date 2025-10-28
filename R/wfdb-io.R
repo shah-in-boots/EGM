@@ -115,13 +115,16 @@ NULL
 #'   time past the start point.
 #'
 #' @param units A `character` string representing either *digital* (DEFAULT) or *physical*
-#'   units that should be used, if available.
+#'   units that should be used for signal values.
 #'
-#'   * digital = Index in sample number, signal in integers (A/D units)
+#'   * `"digital"` = Returns raw ADC (analog-to-digital converter) counts as stored
+#'   in the .dat file. These are integer values representing the digitized signal
+#'   without any scaling applied. Use this to preserve exact round-trip fidelity.
 #'
-#'   * physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
-#'   This will __include 1 additional row over the header/column names__ that
-#'   describes units
+#'   * `"physical"` = Returns signal values converted to physical units (e.g., mV)
+#'   using the formula: `physical = (digital - baseline) / gain`, where `baseline`
+#'   and `gain` are specified in the header file. This is the human-readable format
+#'   for analysis.
 #'
 #' @param channels Either the signal/channel in a `character` vector as a name or number.
 #'   Allows for duplication of signal or to re-order signal if needed. If
@@ -148,7 +151,10 @@ NULL
 NULL
 
 #' @describeIn wfdb_io Writes out signal and header data into a WFDB-compatible
-#'   format from R.
+#'   format from R. The `units` parameter indicates whether the input signal data
+#'   is in digital (raw ADC counts) or physical units. When `units="physical"`,
+#'   the function automatically converts to digital units using the inverse formula:
+#'   `digital = (physical * gain) + baseline` before writing to disk.
 #'
 #' @export
 write_wfdb <- function(
@@ -157,8 +163,10 @@ write_wfdb <- function(
   record_dir = ".",
   header = NULL,
   info_strings = list(),
+  units = c("digital", "physical"),
   ...
 ) {
+  units <- match.arg(units)
   # Create the output directory up-front so subsequent file writes do not
   # fail midway through the export pipeline.
   if (!fs::dir_exists(record_dir)) {
@@ -339,7 +347,8 @@ write_wfdb <- function(
     samples = nrow(signal_matrix),
     record_name = record_name,
     start_time = start_time_str,
-    info_strings = combined_info
+    info_strings = combined_info,
+    physical = (units == "physical")
   )
 
   invisible(header_path)
