@@ -22,47 +22,37 @@ Historically `{EGM}` wrapped the [Waveform Database (WFDB) software package](htt
 Recent releases of `{EGM}` now provide native readers, writers, and annotation utilities implemented directly in `R` and `C++`, so the core functionality of the package no longer depends on an external WFDB installation.
 You can work with WFDB headers, signals, and annotations on any system where `{EGM}` is installed, including CRAN environments.
 
-__Note__: Utilities such as `find_wfdb_software()` and `set_wfdb_path()` remain available for users who still maintain a local WFDB installation or need to call command-line tooling for legacy workflows, but they are optional.
-
-# Installation options
-
 Because `{EGM}` ships its own WFDB readers and writers, no additional system dependencies are required to begin analysing WFDB data in `R`.
 Installing `{EGM}` from CRAN (or the development version from GitHub) is sufficient for the examples in this guide to run end-to-end on any platform.
 
 If you would still like to interface with the traditional `C`-based WFDB tools—for example to compare results or to call PhysioNet utilities that have not yet been ported—you can follow the instructions in the [WFDB GitHub repository](https://github.com/bemoody/wfdb).
-When using an external installation you may set the binary location once per session so that helper wrappers continue to function:
+The `C`-based WFDB is more robust and has a full set of tools and functionality not found in the `R` version, however the key features of reading and writing data and annotators is compatible with the `R` implementation used by `{EGM}`.
 
-```{r, eval=FALSE}
-set_wfdb_path("/usr/local/bin")
-```
+# Signal Data 
 
-On Windows the binaries are often accessed through [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) or similar tooling; simply point `set_wfdb_path()` to the appropriate command shim or directory.
-Even with a system installation available, the native `{EGM}` readers and writers will be used by default unless you explicitly opt-in to the command-line backends.
+### Understanding the WFDB Storage Format
 
-# Digital vs Physical Units
-
-One of the most important concepts when working with WFDB files is understanding the difference between **digital** and **physical** units.
-This distinction is fundamental to preserving data fidelity and avoiding cumulative rounding errors during read/write operations.
-
-## Understanding the WFDB Storage Format
-
-WFDB files store signal data as **integer values** (called digital units or ADC counts) in binary `.dat` files.
+WFDB files store signal data as __integer values__ (called __digital__ units) in binary `.dat` files.
 These integers represent the raw output from an analog-to-digital converter (ADC).
-To convert these integer values to meaningful physical units (like millivolts), the WFDB header file (`.hea`) contains conversion metadata:
+To convert these integer values to meaningful __physical__ units (like millivolts), the WFDB header file (`.hea`) contains conversion metadata:
 
-- **`gain`**: ADC units per physical unit (e.g., 200 ADC units per mV)
-- **`baseline`**: The ADC value corresponding to 0 physical units
-- **`units`**: The physical unit name (e.g., "mV")
+- __`gain`__: ADC units per physical unit (e.g., 200 ADC units per mV)
+- __`baseline`__: The ADC value corresponding to 0 physical units
+- __`units`__: The physical unit name (e.g., "mV")
 
 The conversion formula between digital and physical units is:
 
-$$\text{physical} = \frac{\text{digital} - \text{baseline}}{\text{gain}}$$
+$$
+\text{physical} = \frac{\text{digital} - \text{baseline}}{\text{gain}}
+$$
 
 And the inverse formula for writing:
 
-$$\text{digital} = (\text{physical} \times \text{gain}) + \text{baseline}$$
+$$
+\text{digital} = (\text{physical} \times \text{gain}) + \text{baseline}
+$$
 
-## Reading Data in Different Units
+### Reading Data in Different Units
 
 The `read_wfdb()` and `read_signal()` functions support a `units` parameter that controls how signal data is returned:
 
@@ -73,18 +63,18 @@ Let's demonstrate this concept using a WFDB file:
 
 ```{r, eval=TRUE}
 # Locate the WFDB files in the package
-wfdb_path <- system.file('extdata', package = 'EGM')
+dir_path <- system.file('extdata', package = 'EGM')
 
 # Read the same data in both digital and physical units
 ecg_digital <- read_wfdb(
   record = "muse-sinus",
-  record_dir = wfdb_path,
+  record_dir = dir_path,
   units = "digital"
 )
 
 ecg_physical <- read_wfdb(
   record = "muse-sinus",
-  record_dir = wfdb_path,
+  record_dir = dir_path,
   units = "physical"
 )
 
@@ -119,10 +109,10 @@ baseline <- lead_ii_row$ADC_baseline
 
 # Create a comparison table
 comparison <- data.frame(
-  Sample = 1:10,
-  Digital = digital_values,
-  Physical = round(physical_values, 3),
-  Calculated = round((digital_values - baseline) / gain, 3)
+  sample = 1:10,
+  digital = digital_values,
+  physical = round(physical_values, 3),
+  calculated_physical = round((digital_values - baseline) / gain, 3)
 )
 
 print(comparison)
@@ -147,96 +137,7 @@ cat("  Baseline:", baseline, "ADC units\n")
 #>   Baseline: 0 ADC units
 ```
 
-The "Calculated" column shows that we can manually apply the conversion formula to digital values and get the same result as reading with `units = "physical"`.
-
-## Visualizing the Difference
-
-Here's how the same signal looks in both digital and physical units:
-
-```{r, eval=TRUE}
-# Extract 500 samples (1 second at 500 Hz) from lead II
-samples <- 1:500
-time_sec <- (samples - 1) / 500  # Convert to seconds
-
-digital_segment <- ecg_digital$signal$II[samples]
-physical_segment <- ecg_physical$signal$II[samples]
-
-# Plot both representations
-par(mfrow = c(2, 1), mar = c(4, 4, 2, 1))
-
-# Digital units plot
-plot(time_sec, digital_segment, type = "l",
-     main = "Lead II - Digital Units (Raw ADC Counts)",
-     xlab = "Time (seconds)", ylab = "ADC Counts",
-     col = "steelblue", lwd = 1.5)
-grid()
-
-# Physical units plot
-plot(time_sec, physical_segment, type = "l",
-     main = "Lead II - Physical Units (Millivolts)",
-     xlab = "Time (seconds)", ylab = "Millivolts (mV)",
-     col = "darkred", lwd = 1.5)
-grid()
-```
-
-Both plots show the same waveform shape, but the y-axis scales are vastly different.
-The digital plot shows raw integer ADC counts ranging from approximately -50 to 200, while the physical plot shows calibrated voltage measurements in millivolts (approximately -0.25 to 1.0 mV).
-
-## Round-Trip Preservation
-
-A key advantage of the digital format is perfect round-trip preservation.
-When you read in digital units and write back to WFDB format, the exact ADC values are preserved:
-
-```{r, eval=TRUE}
-# Read in digital units
-ecg_original <- read_wfdb(
-  record = "muse-sinus",
-  record_dir = wfdb_path,
-  units = "digital"
-)
-
-# Write to a new location (digital format is default)
-temp_dir <- tempdir()
-write_wfdb(
-  data = ecg_original,
-  record = "roundtrip-test",
-  record_dir = temp_dir,
-  units = "digital"  # Default: preserves raw ADC values
-)
-
-# Read back
-ecg_roundtrip <- read_wfdb(
-  record = "roundtrip-test",
-  record_dir = temp_dir,
-  units = "digital"
-)
-
-# Verify exact preservation
-all.equal(ecg_original$signal$II, ecg_roundtrip$signal$II)
-# [1] TRUE - exact match, no rounding errors
-```
-
-## Writing Data in Physical Units
-
-If you have signal data in physical units (e.g., from analysis or simulation), you can write it directly by specifying `units = "physical"`:
-
-```{r, eval=TRUE}
-# Suppose you have processed data in mV
-processed_ecg <- ecg_physical  # Already in physical units
-
-# Write back, specifying that input is in physical units
-write_wfdb(
-  data = processed_ecg,
-  record = "processed-ecg",
-  record_dir = temp_dir,
-  units = "physical"  # Converts to digital before writing
-)
-
-# The function automatically applies the inverse conversion:
-# digital = (physical * gain) + baseline
-```
-
-This automatic conversion ensures that the data is correctly stored as integers in the `.dat` file while preserving the physical values you provide.
+The calculated physical units are derived from the digital units using the ADC conversion, and thus maintains the fidelity of the original signal.
 
 # Annotations
 
