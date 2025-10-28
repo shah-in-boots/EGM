@@ -1,7 +1,8 @@
 test_that("paths are available", {
+  on.exit(options(wfdb_path = NULL), add = TRUE)
+  options(wfdb_path = tempdir())
 
-	skip_on_cran()
-	skip_on_ci()
+  path <- find_wfdb_software()
 
-	expect_match(find_wfdb_software(), "/usr/local/bin")
+  expect_identical(path, getOption("wfdb_path"))
 })

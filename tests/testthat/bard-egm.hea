@@ -1,20 +1,15 @@
-bard-egm 14 1000 3522 15:09:20 13/10/2025
-bard-egm.dat	16	6553.6(0)/mV	16	0	-342	29735	0	I
-bard-egm.dat	16	6553.6(0)/mV	16	0	427	-3360	0	III
-bard-egm.dat	16	6553.6(0)/mV	16	0	366	-7721	0	V1
-bard-egm.dat	16	6553.6(0)/mV	16	0	-168	29164	0	ABL D
-bard-egm.dat	16	6553.6(0)/mV	16	0	23	-191	0	ABL P
-bard-egm.dat	16	6553.6(0)/mV	16	0	-6	-12098	0	CS 1-2
-bard-egm.dat	16	6553.6(0)/mV	16	0	-27	-2132	0	CS 3-4
-bard-egm.dat	16	6553.6(0)/mV	16	0	-55	-15479	0	CS 5-6
-bard-egm.dat	16	6553.6(0)/mV	16	0	-76	2758	0	CS 7-8
-bard-egm.dat	16	6553.6(0)/mV	16	0	-35	3489	0	CS 9-10
-bard-egm.dat	16	6553.6(0)/mV	16	0	53	-3667	0	HIS D
-bard-egm.dat	16	6553.6(0)/mV	16	0	-99	-31662	0	HIS M
-bard-egm.dat	16	6553.6(0)/mV	16	0	-1331	-1730	0	HIS P
-bard-egm.dat	16	6553.6(0)/mV	16	0	2221	25739	0	RV 1-2
-# source ECG ECG ECG NA NA NA NA NA NA NA NA NA NA NA
-# additional_gain 5 5 5 5 5 5 5 5 5 5 5 5 5 5
-# low_pass 0.5 0.5 0.5 30 30 30 30 30 30 30 30 30 30 30
-# high_pass 100 100 100 250 250 250 250 250 250 250 250 250 250 250
-# color #FFFFFF #FFFFFF #FFFFFF #FFFFFF #FFFFFF #00FF00 #00FF00 #00FF00 #00FF00 #00FF00 #00D7FF #00D7FF #00D7FF #EE82EE
+bard-egm 14 1000 3522 15:09:20 28/10/2025
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	I
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	III
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	V1
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	ABL D
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	ABL P
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	CS 1-2
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	CS 3-4
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	CS 5-6
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	CS 7-8
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	CS 9-10
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	HIS D
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	HIS M
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	HIS P
+bard-egm.dat	16	6553.6(0)/mV	12	0	0	0	0	RV 1-2

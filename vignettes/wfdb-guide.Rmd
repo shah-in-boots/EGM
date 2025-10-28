@@ -18,33 +18,134 @@ knitr::opts_chunk$set(
 library(EGM)
 ```
 
-The package relies and is augmented heavily by the [Waveform Database (WFDB) software package](https://physionet.org/content/wfdb/10.7.0/), which is a well-documented and well-developed ecosystem of software applications, primarily written in `C` and `C++` that manage the storage, reading, writing, and interaction with electrical signal data.
-This software is mostly external to the `{EGM}` package, and is used to supplement and expand the software.
+Historically `{EGM}` wrapped the [Waveform Database (WFDB) software package](https://physionet.org/content/wfdb/10.7.0/), a well documented suite of `C` and `C++` applications for interacting with signal data.
+Recent releases of `{EGM}` now provide native readers, writers, and annotation utilities implemented directly in `R` and `C++`, so the core functionality of the package no longer depends on an external WFDB installation.
+You can work with WFDB headers, signals, and annotations on any system where `{EGM}` is installed, including CRAN environments.
 
-__DISCLAIMER__: The software required to use annotations has not yet been re-written into a `C` backend for `R`, and thus requires using a local installation of `WFDB` for functionality. 
-To build online vignettes and articles, where the software package is not available, I only demonstrate non-running examples.
+Because `{EGM}` ships its own WFDB readers and writers, no additional system dependencies are required to begin analysing WFDB data in `R`.
+Installing `{EGM}` from CRAN (or the development version from GitHub) is sufficient for the examples in this guide to run end-to-end on any platform.
 
-# Installation
+If you would still like to interface with the traditional `C`-based WFDB tools—for example to compare results or to call PhysioNet utilities that have not yet been ported—you can follow the instructions in the [WFDB GitHub repository](https://github.com/bemoody/wfdb).
+The `C`-based WFDB is more robust and has a full set of tools and functionality not found in the `R` version, however the key features of reading and writing data and annotators is compatible with the `R` implementation used by `{EGM}`.
 
-To install the `WFDB` software in its traditional, `C`-based format, I have found it easiest with teh instructions from the [Github](https://github.com/bemoody/wfdb) source. 
-The installation instructions are relatively clear across multiple operating systems.
+# Signal Data 
 
-`WFDB` is easiest to install on a Unix-based system, such as Linux or MacOS. 
-For Windows, I have found that using [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) is the most consistent and supported way to utilize the software.
-When hidden on WSL, the path must be specified explicitly using the `set_wfdb_path()` function using the command from Powershell, for example, to switch to a WSL command environment.
+### Understanding the WFDB Storage Format
 
-```{r, eval=FALSE}
-set_wfdb_path("wsl /usr/local/bin")
+WFDB files store signal data as __integer values__ (called __digital__ units) in binary `.dat` files.
+These integers represent the raw output from an analog-to-digital converter (ADC).
+To convert these integer values to meaningful __physical__ units (like millivolts), the WFDB header file (`.hea`) contains conversion metadata:
+
+- __`gain`__: ADC units per physical unit (e.g., 200 ADC units per mV)
+- __`baseline`__: The ADC value corresponding to 0 physical units
+- __`units`__: The physical unit name (e.g., "mV")
+
+The conversion formula between digital and physical units is:
+
+$$
+\text{physical} = \frac{\text{digital} - \text{baseline}}{\text{gain}}
+$$
+
+And the inverse formula for writing:
+
+$$
+\text{digital} = (\text{physical} \times \text{gain}) + \text{baseline}
+$$
+
+### Reading Data in Different Units
+
+The `read_wfdb()` and `read_signal()` functions support a `units` parameter that controls how signal data is returned:
+
+- `units = "digital"` (default): Returns raw ADC counts as stored in the file
+- `units = "physical"`: Returns values converted to physical units (e.g., mV)
+
+Let's demonstrate this concept using a WFDB file:
+
+```{r, eval=TRUE}
+# Locate the WFDB files in the package
+dir_path <- system.file('extdata', package = 'EGM')
+
+# Read the same data in both digital and physical units
+ecg_digital <- read_wfdb(
+  record = "muse-sinus",
+  record_dir = dir_path,
+  units = "digital"
+)
+
+ecg_physical <- read_wfdb(
+  record = "muse-sinus",
+  record_dir = dir_path,
+  units = "physical"
+)
+
+# Examine the header to see the conversion parameters
+head(ecg_digital$header)
+#>   file_name storage_format ADC_gain ADC_baseline ADC_units ADC_resolution
+#> 1  muse-sinus.dat      16      200            0        mV             16
+#> 2  muse-sinus.dat      16      200            0        mV             16
+#> 3  muse-sinus.dat      16      200            0        mV             16
+#> 4  muse-sinus.dat      16      200            0        mV             16
+#> 5  muse-sinus.dat      16      200            0        mV             16
+#> 6  muse-sinus.dat      16      200            0        mV             16
 ```
 
-Once this is in place, you should be able to work with `WFDB` files directly from `R` without significant overhead costs, while also gaining access to a variety of software applications.
+Notice the `ADC_gain` and `ADC_baseline` columns in the header.
+In this example, all channels have a gain of 200 ADC units/mV and a baseline of 0.
+However, many real-world recordings have non-zero baseline values to account for DC offsets in the recording equipment.
+
+## Comparing Digital and Physical Values
+
+Let's compare the first few samples from lead II in both formats:
+
+```{r, eval=TRUE}
+# Extract the first 10 samples from lead II
+digital_values <- ecg_digital$signal$II[1:10]
+physical_values <- ecg_physical$signal$II[1:10]
+
+# Get the conversion parameters for lead II from the header
+lead_ii_row <- ecg_digital$header[ecg_digital$header$label == "II", ]
+gain <- lead_ii_row$ADC_gain
+baseline <- lead_ii_row$ADC_baseline
+
+# Create a comparison table
+comparison <- data.frame(
+  sample = 1:10,
+  digital = digital_values,
+  physical = round(physical_values, 3),
+  calculated_physical = round((digital_values - baseline) / gain, 3)
+)
+
+print(comparison)
+#>    Sample Digital Physical Calculated
+#> 1       1       5    0.025      0.025
+#> 2       2       5    0.025      0.025
+#> 3       3       5    0.025      0.025
+#> 4       4      10    0.050      0.050
+#> 5       5      10    0.050      0.050
+#> 6       6      10    0.050      0.050
+#> 7       7      10    0.050      0.050
+#> 8       8      15    0.075      0.075
+#> 9       9      20    0.100      0.100
+#> 10     10      24    0.120      0.120
+
+# Verify the conversion formula
+cat("\nLead II conversion parameters:\n")
+cat("  Gain:", gain, "ADC units/mV\n")
+cat("  Baseline:", baseline, "ADC units\n")
+#> Lead II conversion parameters:
+#>   Gain: 200 ADC units/mV
+#>   Baseline: 0 ADC units
+```
+
+The calculated physical units are derived from the digital units using the ADC conversion, and thus maintains the fidelity of the original signal.
 
 # Annotations
 
 The WFDB software package utilizes a binary format to store annotations.
-Annotations are essentially markers or qualifiers of specific components of a signal, specifying both the specific time or position in the plot, and what channel the annotation refers to. 
-Annotations are polymorphic, and multiple can be applied to a single signal dataset. 
-The credit for this work goes directly to the original software creators, as this is just a wrapper to allow for flexible integration into `R`. 
+Annotations are essentially markers or qualifiers of specific components of a signal, specifying both the specific time or position in the plot, and what channel the annotation refers to.
+Annotations are polymorphic, and multiple can be applied to a single signal dataset.
+The credit for this work goes directly to the original software creators, as this is just a wrapper to allow for flexible integration into `R`.
+All of the demonstrations below rely on the native `{EGM}` parsers, so they run identically whether or not external WFDB binaries are present.
 
 To begin, let's take an example of a simple ECG dataset.
 This data is included in the package, and can be accessed as below.

@@ -17,50 +17,49 @@
 #'
 #' @export
 signal_table <- function(...) {
+  # Invariant rules:
+  # 	Can add and remove rows (each row is a time point)
+  # 	Rows can NOT be re-ordered
+  # 	Columns CAN be re-ordered
+  # 	Signal columns must be numeric (integer or double)
+  #
+  # Invariant columns:
+  # 	sample <integer> = represents a time point and order of data
 
-	# Invariant rules:
-	# 	Can add and remove rows (each row is a time point)
-	# 	Rows can NOT be re-ordered
-	# 	Columns CAN be re-ordered
-	# 	Signal columns must be numeric (integer or double)
-	#
-	# Invariant columns:
-	# 	sample <integer> = represents a time point and order of data
+  x <- df_list(..., .name_repair = ~ make.unique(.x, sep = "_"))
 
-	x <- df_list(..., .name_repair = ~ make.unique(.x, sep = "_"))
+  if (length(x) == 0) {
+    return(new_signal_table())
+  }
 
-	if (length(x) == 0) {
-		return(new_signal_table())
-	}
+  # Check to see if a `sample` column exists
+  # If it is, put it in front
+  if ('sample' %in% names(x)) {
+    y <- x[c('sample', names(x)[which(names(x) != 'sample')])]
+  } else {
+    x$sample <- 1:max(lengths(x))
+    y <- x[c('sample', names(x)[which(names(x) != 'sample')])]
+  }
 
-	# Check to see if a `sample` column exists
-	# If it is, put it in front
-	if ('sample' %in% names(x)) {
-		y <- x[c('sample', names(x)[which(names(x) != 'sample')])]
-	} else {
-		x$sample <- 1:max(lengths(x))
-		y <- x[c('sample', names(x)[which(names(x) != 'sample')])]
-	}
+  # Last checks
+  checkmate::assert_list(y, types = 'numeric')
+  checkmate::assert_names(names(y), must.include = 'sample')
+  checkmate::assert_integer(y$sample)
 
-	# Last checks
-	checkmate::assert_list(y, types = 'numeric')
-	checkmate::assert_names(names(y), must.include = 'sample')
-	checkmate::assert_integer(y$sample)
-
-	new_signal_table(data = y)
+  new_signal_table(data = y)
 }
 
 #' @keywords internal
 new_signal_table <- function(data = list()) {
-	new_data_frame(data, class = c('signal_table', 'data.table'))
+  new_data_frame(data, class = c('signal_table', 'data.table'))
 }
 
 #' @export
 print.signal_table <- function(x, ...) {
-	cat(sprintf('<%s: %s x %s>\n', class(x)[[1]], dim(x)[1], dim(x)[2]))
-	if (length(x) > 0) {
-		NextMethod()
-	}
+  cat(sprintf('<%s: %s x %s>\n', class(x)[[1]], dim(x)[1], dim(x)[2]))
+  if (length(x) > 0) {
+    NextMethod()
+  }
 }
 
 #' @export
@@ -72,7 +71,7 @@ vec_ptype_full.signal_table <- function(x, ...) "signal_table"
 #' @rdname signal_table
 #' @export
 is_signal_table <- function(x) {
-	inherits(x, "signal_table")
+  inherits(x, "signal_table")
 }
 
 #' @importFrom vctrs vec_ptype2 vec_cast
@@ -80,48 +79,48 @@ NULL
 
 #' @keywords internal
 signal_table_ptype2 <- function(x, y, ...) {
-	as.data.table(df_ptype2(x, y, ...))
+  as.data.table(df_ptype2(x, y, ...))
 }
 
 #' @keywords internal
 signal_table_cast <- function(x, to, ...) {
-	as.data.table(df_cast(x, to, ...))
+  as.data.table(df_cast(x, to, ...))
 }
 
 ## signal_table
 
 #' @export
 vec_ptype2.signal_table.signal_table <- function(x, y, ...) {
-	new_signal_table()
+  new_signal_table()
 }
 
 #' @export
 vec_cast.signal_table.signal_table <- function(x, to, ...) {
-	x
+  x
 }
 
 ## data.table
 
 #' @export
 vec_ptype2.signal_table.data.table <- function(x, y, ...) {
-	signal_table_ptype2(x, y, ...)
+  signal_table_ptype2(x, y, ...)
 }
 
 #' @export
 vec_cast.signal_table.data.table <- function(x, to, ...) {
-	signal_table_cast(x, to, ...)
+  signal_table_cast(x, to, ...)
 }
 
 ## data.frame
 
 #' @export
 vec_ptype2.signal_table.data.frame <- function(x, y, ...) {
-	signal_table_ptype2(x, y, ...)
+  signal_table_ptype2(x, y, ...)
 }
 
 #' @export
 vec_cast.signal_table.data.frame <- function(x, to, ...) {
-	signal_table_cast(x, to, ...)
+  signal_table_cast(x, to, ...)
 }
 
 # Annotation Table -------------------------------------------------------------
@@ -169,133 +168,134 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #' @param frequency An `integer` that represents the sampling frequency in Hertz
 #'
 #' @export
-annotation_table <- function(annotator = character(),
-														 time = character(),
-														 sample = integer(),
-														 frequency = integer(),
-														 type = character(),
-														 subtype = character(),
-														 channel = integer(),
-														 number = integer(),
-														 ...) {
+annotation_table <- function(
+  annotator = character(),
+  time = character(),
+  sample = integer(),
+  frequency = integer(),
+  type = character(),
+  subtype = character(),
+  channel = integer(),
+  number = integer(),
+  ...
+) {
+  # Invariant rules:
+  # 	Can add and remove rows (each row is an annotation)
+  # 	Rows CAN be re-ordered
+  # 	Columns CANNOT be re-ordered
+  # 	Each column type is specific and invariant
+  #
+  # Invariant columns:
+  #		time: <character>
+  # 	sample: <integer>
+  #		type: <character>
+  # 	subtype: <character>
+  #		channel: <integer>
+  # 	number: <integer>
 
+  # The input data may be partially missing, and can be cleaned up empirically
+  # Can recycle some elements of data before placing in list
+  # The minimum data point is the type of annotation
+  # Everything revolves around the annotation itself
+  n <- length(sample)
 
-	# Invariant rules:
-	# 	Can add and remove rows (each row is an annotation)
-	# 	Rows CAN be re-ordered
-	# 	Columns CANNOT be re-ordered
-	# 	Each column type is specific and invariant
-	#
-	# Invariant columns:
-	#		time: <character>
-	# 	sample: <integer>
-	#		type: <character>
-	# 	subtype: <character>
-	#		channel: <integer>
-	# 	number: <integer>
+  # Type data
+  if (length(type) == 0) {
+    type <- vector(mode = "character", length = n)
+  }
 
-	# The input data may be partially missing, and can be cleaned up empirically
-	# Can recycle some elements of data before placing in list
-	# The minimum data point is the type of annotation
-	# Everything revolves around the annotation itself
-	n <- length(sample)
+  # Subtypes
+  if (length(subtype) == 0) {
+    subtype <- vector(mode = "character", length = n)
+  }
 
-	# Type data
-	if (length(type) == 0) {
-		type <- vector(mode = "character", length = n)
-	}
+  # Number
+  if (length(number) == 0) {
+    number <- vector(mode = "integer", length = n)
+  }
 
-	# Subtypes
-	if (length(subtype) == 0) {
-		subtype <- vector(mode = "character", length = n)
-	}
+  # Channel
+  if (length(channel) == 0) {
+    channel <- vector(mode = "integer", length = n)
+  }
 
+  # Sample/time are more complicated
+  # Sample can be given, and if so, time can be imputed if frequency is known
+  if (length(time) == 0 && length(sample) > 0) {
+    freq_values <- suppressWarnings(as.numeric(frequency))
+    freq <- if (length(freq_values) > 0) freq_values[[1]] else NA_real_
+    if (is.na(freq) || freq <= 0) {
+      time <- rep("", length(sample))
+    } else {
+      # These periods are the time points in seconds
+      timePoints <- sample / freq
 
-	# Number
-	if (length(number) == 0) {
-		number <- vector(mode = "integer", length = n)
-	}
+      # Hours
+      hours <- floor(timePoints / 3600)
 
+      # Minutes
+      minutes <- floor((timePoints - (hours * 3600)) / 60)
 
-	# Channel
-	if (length(channel) == 0) {
-		channel <- vector(mode = "integer", length = n)
-	}
+      # Seconds
+      seconds <- timePoints - (hours * 3600) - (minutes * 60)
 
-	# Sample/time are more complicated
-	# Sample can be given, and if so, time can be imputed if frequency is known
-	if (length(time) == 0 & length(sample) > 0) {
-		if (length(frequency) == 0) {
-			stop("Frequency must be given to impute time from sample")
-		} else {
-			# These periods are the time points in seconds
-			timePoints <- sample / frequency
+      # Convert to characters
+      hours <- ifelse(hours < 10, paste0("0", hours), hours)
+      minutes <- ifelse(minutes < 10, paste0("0", minutes), minutes)
+      seconds <- ifelse(seconds < 10, paste0("0", seconds), seconds)
 
-			# Hours
-			hours <- floor(timePoints / 3600)
+      time <- paste0(hours, ":", minutes, ":", seconds)
+    }
+  }
 
-			# Minutes
-			minutes <- floor((timePoints - (hours * 3600)) / 60)
+  x <- df_list(
+    time = time,
+    sample = sample,
+    type = type,
+    subtype = subtype,
+    channel = channel,
+    number = number
+  )
 
-			# Seconds
-			seconds <- timePoints - (hours * 3600) - (minutes * 60)
-
-			# Convert to characters
-			hours <- ifelse(hours < 10, paste0("0", hours), hours)
-			minutes <- ifelse(minutes < 10, paste0("0", minutes), minutes)
-			seconds <- ifelse(seconds < 10, paste0("0", seconds), seconds)
-
-			time <- paste0(hours, ":", minutes, ":", seconds)
-		}
-	}
-
-	x <- df_list(time = time,
-							 sample = sample,
-							 type = type,
-							 subtype = subtype,
-							 channel = channel,
-							 number = number)
-
-	new_annotation_table(x, annotator)
+  new_annotation_table(x, annotator)
 }
 
 #' @keywords internal
-new_annotation_table <- function(x = list(),
-																 annotator = character()) {
+new_annotation_table <- function(x = list(), annotator = character()) {
+  if (length(x) > 0) {
+    checkmate::assert_list(
+      x,
+      types = c("numeric", "integer", "character")
+    )
 
-	if (length(x) > 0) {
-		checkmate::assert_list(
-			x,
-			types = c("numeric", "integer", "character")
-		)
+    checkmate::assert_names(
+      names(x),
+      identical.to = c("time", "sample", "type", "subtype", "channel", "number")
+    )
+  }
 
-		checkmate::assert_names(
-			names(x),
-			identical.to = c("time", "sample", "type", "subtype", "channel", "number")
-		)
-	}
-
-	new_data_frame(x, annotator = annotator, class = c("annotation_table", "data.table"))
-
+  new_data_frame(
+    x,
+    annotator = annotator,
+    class = c("annotation_table", "data.table")
+  )
 }
 
 #' @export
 print.annotation_table <- function(x, ...) {
-
-	if (nrow(x) > 0) {
-		cat(sprintf(
-			'<%s: %s `%s` annotations>\n',
-			class(x)[[1]],
-			dim(x)[1],
-			attributes(x)$annotator
-		))
-		if (lengths(x)[1] > 0) {
-			NextMethod()
-		}
-	} else {
-		cat(sprintf( '<%s: 0 annotations>\n', class(x)[[1]]))
-	}
-
+  if (nrow(x) > 0) {
+    cat(sprintf(
+      '<%s: %s `%s` annotations>\n',
+      class(x)[[1]],
+      dim(x)[1],
+      attributes(x)$annotator
+    ))
+    if (lengths(x)[1] > 0) {
+      NextMethod()
+    }
+  } else {
+    cat(sprintf('<%s: 0 annotations>\n', class(x)[[1]]))
+  }
 }
 
 #' @export
@@ -307,47 +307,47 @@ vec_ptype_full.annotation_table <- function(x, ...) "annotation_table"
 #' @export
 #' @rdname annotation_table
 is_annotation_table <- function(x) {
-	inherits(x, "annotation_table")
+  inherits(x, "annotation_table")
 }
 
 #' @keywords internal
 annotation_table_ptype2 <- function(x, y, ...) {
-	as.data.table(df_ptype2(x, y, ...))
+  as.data.table(df_ptype2(x, y, ...))
 }
 
 #' @keywords internal
 annotation_table_cast <- function(x, to, ...) {
-	as.data.table(df_cast(x, to, ...))
+  as.data.table(df_cast(x, to, ...))
 }
 
 #' @export
 vec_ptype2.annotation_table.annotation_table <- function(x, y, ...) {
-	new_annotation_table()
+  new_annotation_table()
 }
 
 #' @export
 vec_cast.annotation_table.annotation_table <- function(x, to, ...) {
-	x
+  x
 }
 
 #' @export
 vec_ptype2.annotation_table.data.table <- function(x, y, ...) {
-	annotation_table_ptype2(x, y, ...)
+  annotation_table_ptype2(x, y, ...)
 }
 
 #' @export
 vec_cast.annotation_table.data.table <- function(x, to, ...) {
-	annotation_table_cast(x, to, ...)
+  annotation_table_cast(x, to, ...)
 }
 
 #' @export
 vec_ptype2.annotation_table.data.frame <- function(x, y, ...) {
-	annotation_table_ptype2(x, y, ...)
+  annotation_table_ptype2(x, y, ...)
 }
 
 #' @export
 vec_cast.annotation_table.data.frame <- function(x, to, ...) {
-	annotation_table_cast(x, to, ...)
+  annotation_table_cast(x, to, ...)
 }
 
 # Header Table -------------------------------------------------------------
@@ -460,176 +460,190 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 #' @param scale An `integer` Scale
 #'
 #' @export
-header_table <- function(record_name = character(), # Record line information
-												 number_of_channels = integer(),
-												 frequency = 250.0,
-												 samples = integer(),
-												 start_time = strptime(Sys.time(), "%Y-%m-%d %H:%M:%OSn"),
-												 ADC_saturation = integer(),
-												 file_name = character(), # Signal specific information
-												 storage_format = 16L,
-												 ADC_gain = 200L,
-												 ADC_baseline = ADC_zero,
-												 ADC_units = "mV",
-												 ADC_resolution = 12L,
-												 ADC_zero = 0L,
-												 initial_value = ADC_zero,
-												 checksum = 0L,
-												 blocksize = 0L,
-												 label = character(),
-												 info_strings = list(), # Secondary information
-												 additional_gain = 1.0,
-												 low_pass = integer(),
-												 high_pass = integer(),
-												 color = '#000000',
-												 scale = integer()) {
+header_table <- function(
+  record_name = character(), # Record line information
+  number_of_channels = integer(),
+  frequency = 250.0,
+  samples = integer(),
+  start_time = strptime(Sys.time(), "%Y-%m-%d %H:%M:%OSn"),
+  ADC_saturation = integer(),
+  file_name = character(), # Signal specific information
+  storage_format = 16L,
+  ADC_gain = 200L,
+  ADC_baseline = ADC_zero,
+  ADC_units = "mV",
+  ADC_resolution = 12L,
+  ADC_zero = 0L,
+  initial_value = ADC_zero,
+  checksum = 0L,
+  blocksize = 0L,
+  label = character(),
+  info_strings = list(), # Secondary information
+  additional_gain = 1.0,
+  low_pass = integer(),
+  high_pass = integer(),
+  color = '#000000',
+  scale = integer()
+) {
+  # Three components to the header structure as described above
+  # 	Record line
+  # 	Signal line(s)
+  # 	Info strings
 
+  # File name from record name
+  if (length(record_name) == 0) {
+    record_name <- NA
+    file_name <- NA
+  } else {
+    file_name <- paste0(record_name, '.dat')
+  }
 
-	# Three components to the header structure as described above
-	# 	Record line
-	# 	Signal line(s)
-	# 	Info strings
+  # First line of (*.hea) equivalent
+  record_line <- list(
+    record_name = record_name,
+    number_of_channels = number_of_channels,
+    samples = samples,
+    start_time = start_time,
+    frequency = frequency,
+    ADC_saturation = ADC_saturation
+  )
 
-	# File name from record name
-	if (length(record_name) == 0) {
-		record_name <- NA
-		file_name <- NA
-	} else {
-		file_name <- paste0(record_name, '.dat')
-	}
+  # Channels and specific signal should be organized appropriately
+  # 	Top to bottom should be from high to low, and then from left to right
+  # 	Catheters/leads are specifically included
+  # 	Retrieved from "data-raw" folder from leads.R file
+  # Table of channel information
+  # 	Clean up names if possible
+  # 	All are made upper character
+  label <-
+    toupper(label) |>
+    gsub("_", "\ ", x = _)
 
-	# First line of (*.hea) equivalent
-	record_line <- list(
-		record_name = record_name,
-		number_of_channels = number_of_channels,
-		samples = samples,
-		start_time = start_time,
-		frequency = frequency,
-		ADC_saturation = ADC_saturation
-	)
+  if (length(label) > 0 & all(label %in% .labels)) {
+    lab_splits <-
+      stringr::str_split(label, pattern = "_", n = 2, simplify = TRUE)
 
-	# Channels and specific signal should be organized appropriately
-	# 	Top to bottom should be from high to low, and then from left to right
-	# 	Catheters/leads are specifically included
-	# 	Retrieved from "data-raw" folder from leads.R file
-	# Table of channel information
-	# 	Clean up names if possible
-	# 	All are made upper character
-	label <-
-		toupper(label) |>
-		gsub("_", "\ ", x = _)
+    source <- lab_splits[, 1]
+    source <- ifelse(label %in% .leads$ECG, "ECG", source)
 
-	if (length(label) > 0 & all(label %in% .labels)) {
-		lab_splits <-
-			stringr::str_split(label, pattern = "_", n = 2, simplify = TRUE)
+    lead <- lab_splits[, 2]
+    lead <- ifelse(label %in% .leads$ECG, label, lead)
 
-		source <- lab_splits[,1]
-		source <- ifelse(label %in% .leads$ECG, "ECG", source)
+    # Factor if possible
+    source <- factor(source, levels = intersect(.source, source))
+    label <- factor(label, levels = intersect(.labels, label))
+  } else {
+    source <- NA
+    lead <- NA
+    label <- make.unique(label, sep = "_")
+  }
 
-		lead <- lab_splits[,2]
-		lead <- ifelse(label %in% .leads$ECG, label, lead)
+  # Make sure labels are unique
+  if (length(low_pass) == 0) {
+    low_pass <- NA_integer_
+  }
+  if (length(high_pass) == 0) {
+    high_pass <- NA_integer_
+  }
 
-		# Factor if possible
-		source <- factor(source, levels = intersect(.source, source))
-		label <- factor(label, levels = intersect(.labels, label))
-	} else {
-		source <- NA
-		lead <- NA
-		label <- make.unique(label, sep = "_")
-	}
+  # ADC gain can be generated by dividing saturation by digital gain
+  # Otherwise defaults
+  if (length(ADC_saturation) > 0) {
+    ADC_gain <- ADC_saturation / additional_gain
+  }
 
-	# Make sure labels are unique
-	if (length(low_pass) == 0) {
-		low_pass <- NA_integer_
-	}
-	if (length(high_pass) == 0) {
-		high_pass <- NA_integer_
-	}
+  # TODO
+  # Option characteristics
 
-	# ADC gain can be generated by dividing saturation by digital gain
-	# Otherwise defaults
-	if (length(ADC_saturation) > 0) {
-		ADC_gain <- ADC_saturation / additional_gain
-	}
+  # Signal specifications
+  channel_count <- if (
+    length(number_of_channels) == 0 || is.na(number_of_channels[1])
+  ) {
+    0L
+  } else {
+    as.integer(number_of_channels[1])
+  }
+  if (channel_count == 0L && length(storage_format) > 0) {
+    channel_count <- as.integer(length(storage_format))
+  }
+  channel_numbers <- if (channel_count > 0L) {
+    seq_len(channel_count)
+  } else {
+    integer()
+  }
 
-	# TODO
-	# Option characteristics
+  x <- df_list(
+    "file_name" = ifelse(length(file_name) == 0, NA_character_, file_name),
+    "storage_format" = storage_format,
+    "number" = channel_numbers,
+    "ADC_gain" = ADC_gain,
+    "ADC_baseline" = ADC_baseline,
+    "ADC_units" = ADC_units,
+    "ADC_zero" = ADC_zero,
+    "ADC_resolution" = ADC_resolution,
+    "initial_value" = initial_value,
+    "checksum" = checksum,
+    "blocksize" = blocksize,
+    "label" = label,
+    "lead" = lead,
+    "source" = source,
+    "additional_gain" = additional_gain,
+    "low_pass" = low_pass,
+    "high_pass" = high_pass,
+    "color" = color,
+    "scale" = ifelse(length(scale) == 0, NA, scale)
+  )
 
-	# Signal specifications
-	x <- df_list(
-		"file_name" = ifelse(length(file_name) == 0, NA_character_, file_name),
-		"storage_format" = storage_format,
-		"number" = ifelse(length(number_of_channels) == 0, 0, 1:number_of_channels),
-		"ADC_gain" = ADC_gain,
-		"ADC_baseline" = ADC_baseline,
-		"ADC_units" = ADC_units,
-		"ADC_zero" = ADC_zero,
-		"ADC_resolution" = ADC_resolution,
-		"initial_value" = initial_value,
-		"checksum" = checksum,
-		"blocksize" = blocksize,
-		"label" = label,
-		"lead" = lead,
-		"source" = source,
-		"additional_gain" = additional_gain,
-		"low_pass" = low_pass,
-		"high_pass" = high_pass,
-		"color" = color,
-		"scale" = ifelse(length(scale) == 0, NA, scale)
-	)
+  # TODO
+  # Info strings
 
-	# TODO
-	# Info strings
+  record_line$number_of_channels <- channel_count
 
-
-	# Construct new table
-	new_header_table(
-		x = x,
-		record_line = record_line,
-		info_strings = info_strings
-	)
-
+  # Construct new table
+  new_header_table(
+    x = x,
+    record_line = record_line,
+    info_strings = info_strings
+  )
 }
 
 #' @keywords internal
-new_header_table <- function(x = list(),
-														 record_line = list(),
-														 info_strings = list()) {
-
-	new_data_frame(
-		x,
-		record_line = record_line,
-		info_strings = info_strings,
-		class = c("header_table", "data.table")
-	)
-
+new_header_table <- function(
+  x = list(),
+  record_line = list(),
+  info_strings = list()
+) {
+  new_data_frame(
+    x,
+    record_line = record_line,
+    info_strings = info_strings,
+    class = c("header_table", "data.table")
+  )
 }
 
 #' @export
 #' @rdname header_table
 is_header_table <- function(x) {
-	inherits(x, "header_table")
+  inherits(x, "header_table")
 }
 
 #' @export
 print.header_table <- function(x, ...) {
-
-	if (nrow(x) > 0) {
-		cat(
-			sprintf(
-				"<%s: %s channels, %s samples @ %s Hz> %s\n",
-				class(x)[[1]],
-				attributes(x)$record_line$number_of_channels,
-				attributes(x)$record_line$samples,
-				attributes(x)$record_line$frequency,
-				attributes(x)$record_line$record_name
-			)
-		)
-		if (lengths(x)[1] > 0) {
-			NextMethod()
-		}
-	} else {
-		cat(sprintf( "<%s: 0 channels, 0 samples>\n", class(x)[[1]]))
-	}
-
+  if (nrow(x) > 0) {
+    cat(
+      sprintf(
+        "<%s: %s channels, %s samples @ %s Hz> %s\n",
+        class(x)[[1]],
+        attributes(x)$record_line$number_of_channels,
+        attributes(x)$record_line$samples,
+        attributes(x)$record_line$frequency,
+        attributes(x)$record_line$record_name
+      )
+    )
+    if (lengths(x)[1] > 0) {
+      NextMethod()
+    }
+  } else {
+    cat(sprintf("<%s: 0 channels, 0 samples>\n", class(x)[[1]]))
+  }
 }

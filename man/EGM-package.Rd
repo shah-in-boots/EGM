@@ -6,7 +6,7 @@
 \alias{EGM-package}
 \title{EGM: Intracardiac Electrograms}
 \description{
-A system for importing electrophysiological signal, based on the 'Waveform Database (WFDB)' software package, written by Moody et al 2022 \doi{10.13026/gjvw-1m31}. A wrapper for utilizing 'WFDB' functions for reading and writing signal data, as well as functions for visualization and analysis are provided. A stable and broadly compatible class for working with signal data, supporting the reading in of cardiac electrophysiological files such as intracardiac electrograms, is introduced.
+A system for importing electrophysiological signal, based on the 'Waveform Database (WFDB)' software package, written by Moody et al 2022 \doi{10.13026/gjvw-1m31}. A R-based system to utilize 'WFDB' functions for reading and writing signal data, as well as functions for visualization and analysis are provided. A stable and broadly compatible class for working with signal data, supporting the reading in of cardiac electrophysiological files such as intracardiac electrograms, is introduced.
 }
 \seealso{
 Useful links:
