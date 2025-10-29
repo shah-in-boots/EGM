@@ -480,8 +480,30 @@ test_that('digital units preserve raw ADC values with non-zero baseline', {
   # Create signal with known ADC values
   signal <- signal_table(data.table::data.table(
     sample = 0:9,
-    I = as.integer(c(1024, 1124, 1224, 1324, 1424, 1524, 1624, 1724, 1824, 1924)),
-    II = as.integer(c(2048, 2148, 2248, 2348, 2448, 2548, 2648, 2748, 2848, 2948))
+    I = as.integer(c(
+      1024,
+      1124,
+      1224,
+      1324,
+      1424,
+      1524,
+      1624,
+      1724,
+      1824,
+      1924
+    )),
+    II = as.integer(c(
+      2048,
+      2148,
+      2248,
+      2348,
+      2448,
+      2548,
+      2648,
+      2748,
+      2848,
+      2948
+    ))
   ))
 
   # Create header with non-zero baseline
@@ -492,7 +514,7 @@ test_that('digital units preserve raw ADC values with non-zero baseline', {
     samples = nrow(signal),
     storage_format = c(16L, 16L),
     ADC_gain = c(200, 200),
-    ADC_baseline = c(1024L, 2048L),  # Non-zero baselines
+    ADC_baseline = c(1024L, 2048L), # Non-zero baselines
     ADC_units = c("mV", "mV"),
     label = c("I", "II")
   )

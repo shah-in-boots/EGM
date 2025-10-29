@@ -27,8 +27,8 @@ label store values. If the column is numeric it is matched on
 }
 \value{
 \code{wfdb_annotation_labels()} returns a data frame with columns
-\code{label_store}, \code{symbol}, \code{mnemonic}, \code{description}, and
-\code{is_qrs}. \code{wfdb_annotation_decode()} returns the input annotation
+\code{label_store}, \code{symbol}, \code{mnemonic}, and \code{description}.
+\code{wfdb_annotation_decode()} returns the input annotation
 table with the WFDB nomenclature columns appended.
 }
 \description{

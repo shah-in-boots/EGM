@@ -322,231 +322,8 @@ NULL
 
 # Annotation reference --------------------------------------------------------
 
-.wfdb_annotation_label_table <- local({
-  label_store <- c(
-    0L,
-    1L,
-    2L,
-    3L,
-    4L,
-    5L,
-    6L,
-    7L,
-    8L,
-    9L,
-    10L,
-    11L,
-    12L,
-    13L,
-    14L,
-    16L,
-    18L,
-    19L,
-    20L,
-    21L,
-    22L,
-    23L,
-    24L,
-    25L,
-    26L,
-    27L,
-    28L,
-    29L,
-    30L,
-    31L,
-    32L,
-    33L,
-    34L,
-    35L,
-    36L,
-    37L,
-    38L,
-    39L,
-    40L,
-    41L
-  )
-
-  symbol <- c(
-    " ",
-    "N",
-    "L",
-    "R",
-    "a",
-    "V",
-    "F",
-    "J",
-    "A",
-    "S",
-    "E",
-    "j",
-    "/",
-    "Q",
-    "~",
-    "|",
-    "s",
-    "T",
-    "*",
-    "D",
-    "\"",
-    "=",
-    "p",
-    "B",
-    "^",
-    "t",
-    "+",
-    "u",
-    "?",
-    "!",
-    "[",
-    "]",
-    "e",
-    "n",
-    "@",
-    "x",
-    "f",
-    "(",
-    ")",
-    "r"
-  )
-
-  mnemonic <- c(
-    "NOTANN",
-    "NORMAL",
-    "LBBB",
-    "RBBB",
-    "ABERR",
-    "PVC",
-    "FUSION",
-    "NPC",
-    "APC",
-    "SVPB",
-    "VESC",
-    "NESC",
-    "PACE",
-    "UNKNOWN",
-    "NOISE",
-    "ARFCT",
-    "STCH",
-    "TCH",
-    "SYSTOLE",
-    "DIASTOLE",
-    "NOTE",
-    "MEASURE",
-    "PWAVE",
-    "BBB",
-    "PACESP",
-    "TWAVE",
-    "RHYTHM",
-    "UWAVE",
-    "LEARN",
-    "FLWAV",
-    "VFON",
-    "VFOFF",
-    "AESC",
-    "SVESC",
-    "LINK",
-    "NAPC",
-    "PFUS",
-    "WFON",
-    "WFOFF",
-    "RONT"
-  )
-
-  description <- c(
-    "Not an actual annotation",
-    "Normal beat",
-    "Left bundle branch block beat",
-    "Right bundle branch block beat",
-    "Aberrated atrial premature beat",
-    "Premature ventricular contraction",
-    "Fusion of ventricular and normal beat",
-    "Nodal (junctional) premature beat",
-    "Atrial premature contraction",
-    "Premature or ectopic supraventricular beat",
-    "Ventricular escape beat",
-    "Nodal (junctional) escape beat",
-    "Paced beat",
-    "Unclassifiable beat",
-    "Signal quality change",
-    "Isolated QRS-like artifact",
-    "ST change",
-    "T-wave change",
-    "Systole",
-    "Diastole",
-    "Comment annotation",
-    "Measurement annotation",
-    "P-wave peak",
-    "Left or right bundle branch block",
-    "Non-conducted pacer spike",
-    "T-wave peak",
-    "Rhythm change",
-    "U-wave peak",
-    "Learning",
-    "Ventricular flutter wave",
-    "Start of ventricular flutter/fibrillation",
-    "End of ventricular flutter/fibrillation",
-    "Atrial escape beat",
-    "Supraventricular escape beat",
-    "Link to external data (aux_note contains URL)",
-    "Non-conducted P-wave (blocked APB)",
-    "Fusion of paced and normal beat",
-    "Waveform onset",
-    "Waveform end",
-    "R-on-T premature ventricular contraction"
-  )
-
-  is_qrs <- c(
-    FALSE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    TRUE,
-    FALSE,
-    FALSE,
-    FALSE,
-    FALSE,
-    FALSE,
-    FALSE,
-    FALSE,
-    FALSE,
-    FALSE,
-    TRUE,
-    FALSE,
-    FALSE,
-    FALSE,
-    FALSE,
-    TRUE,
-    TRUE,
-    FALSE,
-    FALSE,
-    TRUE,
-    TRUE,
-    FALSE,
-    FALSE,
-    TRUE,
-    FALSE,
-    FALSE,
-    TRUE
-  )
-
-  data.frame(
-    label_store = label_store,
-    symbol = symbol,
-    mnemonic = mnemonic,
-    description = description,
-    is_qrs = is_qrs,
-    stringsAsFactors = FALSE
-  )
-})
+# WFDB annotation labels are stored as internal data (.wfdb_annotations)
+# Generated from data-raw/annotations.R
 
 #' Standard WFDB annotation nomenclature
 #'
@@ -578,8 +355,8 @@ NULL
 #'   `label_store`, otherwise a symbol lookup is performed.
 #'
 #' @return `wfdb_annotation_labels()` returns a data frame with columns
-#'   `label_store`, `symbol`, `mnemonic`, `description`, and
-#'   `is_qrs`. `wfdb_annotation_decode()` returns the input annotation
+#'   `label_store`, `symbol`, `mnemonic`, and `description`.
+#'   `wfdb_annotation_decode()` returns the input annotation
 #'   table with the WFDB nomenclature columns appended.
 #'
 #' @references
@@ -601,7 +378,7 @@ NULL
 #'
 #' @export
 wfdb_annotation_labels <- function(symbol = NULL, label_store = NULL) {
-  labels <- .wfdb_annotation_label_table
+  labels <- .wfdb_annotations
 
   if (!is.null(symbol)) {
     symbol <- as.character(symbol)
@@ -632,7 +409,7 @@ wfdb_annotation_decode <- function(annotation, column = "type") {
     stop("Column `", column, "` was not found in `annotation`")
   }
 
-  labels <- .wfdb_annotation_label_table
+  labels <- .wfdb_annotations
 
   annotation$`..row_id..` <- seq_len(nrow(annotation))
 
