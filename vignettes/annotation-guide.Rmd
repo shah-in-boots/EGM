@@ -1,0 +1,43 @@
+---
+title: "Understanding Annotations"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Understanding WFDB Annotations}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(EGM)
+```
+
+<!-- 
+Introduction will go here. First start with WFDB annotation standard. Need to describe the current standards for how annotations are documented in WFDB. The general structure will be...
+
+- Give an example of the annotation table and the required elements
+- Show the overall types of annotations that are standard, e.g. the `.surface_annotations`, grouped by the type of annotations that are available to help it be easy to understand
+-->
+
+# Electrocardiogram Annotations
+
+# Intracardiac Electrogram Annotations
+
+<!--
+This section is on the intracardiac annotation options. The intracardiac has to have a similar and compatible structure, with the same variable types.
+
+The type includes:
+
+- a = Atrial
+- v = Ventricular
+- h = His bundle recording
+- f = Fascicular potential
+
+The subtypes 
+-->

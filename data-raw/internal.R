@@ -243,7 +243,7 @@ description <- c(
 )
 
 # Create the annotation labels data frame
-.wfdb_annotations <- data.frame(
+.surface_annotations <- data.frame(
   label_store = label_store,
   symbol = symbol,
   mnemonic = mnemonic,
@@ -257,7 +257,7 @@ usethis::use_data(
   .labels,
   .leads,
   .source,
-  .wfdb_annotations,
+  .surface_annotations,
   overwrite = TRUE,
   internal = TRUE
 )
