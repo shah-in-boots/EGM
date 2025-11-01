@@ -1,8 +1,18 @@
-# EGM (development version)
+# EGM 0.2.0
 
-* Updates to `{pkgdown}` settings for documentation organization
-* Debugging the color issues when adding a color theme to `ggm()`
-* Creation of subclass of `egm` objects called `ecg` to identify 12-lead ECG subtypes
+This release includes major improvements to WFDB functionality and package structure.
+
+* **Native WFDB implementation**: Added C++ implementation for reading and writing WFDB files, removing the system dependency on external WFDB libraries
+
+* **Annotation improvements**: Enhanced annotation handling with new helper functions and improved frequency handling
+
+* **Signal format**: Updated signal format to accept integer data types for improved memory efficiency and compatibility
+
+* **Documentation**: Added new `annotation-guide` vignette and expanded `wfdb-guide` vignette with detailed examples
+
+* **Breaking changes**: Removed `segmentation.R` functions and related vignette (functionality may be restored in future releases)
+
+* **Code quality**: Extensive refactoring and documentation improvements across the package, including detailed inline comments
 
 # EGM 0.1.1
 
