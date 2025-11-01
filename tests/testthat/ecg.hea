@@ -1,16 +1,18 @@
 ecg 12 500 5000 22:41:16 29/04/2023
-ecg.dat	16	200(0)/mV	16	0	-10	-3015	0	I
-ecg.dat	16	200(0)/mV	16	0	5	-6357	0	II
-ecg.dat	16	200(0)/mV	16	0	15	-3468	0	III
-ecg.dat	16	200(0)/mV	16	0	10	-4851	0	AVF
-ecg.dat	16	200(0)/mV	16	0	-12	269	0	AVL
-ecg.dat	16	200(0)/mV	16	0	2	4498	0	AVR
-ecg.dat	16	200(0)/mV	16	0	29	-7912	0	V1
-ecg.dat	16	200(0)/mV	16	0	44	-8609	0	V2
-ecg.dat	16	200(0)/mV	16	0	59	-22098	0	V3
-ecg.dat	16	200(0)/mV	16	0	34	-9591	0	V4
-ecg.dat	16	200(0)/mV	16	0	-29	-6177	0	V5
-ecg.dat	16	200(0)/mV	16	0	-44	-7504	0	V6
-# source ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG
-# additional_gain 1 1 1 1 1 1 1 1 1 1 1 1
-# color #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000
+ecg.dat	16	200(0)/mV	12	0	0	0	0	I
+ecg.dat	16	200(0)/mV	12	0	0	0	0	II
+ecg.dat	16	200(0)/mV	12	0	0	0	0	III
+ecg.dat	16	200(0)/mV	12	0	0	0	0	AVF
+ecg.dat	16	200(0)/mV	12	0	0	0	0	AVL
+ecg.dat	16	200(0)/mV	12	0	0	0	0	AVR
+ecg.dat	16	200(0)/mV	12	0	0	0	0	V1
+ecg.dat	16	200(0)/mV	12	0	0	0	0	V2
+ecg.dat	16	200(0)/mV	12	0	0	0	0	V3
+ecg.dat	16	200(0)/mV	12	0	0	0	0	V4
+ecg.dat	16	200(0)/mV	12	0	0	0	0	V5
+ecg.dat	16	200(0)/mV	12	0	0	0	0	V6
+# mrn 081486213
+# age 43
+# sex MALE
+# race OTHER
+# diagnosis Normal Sinus rhythm, Anterior infarct, age undetermined, T wave abnormality, consider lateral ischemia, Abnormal ECG, When compared with ECG of, 30-MAR-2023 09:09, Questionable change in, The axis

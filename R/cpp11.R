@@ -7,3 +7,23 @@ calculate_approximate_entropy_cpp <- function(x, m, r) {
 fun <- function() {
   invisible(.Call(`_EGM_fun`))
 }
+
+read_header_native_cpp <- function(header_path) {
+  .Call(`_EGM_read_header_native_cpp`, header_path)
+}
+
+read_signal_native_cpp <- function(data_path, number_of_channels, total_samples, storage_format, begin_sample, end_sample, channel_indices, adc_gain, adc_baseline, physical, channel_names) {
+  .Call(`_EGM_read_signal_native_cpp`, data_path, number_of_channels, total_samples, storage_format, begin_sample, end_sample, channel_indices, adc_gain, adc_baseline, physical, channel_names)
+}
+
+write_wfdb_native_cpp <- function(data_path, header_path, signal_matrix_sexp, channel_names, file_names, storage_format, adc_gain, adc_baseline, adc_units, adc_resolution, adc_zero, initial_value, checksum, blocksize, frequency, samples, record_name, start_time, info_strings, physical) {
+  invisible(.Call(`_EGM_write_wfdb_native_cpp`, data_path, header_path, signal_matrix_sexp, channel_names, file_names, storage_format, adc_gain, adc_baseline, adc_units, adc_resolution, adc_zero, initial_value, checksum, blocksize, frequency, samples, record_name, start_time, info_strings, physical))
+}
+
+read_annotation_native_cpp <- function(annotation_path) {
+  .Call(`_EGM_read_annotation_native_cpp`, annotation_path)
+}
+
+write_annotation_native_cpp <- function(annotation_path, samples, types, subtypes, channels, numbers) {
+  invisible(.Call(`_EGM_write_annotation_native_cpp`, annotation_path, samples, types, subtypes, channels, numbers))
+}

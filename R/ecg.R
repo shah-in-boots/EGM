@@ -33,35 +33,35 @@
 #'
 #' @name ecg
 #' @export
-ecg <- function(signal = signal_table(),
-								header = header_table(),
-								annotation = annotation_table(),
-								...) {
-
-	# Create a new ecg object
-	new_ecg(signal,
-					header = header,
-					annotation = annotation)
+ecg <- function(
+  signal = signal_table(),
+  header = header_table(),
+  annotation = annotation_table(),
+  ...
+) {
+  # Create a new ecg object
+  new_ecg(signal, header = header, annotation = annotation)
 }
 
 #' @keywords internal
-new_ecg <- function(signal = signal_table(),
-										header = header_table(),
-										annotation = annotation_table(),
-										...) {
+new_ecg <- function(
+  signal = signal_table(),
+  header = header_table(),
+  annotation = annotation_table(),
+  ...
+) {
+  # Validate that this is appropriate 12-lead ECG data
+  validate_ecg_data(signal, header)
 
-	# Validate that this is appropriate 12-lead ECG data
-	validate_ecg_data(signal, header)
-
-	# Create an egm object first, then add the ecg class
-	structure(
-		list(
-			signal = signal,
-			header = header,
-			annotation = annotation
-		),
-		class = c('ecg', 'egm', 'list')
-	)
+  # Create an egm object first, then add the ecg class
+  structure(
+    list(
+      signal = signal,
+      header = header,
+      annotation = annotation
+    ),
+    class = c('ecg', 'egm', 'list')
+  )
 }
 
 #' Validate that signal data represents a standard 12-lead ECG
@@ -70,56 +70,76 @@ new_ecg <- function(signal = signal_table(),
 #' @return TRUE if valid, throws error otherwise
 #' @keywords internal
 validate_ecg_data <- function(signal, header) {
-	if (nrow(signal) == 0) return(TRUE)  # Empty signal is valid initially
+  if (nrow(signal) == 0) {
+    return(TRUE)
+  } # Empty signal is valid initially
 
-	# Get lead names (exclude sample column)
-	lead_names <- names(signal)[-1]
+  # Get lead names (exclude sample column)
+  lead_names <- names(signal)[-1]
 
-	# Standard ECG lead names (case-insensitive matching)
-	std_leads <- c("I", "II", "III", "AVR", "AVL", "AVF", "V1", "V2", "V3", "V4", "V5", "V6")
+  # Standard ECG lead names (case-insensitive matching)
+  std_leads <- c(
+    "I",
+    "II",
+    "III",
+    "AVR",
+    "AVL",
+    "AVF",
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6"
+  )
 
-	# Check if we have 12 leads
-	if (length(lead_names) != 12) {
-		warning("ECG should contain 12 leads, found ", length(lead_names),
-						". Converting to ecg class anyway.")
-		return(TRUE)
-	}
+  # Check if we have 12 leads
+  if (length(lead_names) != 12) {
+    warning(
+      "ECG should contain 12 leads, found ",
+      length(lead_names),
+      ". Converting to ecg class anyway."
+    )
+    return(TRUE)
+  }
 
-	# Check lead names (allowing for some variation in naming)
-	normalized_leads <- toupper(gsub("[_\\s-]", "", lead_names))
-	std_leads_norm <- toupper(gsub("[_\\s-]", "", std_leads))
+  # Check lead names (allowing for some variation in naming)
+  normalized_leads <- toupper(gsub("[_\\s-]", "", lead_names))
+  std_leads_norm <- toupper(gsub("[_\\s-]", "", std_leads))
 
-	if (!all(normalized_leads %in% std_leads_norm)) {
-		non_std <- lead_names[!normalized_leads %in% std_leads_norm]
-		warning("Non-standard ECG lead names detected: ",
-						paste(non_std, collapse=", "),
-						". Converting to ecg class anyway.")
-	}
+  if (!all(normalized_leads %in% std_leads_norm)) {
+    non_std <- lead_names[!normalized_leads %in% std_leads_norm]
+    warning(
+      "Non-standard ECG lead names detected: ",
+      paste(non_std, collapse = ", "),
+      ". Converting to ecg class anyway."
+    )
+  }
 
-	TRUE
+  TRUE
 }
 
 #' @export
 format.ecg <- function(x, ...) {
-	# Call the parent format method
-	NextMethod()
+  # Call the parent format method
+  NextMethod()
 
-	# Add ECG-specific information
-	cat('Type: Standard 12-lead ECG\n')
+  # Add ECG-specific information
+  cat('Type: Standard 12-lead ECG\n')
 
-	# Return invisibly for chaining
-	invisible(x)
+  # Return invisibly for chaining
+  invisible(x)
 }
 
 #' @export
 print.ecg <- function(x, ...) {
-	format(x)
+  format(x)
 }
 
 #' @export
 #' @rdname ecg
 is_ecg <- function(x) {
-	inherits(x, "ecg")
+  inherits(x, "ecg")
 }
 
 #' Convert an egm object to an ecg object
@@ -132,11 +152,9 @@ is_ecg <- function(x) {
 #' @return An object of class `ecg`
 #' @export
 as_ecg <- function(x, ...) {
-	if (!is_egm(x)) {
-		stop("Input must be of class 'egm'")
-	}
+  if (!is_egm(x)) {
+    stop("Input must be of class 'egm'")
+  }
 
-	ecg(signal = x$signal,
-			header = x$header,
-			annotation = x$annotation)
+  ecg(signal = x$signal, header = x$header, annotation = x$annotation)
 }

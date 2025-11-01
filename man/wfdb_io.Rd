@@ -11,22 +11,21 @@
 write_wfdb(
   data,
   record,
-  record_dir,
-  wfdb_path = getOption("wfdb_path"),
-  header = list(frequency = 250, gain = 200L, label = character()),
+  record_dir = ".",
+  header = NULL,
   info_strings = list(),
+  units = c("digital", "physical"),
   ...
 )
 
 read_wfdb(
   record,
   record_dir = ".",
-  annotator = NA_character_,
-  wfdb_path = getOption("wfdb_path"),
+  annotator = NULL,
   begin = 0,
   end = NA_integer_,
   interval = NA_integer_,
-  units = "digital",
+  units = c("digital", "physical"),
   channels = character(),
   ...
 )
@@ -34,16 +33,16 @@ read_wfdb(
 read_signal(
   record,
   record_dir = ".",
-  wfdb_path = getOption("wfdb_path"),
-  begin = 0L,
+  header = NULL,
+  begin = 0,
   end = NA_integer_,
   interval = NA_integer_,
-  units = "digital",
+  units = c("digital", "physical"),
   channels = character(),
   ...
 )
 
-read_header(record, record_dir = ".", wfdb_path = getOption("wfdb_path"), ...)
+read_header(record, record_dir = ".", ...)
 }
 \arguments{
 \item{data}{Can either be an \code{egm} object, or a \code{data.frame} (or similar)
@@ -61,10 +60,6 @@ acceptable, as well as hyphens (-) and underscores (_)}
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
 
-\item{wfdb_path}{Path that leads to installed \code{wfdb} software package on
-device. Needs to be directly set using \code{set_wfdb_path()}. Obtained from the
-system options on loading of the package, \code{getOption('wfdb_path')}}
-
 \item{header}{A header file is an optional named list of parameters that
 will be used to organize and describe the signal input from the \strong{data}
 argument. If the \strong{type} is given, specific additional elements will be
@@ -81,6 +76,18 @@ calculated):
 to the header file, usually containing information about the channels,
 (e.g. list of colors, extra labels, etc).}
 
+\item{units}{A \code{character} string representing either \emph{digital} (DEFAULT) or \emph{physical}
+units that should be used for signal values.
+\itemize{
+\item \code{"digital"} = Returns raw ADC (analog-to-digital converter) counts as stored
+in the .dat file. These are integer values representing the digitized signal
+without any scaling applied. Use this to preserve exact round-trip fidelity.
+\item \code{"physical"} = Returns signal values converted to physical units (e.g., mV)
+using the formula: \code{physical = (digital - baseline) / gain}, where \code{baseline}
+and \code{gain} are specified in the header file. This is the human-readable format
+for analysis.
+}}
+
 \item{...}{Additional arguments to be passed to the function}
 
 \item{annotator}{String that is the name of a WFDB-compatible annotation
@@ -94,15 +101,6 @@ default is to start at the beginning of the record. If \code{end} or \code{inter
 are given, the earlier of the two will be returned. The \code{end} argument
 gives a time index to read until. The \code{interval} argument is the length of
 time past the start point.}
-
-\item{units}{A \code{character} string representing either \emph{digital} (DEFAULT) or \emph{physical}
-units that should be used, if available.
-\itemize{
-\item digital = Index in sample number, signal in integers (A/D units)
-\item physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
-This will \strong{include 1 additional row over the header/column names} that
-describes units
-}}
 
 \item{channels}{Either the signal/channel in a \code{character} vector as a name or number.
 Allows for duplication of signal or to re-order signal if needed. If
@@ -121,10 +119,21 @@ recording systems, as indicated in the details section. Writing WFDB leads to
 creation of both a \strong{dat} (signal) and \strong{hea} (header) file. These are both
 required for reading in files as well.
 }
+\details{
+The \code{begin}, \code{end}, and \code{interval} arguments are converted into sample
+positions using the sampling frequency declared in the WFDB header. The
+reader first determines the starting sample from \code{begin}, then gives
+precedence to \code{interval} (when supplied) before falling back to \code{end}. Any
+request that extends beyond the recorded range is clamped so that the caller
+still receives all available data without a hard failure.
+}
 \section{Functions}{
 \itemize{
 \item \code{write_wfdb()}: Writes out signal and header data into a WFDB-compatible
-format from R.
+format from R. The \code{units} parameter indicates whether the input signal data
+is in digital (raw ADC counts) or physical units. When \code{units="physical"},
+the function automatically converts to digital units using the inverse formula:
+\code{digital = (physical * gain) + baseline} before writing to disk.
 
 \item \code{read_wfdb()}: Reads a multicomponent WFDB-formatted set of files
 directly into an \code{egm} object. This serves to pull together

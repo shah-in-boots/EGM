@@ -1,0 +1,239 @@
+---
+title: "Understanding Annotations"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Understanding WFDB Annotations}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(EGM)
+```
+
+<!-- 
+Introduction will go here. First start with WFDB annotation standard. Need to describe the current standards for how annotations are documented in WFDB. The general structure will be...
+
+- Give an example of the annotation table and the required elements
+- Show the overall types of annotations that are standard, e.g. the `.surface_annotations`, grouped by the type of annotations that are available to help it be easy to understand
+-->
+
+# Electrocardiogram Annotations
+
+## WFDB Annotation Standards
+
+The WFDB (Waveform Database) software package provides a standardized system for annotating cardiac signals, predominately surface electrocardiogram (**ECG**) data.
+Annotations are polymorphic, meaning multiple annotation sets can be applied to a single signal dataset.
+The limitation is that these are constrained to physiological events associated with surface ECGs. 
+
+### Annotation Table Structure
+
+All WFDB-compatible annotations in the `{EGM}` package are stored as `annotation_table` objects. 
+The columns are type-specific, which allows them to be easily stored.
+These tables contain the following required columns:
+
+- **annotator**: Name of the annotation function or creator (e.g., "sqrs", "ecgpuwave", "manual")
+- **time**: Time stamp constructed from sample number and sampling frequency (format: HH:MM:SS.mmm)
+- **sample**: Integer index of the annotation position in the signal
+- **type**: Single character symbol describing the annotation type (see annotation types below)
+- **subtype**: Single character providing additional classification
+- **channel**: Integer indicating which signal channel the annotation applies to
+- **number**: Additional numeric qualifier providing context-specific information
+
+```{r}
+# Create annotations for detected R-peaks
+# Example
+ann <- annotation_table(
+  annotator = "qrs",
+  sample = c(100, 350, 600, 850),
+  type = "N",
+  frequency = 250,
+  channel = 0
+)
+
+# Print
+ann
+```
+
+## Standard ECG Annotation Types
+
+The WFDB standard defines 41 annotation types for surface electrocardiograms. 
+These annotations can be broadly grouped into several categories:
+
+### Beat Annotations
+
+Beat annotations mark individual cardiac cycles and their characteristics:
+
+```{r}
+# Load internal annotation data
+beat_symbols <- c("N", "L", "R", "a", "V", "F", "J", "A", "S", "E", "j", "/", "Q", "~")
+beat_labels <- EGM:::.surface_annotations[EGM:::.surface_annotations$symbol %in% beat_symbols, ]
+
+knitr::kable(
+  beat_labels[, c("symbol", "mnemonic", "description")],
+  col.names = c("Symbol", "Mnemonic", "Description"),
+  row.names = FALSE,
+  caption = "Beat Annotation Types"
+)
+```
+
+**Key beat types:**
+
+- **N (NORMAL)**: Normal sinus beat
+- **V (PVC)**: Premature ventricular contraction
+- **A (APC)**: Atrial premature contraction
+- **L/R (LBBB/RBBB)**: Bundle branch block beats
+- **F (FUSION)**: Fusion of ventricular and normal beat
+- **/ (PACE)**: Paced beat
+
+### Waveform Boundary Annotations
+
+These mark the beginning, peak, and end of ECG waveforms:
+
+```{r}
+wave_symbols <- c("p", "t", "u", "(", ")")
+wave_labels <- EGM:::.surface_annotations[EGM:::.surface_annotations$symbol %in% wave_symbols, ]
+
+knitr::kable(
+  wave_labels[, c("symbol", "mnemonic", "description")],
+  col.names = c("Symbol", "Mnemonic", "Description"),
+  row.names = FALSE,
+  caption = "Waveform Boundary Annotations"
+)
+```
+
+
+### Rhythm and Signal Quality Annotations
+
+```{r}
+rhythm_symbols <- c("+", "|", "s", "T", "~", "x")
+rhythm_labels <- EGM:::.surface_annotations[EGM:::.surface_annotations$symbol %in% rhythm_symbols, ]
+
+knitr::kable(
+  rhythm_labels[, c("symbol", "mnemonic", "description")],
+  col.names = c("Symbol", "Mnemonic", "Description"),
+  row.names = FALSE,
+  caption = "Rhythm and Signal Quality Annotations"
+)
+```
+
+### Specialized Annotations
+
+```{r}
+special_symbols <- c("*", "D", "\"", "=", "!", "[", "]", "@", "r", "^", "B", "e", "n", "f")
+special_labels <- EGM:::.surface_annotations[EGM:::.surface_annotations$symbol %in% special_symbols, ]
+
+knitr::kable(
+  special_labels[, c("symbol", "mnemonic", "description")],
+  col.names = c("Symbol", "Mnemonic", "Description"),
+  row.names = FALSE,
+  caption = "Specialized Annotations"
+)
+```
+
+## Common Annotation File Types
+
+When working with WFDB files, annotations are stored with specific file extensions that indicate the annotator used:
+
+- **`.atr`**: Manually reviewed and corrected reference annotations
+- **`.ann`**: General annotation file
+- **`.ecgpuwave`**: Surface ECG wave boundaries (P, QRS, T waves) generated by the ecgpuwave algorithm
+- **`.sqrs`, `.wqrs`, `.gqrs`**: R-peak detections from different QRS detection algorithms
+
+## Accessing All Standard Annotations
+
+The complete list of standard WFDB annotations can be accessed using:
+
+```{r, eval=FALSE}
+# View all standard ECG annotation types
+wfdb_annotation_labels()
+
+# Filter for specific symbols
+wfdb_annotation_labels(symbol = c("N", "V", "A"))
+
+# Decode annotations in an existing annotation table
+ann <- annotation_table(
+  annotator = "example",
+  sample = c(100, 200),
+  type = c("N", "V")
+)
+
+# Add human-readable descriptions
+wfdb_annotation_decode(ann)
+```
+
+## Example: Working with ECG Annotations
+
+Here's a practical example of reading, interpreting, and visualizing ECG annotations:
+
+```{r, eval=FALSE}
+# Read an ECG with annotations
+record_path <- system.file('extdata', package = 'EGM')
+ecg <- read_wfdb(
+  record = "muse-sinus",
+  record_dir = record_path
+)
+
+# Read associated annotations (if they exist)
+ann <- read_annotation(
+   record = "muse-sinus",
+   annotator = "ecgpuwave",
+   record_dir = record_path
+)
+
+# Decode annotation types
+ann_decoded <- wfdb_annotation_decode(ann)
+head(ann_decoded)
+```
+
+# Intracardiac Electrogram Annotations
+
+<!--
+This section is on the intracardiac annotation options. The intracardiac has to have a similar and compatible structure, with the same variable types.
+
+The type includes:
+
+- a = Atrial
+- v = Ventricular
+- h = His bundle recording
+- f = Fascicular potential
+
+The subtypes 
+-->
+
+This is a work in progress, where we aim to define and implement a comprehensive set of annotations for intracardiac electrograms that are compatible with the standard WFDB annotation system.
+
+# Examples
+
+## `ecgpuwave`
+
+One of the common annotators used, called [`ecgpuwave`](https://physionet.org/content/ecgpuwave/1.3.4/), demonstrates how the annotation system is leveraged.
+
+The standard labels are used:
+
+- **p (PWAVE)**: P-wave peak
+- **t (TWAVE)**: T-wave peak
+- **( (WFON)**: Waveform onset
+- **) (WFOFF)**: Waveform end
+
+When using waveform boundary annotations like `(` and `)`, the **number** column specifies which waveform:
+
+- 0 = P wave
+- 1 = QRS complex
+- 2 = T wave
+
+For T-wave annotations (`t`), the **number** column describes morphology:
+
+- 0 = Normal
+- 1 = Inverted
+- 2 = Positive
+- 3 = Negative
+- 4 = Biphasic (negative-positive)
+- 5 = Biphasic (positive-negative)
