@@ -322,7 +322,7 @@ NULL
 
 # Annotation reference --------------------------------------------------------
 
-# WFDB annotation labels are stored as internal data (.wfdb_annotations)
+# WFDB annotation labels are stored as internal data (.surface_annotations)
 # Generated from data-raw/annotations.R
 
 #' Standard WFDB annotation nomenclature
@@ -378,7 +378,7 @@ NULL
 #'
 #' @export
 wfdb_annotation_labels <- function(symbol = NULL, label_store = NULL) {
-  labels <- .wfdb_annotations
+  labels <- .surface_annotations
 
   if (!is.null(symbol)) {
     symbol <- as.character(symbol)
@@ -409,7 +409,7 @@ wfdb_annotation_decode <- function(annotation, column = "type") {
     stop("Column `", column, "` was not found in `annotation`")
   }
 
-  labels <- .wfdb_annotations
+  labels <- .surface_annotations
 
   annotation$`..row_id..` <- seq_len(nrow(annotation))
 
