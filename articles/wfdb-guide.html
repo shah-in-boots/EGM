@@ -34,8 +34,8 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/getting-started.html">Getting Started</a></li>
-    <li><a class="dropdown-item" href="../articles/segmentation-guide.html">Signal Segmentation</a></li>
+<li><a class="dropdown-item" href="../articles/annotation-guide.html">Understanding Annotations</a></li>
+    <li><a class="dropdown-item" href="../articles/getting-started.html">Getting Started</a></li>
     <li><a class="dropdown-item" href="../articles/wfdb-guide.html">WFDB: An Introduction to the Waveform Database Software Package</a></li>
   </ul>
 </li>
@@ -59,7 +59,7 @@
       <h1>WFDB: An Introduction to the Waveform Database Software Package</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/shah-in-boots/EGM/blob/v0.1.1/vignettes/wfdb-guide.Rmd" class="external-link"><code>vignettes/wfdb-guide.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/shah-in-boots/EGM/blob/main/vignettes/wfdb-guide.Rmd" class="external-link"><code>vignettes/wfdb-guide.Rmd</code></a></small>
       <div class="d-none name"><code>wfdb-guide.Rmd</code></div>
     </div>
 
@@ -72,39 +72,194 @@
 <span><span class="co">#&gt; The following object is masked from 'package:stats':</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     window</span></span></code></pre></div>
-<p>The package relies and is augmented heavily by the <a href="https://physionet.org/content/wfdb/10.7.0/" class="external-link">Waveform Database
-(WFDB) software package</a>, which is a well-documented and
-well-developed ecosystem of software applications, primarily written in
-<code>C</code> and <code>C++</code> that manage the storage, reading,
-writing, and interaction with electrical signal data. This software is
-mostly external to the <a href="https://shah-in-boots.github.io/EGM/">EGM</a> package, and is used to
-supplement and expand the software.</p>
-<p><strong>DISCLAIMER</strong>: The software required to use annotations
-has not yet been re-written into a <code>C</code> backend for
-<code>R</code>, and thus requires using a local installation of
-<code>WFDB</code> for functionality. To build online vignettes and
-articles, where the software package is not available, I only
-demonstrate non-running examples.</p>
+<p>Historically <a href="https://shah-in-boots.github.io/EGM/">EGM</a> wrapped the <a href="https://physionet.org/content/wfdb/10.7.0/" class="external-link">Waveform Database
+(WFDB) software package</a>, a well documented suite of <code>C</code>
+and <code>C++</code> applications for interacting with signal data.
+Recent releases of <a href="https://shah-in-boots.github.io/EGM/">EGM</a> now provide native readers,
+writers, and annotation utilities implemented directly in <code>R</code>
+and <code>C++</code>, so the core functionality of the package no longer
+depends on an external WFDB installation. You can work with WFDB
+headers, signals, and annotations on any system where <a href="https://shah-in-boots.github.io/EGM/">EGM</a>
+is installed, including CRAN environments.</p>
+<p>Because <a href="https://shah-in-boots.github.io/EGM/">EGM</a> ships its own WFDB readers and writers, no
+additional system dependencies are required to begin analysing WFDB data
+in <code>R</code>. Installing <a href="https://shah-in-boots.github.io/EGM/">EGM</a> from CRAN (or the
+development version from GitHub) is sufficient for the examples in this
+guide to run end-to-end on any platform.</p>
+<p>If you would still like to interface with the traditional
+<code>C</code>-based WFDB tools—for example to compare results or to
+call PhysioNet utilities that have not yet been ported—you can follow
+the instructions in the <a href="https://github.com/bemoody/wfdb" class="external-link">WFDB
+GitHub repository</a>. The <code>C</code>-based WFDB is more robust and
+has a full set of tools and functionality not found in the
+<code>R</code> version, however the key features of reading and writing
+data and annotators is compatible with the <code>R</code> implementation
+used by <a href="https://shah-in-boots.github.io/EGM/">EGM</a>.</p>
 <div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+<h2 id="signal-data">Signal Data<a class="anchor" aria-label="anchor" href="#signal-data"></a>
 </h2>
-<p>To install the <code>WFDB</code> software in its traditional,
-<code>C</code>-based format, I have found it easiest with teh
-instructions from the <a href="https://github.com/bemoody/wfdb" class="external-link">Github</a> source. The
-installation instructions are relatively clear across multiple operating
-systems.</p>
-<p><code>WFDB</code> is easiest to install on a Unix-based system, such
-as Linux or MacOS. For Windows, I have found that using <a href="https://learn.microsoft.com/en-us/windows/wsl/install" class="external-link">WSL2</a> is
-the most consistent and supported way to utilize the software. When
-hidden on WSL, the path must be specified explicitly using the
-<code><a href="../reference/wfdb_paths.html">set_wfdb_path()</a></code> function using the command from Powershell,
-for example, to switch to a WSL command environment.</p>
+<div class="section level4">
+<h4 id="understanding-the-wfdb-storage-format">Understanding the WFDB Storage Format<a class="anchor" aria-label="anchor" href="#understanding-the-wfdb-storage-format"></a>
+</h4>
+<p>WFDB files store signal data as <strong>integer values</strong>
+(called <strong>digital</strong> units) in binary <code>.dat</code>
+files. These integers represent the raw output from an analog-to-digital
+converter (ADC). To convert these integer values to meaningful
+<strong>physical</strong> units (like millivolts), the WFDB header file
+(<code>.hea</code>) contains conversion metadata:</p>
+<ul>
+<li>
+<strong><code>gain</code></strong>: ADC units per physical unit
+(e.g., 200 ADC units per mV)</li>
+<li>
+<strong><code>baseline</code></strong>: The ADC value corresponding
+to 0 physical units</li>
+<li>
+<strong><code>units</code></strong>: The physical unit name (e.g.,
+“mV”)</li>
+</ul>
+<p>The conversion formula between digital and physical units is:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">physical</mtext><mo>=</mo><mfrac><mrow><mtext mathvariant="normal">digital</mtext><mo>−</mo><mtext mathvariant="normal">baseline</mtext></mrow><mtext mathvariant="normal">gain</mtext></mfrac></mrow><annotation encoding="application/x-tex">
+\text{physical} = \frac{\text{digital} - \text{baseline}}{\text{gain}}
+</annotation></semantics></math></p>
+<p>And the inverse formula for writing:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">digital</mtext><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mtext mathvariant="normal">physical</mtext><mo>×</mo><mtext mathvariant="normal">gain</mtext><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mtext mathvariant="normal">baseline</mtext></mrow><annotation encoding="application/x-tex">
+\text{digital} = (\text{physical} \times \text{gain}) + \text{baseline}
+</annotation></semantics></math></p>
+</div>
+<div class="section level4">
+<h4 id="reading-data-in-different-units">Reading Data in Different Units<a class="anchor" aria-label="anchor" href="#reading-data-in-different-units"></a>
+</h4>
+<p>The <code><a href="../reference/wfdb_io.html">read_wfdb()</a></code> and <code><a href="../reference/wfdb_io.html">read_signal()</a></code> functions
+support a <code>units</code> parameter that controls how signal data is
+returned:</p>
+<ul>
+<li>
+<code>units = "digital"</code> (default): Returns raw ADC counts as
+stored in the file</li>
+<li>
+<code>units = "physical"</code>: Returns values converted to
+physical units (e.g., mV)</li>
+</ul>
+<p>Let’s demonstrate this concept using a WFDB file:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/wfdb_paths.html">set_wfdb_path</a></span><span class="op">(</span><span class="st">"wsl /usr/local/bin"</span><span class="op">)</span></span></code></pre></div>
-<p>Once this is in place, you should be able to work with
-<code>WFDB</code> files directly from <code>R</code> without significant
-overhead costs, while also gaining access to a variety of software
-applications.</p>
+<code class="sourceCode R"><span><span class="co"># Locate the WFDB files in the package</span></span>
+<span><span class="va">dir_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, package <span class="op">=</span> <span class="st">'EGM'</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Read the same data in both digital and physical units</span></span>
+<span><span class="va">ecg_digital</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wfdb_io.html">read_wfdb</a></span><span class="op">(</span></span>
+<span>  record <span class="op">=</span> <span class="st">"muse-sinus"</span>,</span>
+<span>  record_dir <span class="op">=</span> <span class="va">dir_path</span>,</span>
+<span>  units <span class="op">=</span> <span class="st">"digital"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ecg_physical</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wfdb_io.html">read_wfdb</a></span><span class="op">(</span></span>
+<span>  record <span class="op">=</span> <span class="st">"muse-sinus"</span>,</span>
+<span>  record_dir <span class="op">=</span> <span class="va">dir_path</span>,</span>
+<span>  units <span class="op">=</span> <span class="st">"physical"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Examine the header to see the conversion parameters</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ecg_digital</span><span class="op">$</span><span class="va">header</span><span class="op">)</span></span>
+<span><span class="co">#&gt; &lt;header_table: 12 channels, 5000 samples @ 500 Hz&gt; muse-sinus</span></span>
+<span><span class="co">#&gt;         file_name storage_format number ADC_gain ADC_baseline ADC_units</span></span>
+<span><span class="co">#&gt;            &lt;char&gt;          &lt;int&gt;  &lt;int&gt;    &lt;num&gt;        &lt;int&gt;    &lt;char&gt;</span></span>
+<span><span class="co">#&gt; 1: muse-sinus.dat             16      1      200            0        mV</span></span>
+<span><span class="co">#&gt; 2: muse-sinus.dat             16      2      200            0        mV</span></span>
+<span><span class="co">#&gt; 3: muse-sinus.dat             16      3      200            0        mV</span></span>
+<span><span class="co">#&gt; 4: muse-sinus.dat             16      4      200            0        mV</span></span>
+<span><span class="co">#&gt; 5: muse-sinus.dat             16      5      200            0        mV</span></span>
+<span><span class="co">#&gt; 6: muse-sinus.dat             16      6      200            0        mV</span></span>
+<span><span class="co">#&gt;    ADC_zero ADC_resolution initial_value checksum blocksize  label   lead</span></span>
+<span><span class="co">#&gt;       &lt;int&gt;          &lt;int&gt;         &lt;int&gt;    &lt;int&gt;     &lt;int&gt; &lt;fctr&gt; &lt;char&gt;</span></span>
+<span><span class="co">#&gt; 1:        0             16           -10    -3015         0      I      I</span></span>
+<span><span class="co">#&gt; 2:        0             16             5    -6357         0     II     II</span></span>
+<span><span class="co">#&gt; 3:        0             16            15    -3468         0    III    III</span></span>
+<span><span class="co">#&gt; 4:        0             16            10    -4851         0    AVF    AVF</span></span>
+<span><span class="co">#&gt; 5:        0             16           -12      269         0    AVL    AVL</span></span>
+<span><span class="co">#&gt; 6:        0             16             2     4498         0    AVR    AVR</span></span>
+<span><span class="co">#&gt;    source additional_gain low_pass high_pass   color  scale</span></span>
+<span><span class="co">#&gt;    &lt;fctr&gt;           &lt;num&gt;    &lt;int&gt;     &lt;int&gt;  &lt;char&gt; &lt;lgcl&gt;</span></span>
+<span><span class="co">#&gt; 1:    ECG               1       NA        NA #000000     NA</span></span>
+<span><span class="co">#&gt; 2:    ECG               1       NA        NA #000000     NA</span></span>
+<span><span class="co">#&gt; 3:    ECG               1       NA        NA #000000     NA</span></span>
+<span><span class="co">#&gt; 4:    ECG               1       NA        NA #000000     NA</span></span>
+<span><span class="co">#&gt; 5:    ECG               1       NA        NA #000000     NA</span></span>
+<span><span class="co">#&gt; 6:    ECG               1       NA        NA #000000     NA</span></span>
+<span><span class="co">#&gt;   file_name storage_format ADC_gain ADC_baseline ADC_units ADC_resolution</span></span>
+<span><span class="co">#&gt; 1  muse-sinus.dat      16      200            0        mV             16</span></span>
+<span><span class="co">#&gt; 2  muse-sinus.dat      16      200            0        mV             16</span></span>
+<span><span class="co">#&gt; 3  muse-sinus.dat      16      200            0        mV             16</span></span>
+<span><span class="co">#&gt; 4  muse-sinus.dat      16      200            0        mV             16</span></span>
+<span><span class="co">#&gt; 5  muse-sinus.dat      16      200            0        mV             16</span></span>
+<span><span class="co">#&gt; 6  muse-sinus.dat      16      200            0        mV             16</span></span></code></pre></div>
+<p>Notice the <code>ADC_gain</code> and <code>ADC_baseline</code>
+columns in the header. In this example, all channels have a gain of 200
+ADC units/mV and a baseline of 0. However, many real-world recordings
+have non-zero baseline values to account for DC offsets in the recording
+equipment.</p>
+</div>
+<div class="section level3">
+<h3 id="comparing-digital-and-physical-values">Comparing Digital and Physical Values<a class="anchor" aria-label="anchor" href="#comparing-digital-and-physical-values"></a>
+</h3>
+<p>Let’s compare the first few samples from lead II in both formats:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Extract the first 10 samples from lead II</span></span>
+<span><span class="va">digital_values</span> <span class="op">&lt;-</span> <span class="va">ecg_digital</span><span class="op">$</span><span class="va">signal</span><span class="op">$</span><span class="va">II</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span></span>
+<span><span class="va">physical_values</span> <span class="op">&lt;-</span> <span class="va">ecg_physical</span><span class="op">$</span><span class="va">signal</span><span class="op">$</span><span class="va">II</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Get the conversion parameters for lead II from the header</span></span>
+<span><span class="va">lead_ii_row</span> <span class="op">&lt;-</span> <span class="va">ecg_digital</span><span class="op">$</span><span class="va">header</span><span class="op">[</span><span class="va">ecg_digital</span><span class="op">$</span><span class="va">header</span><span class="op">$</span><span class="va">label</span> <span class="op">==</span> <span class="st">"II"</span>, <span class="op">]</span></span>
+<span><span class="va">gain</span> <span class="op">&lt;-</span> <span class="va">lead_ii_row</span><span class="op">$</span><span class="va">ADC_gain</span></span>
+<span><span class="va">baseline</span> <span class="op">&lt;-</span> <span class="va">lead_ii_row</span><span class="op">$</span><span class="va">ADC_baseline</span></span>
+<span></span>
+<span><span class="co"># Create a comparison table</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  sample <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">10</span>,</span>
+<span>  digital <span class="op">=</span> <span class="va">digital_values</span>,</span>
+<span>  physical <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">physical_values</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  calculated_physical <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="op">(</span><span class="va">digital_values</span> <span class="op">-</span> <span class="va">baseline</span><span class="op">)</span> <span class="op">/</span> <span class="va">gain</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">comparison</span><span class="op">)</span></span>
+<span><span class="co">#&gt;    sample digital physical calculated_physical</span></span>
+<span><span class="co">#&gt; 1       1       5    0.025               0.025</span></span>
+<span><span class="co">#&gt; 2       2       5    0.025               0.025</span></span>
+<span><span class="co">#&gt; 3       3       5    0.025               0.025</span></span>
+<span><span class="co">#&gt; 4       4      10    0.050               0.050</span></span>
+<span><span class="co">#&gt; 5       5      10    0.050               0.050</span></span>
+<span><span class="co">#&gt; 6       6      10    0.050               0.050</span></span>
+<span><span class="co">#&gt; 7       7      10    0.050               0.050</span></span>
+<span><span class="co">#&gt; 8       8      15    0.075               0.075</span></span>
+<span><span class="co">#&gt; 9       9      20    0.100               0.100</span></span>
+<span><span class="co">#&gt; 10     10      24    0.120               0.120</span></span>
+<span><span class="co">#&gt;    Sample Digital Physical Calculated</span></span>
+<span><span class="co">#&gt; 1       1       5    0.025      0.025</span></span>
+<span><span class="co">#&gt; 2       2       5    0.025      0.025</span></span>
+<span><span class="co">#&gt; 3       3       5    0.025      0.025</span></span>
+<span><span class="co">#&gt; 4       4      10    0.050      0.050</span></span>
+<span><span class="co">#&gt; 5       5      10    0.050      0.050</span></span>
+<span><span class="co">#&gt; 6       6      10    0.050      0.050</span></span>
+<span><span class="co">#&gt; 7       7      10    0.050      0.050</span></span>
+<span><span class="co">#&gt; 8       8      15    0.075      0.075</span></span>
+<span><span class="co">#&gt; 9       9      20    0.100      0.100</span></span>
+<span><span class="co">#&gt; 10     10      24    0.120      0.120</span></span>
+<span></span>
+<span><span class="co"># Verify the conversion formula</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nLead II conversion parameters:\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Lead II conversion parameters:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"  Gain:"</span>, <span class="va">gain</span>, <span class="st">"ADC units/mV\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Gain: 200 ADC units/mV</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"  Baseline:"</span>, <span class="va">baseline</span>, <span class="st">"ADC units\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   Baseline: 0 ADC units</span></span>
+<span><span class="co">#&gt; Lead II conversion parameters:</span></span>
+<span><span class="co">#&gt;   Gain: 200 ADC units/mV</span></span>
+<span><span class="co">#&gt;   Baseline: 0 ADC units</span></span></code></pre></div>
+<p>The calculated physical units are derived from the digital units
+using the ADC conversion, and thus maintains the fidelity of the
+original signal.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="annotations">Annotations<a class="anchor" aria-label="anchor" href="#annotations"></a>
@@ -116,10 +271,12 @@ position in the plot, and what channel the annotation refers to.
 Annotations are polymorphic, and multiple can be applied to a single
 signal dataset. The credit for this work goes directly to the original
 software creators, as this is just a wrapper to allow for flexible
-integration into <code>R</code>.</p>
+integration into <code>R</code>. All of the demonstrations below rely on
+the native <a href="https://shah-in-boots.github.io/EGM/">EGM</a> parsers, so they run identically whether
+or not external WFDB binaries are present.</p>
 <p>To begin, let’s take an example of a simple ECG dataset. This data is
 included in the package, and can be accessed as below.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">'extdata'</span>, <span class="st">'muse-sinus.xml'</span>, package <span class="op">=</span> <span class="st">'EGM'</span><span class="op">)</span></span>
 <span><span class="va">ecg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/muse.html">read_muse</a></span><span class="op">(</span><span class="va">fp</span><span class="op">)</span></span>
 <span><span class="va">fig</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ggm.html">ggm</a></span><span class="op">(</span><span class="va">ecg</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="../reference/colors.html">theme_egm_light</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -128,7 +285,7 @@ included in the package, and can be accessed as below.</p>
 <span><span class="co">#&gt; Scale for <span style="color: #00BB00;">colour</span> is already present.</span></span>
 <span><span class="co">#&gt; Adding another scale for <span style="color: #00BB00;">colour</span>, which will replace the existing scale.</span></span>
 <span><span class="va">fig</span></span></code></pre></div>
-<p><img src="wfdb-guide_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
+<p><img src="wfdb-guide_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
 <p>We may have customized software, manual approaches, or machine
 learning models that may label signal data. We can use the
 <code><a href="../reference/annotation_table.html">annotation_table()</a></code> function to create
@@ -144,7 +301,7 @@ avoid dependencies we are writing our own.</li>
 object</li>
 <li>Plot the results</li>
 </ol>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Let x = 10-second signal dataset</span></span>
 <span><span class="co"># We will apply this across the dataset</span></span>
 <span><span class="co"># This is an oversimplified approach.</span></span>
@@ -178,7 +335,7 @@ object</li>
 <span><span class="co"># Plot them</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">sig</span>, type <span class="op">=</span> <span class="st">"l"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">pks</span><span class="op">$</span><span class="va">x</span>, y <span class="op">=</span> <span class="va">pks</span><span class="op">$</span><span class="va">y</span>, col <span class="op">=</span> <span class="st">"orange"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="wfdb-guide_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
+<p><img src="wfdb-guide_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
 <p>The result is <em>not bad</em> for a simple peak finder, but it lets
 us generate a small dataset of annotations that can then be used. Please
 see the additional vignettes for advanced annotation options, such as
@@ -194,7 +351,7 @@ arguments, which are displayed below, include:</p>
 <li>channel: which channel the data is mapped to</li>
 <li>number: an additional qualifier of the annotation type</li>
 </ul>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Find the peaks</span></span>
 <span><span class="va">raw_signal</span> <span class="op">&lt;-</span> <span class="va">dat</span><span class="op">[[</span><span class="st">"I"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">peak_positions</span> <span class="op">&lt;-</span> <span class="fu">find_peaks</span><span class="op">(</span><span class="va">raw_signal</span><span class="op">)</span></span>

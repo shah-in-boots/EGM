@@ -27,8 +27,8 @@ required for reading in files as well."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting Started</a></li>
-    <li><a class="dropdown-item" href="../articles/segmentation-guide.html">Signal Segmentation</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/annotation-guide.html">Understanding Annotations</a></li>
+    <li><a class="dropdown-item" href="../articles/getting-started.html">Getting Started</a></li>
     <li><a class="dropdown-item" href="../articles/wfdb-guide.html">WFDB: An Introduction to the Waveform Database Software Package</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -42,7 +42,7 @@ required for reading in files as well."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>I/O of WFDB-compatible signal &amp; header files from EP recording systems</h1>
-      <small class="dont-index">Source: <a href="https://github.com/shah-in-boots/EGM/blob/v0.1.1/R/wfdb-io.R" class="external-link"><code>R/wfdb-io.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/shah-in-boots/EGM/blob/main/R/wfdb-io.R" class="external-link"><code>R/wfdb-io.R</code></a></small>
       <div class="d-none name"><code>wfdb_io.Rd</code></div>
     </div>
 
@@ -59,22 +59,21 @@ required for reading in files as well.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">write_wfdb</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
 <span>  <span class="va">record</span>,</span>
-<span>  <span class="va">record_dir</span>,</span>
-<span>  wfdb_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"wfdb_path"</span><span class="op">)</span>,</span>
-<span>  header <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>frequency <span class="op">=</span> <span class="fl">250</span>, gain <span class="op">=</span> <span class="fl">200L</span>, label <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  record_dir <span class="op">=</span> <span class="st">"."</span>,</span>
+<span>  header <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  info_strings <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  units <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"digital"</span>, <span class="st">"physical"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">read_wfdb</span><span class="op">(</span></span>
 <span>  <span class="va">record</span>,</span>
 <span>  record_dir <span class="op">=</span> <span class="st">"."</span>,</span>
-<span>  annotator <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  wfdb_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"wfdb_path"</span><span class="op">)</span>,</span>
+<span>  annotator <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  begin <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  end <span class="op">=</span> <span class="cn">NA_integer_</span>,</span>
 <span>  interval <span class="op">=</span> <span class="cn">NA_integer_</span>,</span>
-<span>  units <span class="op">=</span> <span class="st">"digital"</span>,</span>
+<span>  units <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"digital"</span>, <span class="st">"physical"</span><span class="op">)</span>,</span>
 <span>  channels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
@@ -82,16 +81,16 @@ required for reading in files as well.</p>
 <span><span class="fu">read_signal</span><span class="op">(</span></span>
 <span>  <span class="va">record</span>,</span>
 <span>  record_dir <span class="op">=</span> <span class="st">"."</span>,</span>
-<span>  wfdb_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"wfdb_path"</span><span class="op">)</span>,</span>
-<span>  begin <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  header <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  begin <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  end <span class="op">=</span> <span class="cn">NA_integer_</span>,</span>
 <span>  interval <span class="op">=</span> <span class="cn">NA_integer_</span>,</span>
-<span>  units <span class="op">=</span> <span class="st">"digital"</span>,</span>
+<span>  units <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"digital"</span>, <span class="st">"physical"</span><span class="op">)</span>,</span>
 <span>  channels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">read_header</span><span class="op">(</span><span class="va">record</span>, record_dir <span class="op">=</span> <span class="st">"."</span>, wfdb_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"wfdb_path"</span><span class="op">)</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">read_header</span><span class="op">(</span><span class="va">record</span>, record_dir <span class="op">=</span> <span class="st">"."</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -117,12 +116,6 @@ acceptable, as well as hyphens (-) and underscores (_)</p></dd>
 files. Defaults to current directory.</p></dd>
 
 
-<dt id="arg-wfdb-path">wfdb_path<a class="anchor" aria-label="anchor" href="#arg-wfdb-path"></a></dt>
-<dd><p>Path that leads to installed <code>wfdb</code> software package on
-device. Needs to be directly set using <code><a href="wfdb_paths.html">set_wfdb_path()</a></code>. Obtained from the
-system options on loading of the package, <code>getOption('wfdb_path')</code></p></dd>
-
-
 <dt id="arg-header">header<a class="anchor" aria-label="anchor" href="#arg-header"></a></dt>
 <dd><p>A header file is an optional named list of parameters that
 will be used to organize and describe the signal input from the <strong>data</strong>
@@ -139,6 +132,18 @@ calculated):</p><ul><li><p>frequency = sample frequency in Hertz as <code>intege
 <dd><p>A <code>list</code> of strings that will be written as an appendix
 to the header file, usually containing information about the channels,
 (e.g. list of colors, extra labels, etc).</p></dd>
+
+
+<dt id="arg-units">units<a class="anchor" aria-label="anchor" href="#arg-units"></a></dt>
+<dd><p>A <code>character</code> string representing either <em>digital</em> (DEFAULT) or <em>physical</em>
+units that should be used for signal values.</p><ul><li><p><code>"digital"</code> = Returns raw ADC (analog-to-digital converter) counts as stored
+in the .dat file. These are integer values representing the digitized signal
+without any scaling applied. Use this to preserve exact round-trip fidelity.</p></li>
+<li><p><code>"physical"</code> = Returns signal values converted to physical units (e.g., mV)
+using the formula: <code>physical = (digital - baseline) / gain</code>, where <code>baseline</code>
+and <code>gain</code> are specified in the header file. This is the human-readable format
+for analysis.</p></li>
+</ul></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -161,15 +166,6 @@ gives a time index to read until. The <code>interval</code> argument is the leng
 time past the start point.</p></dd>
 
 
-<dt id="arg-units">units<a class="anchor" aria-label="anchor" href="#arg-units"></a></dt>
-<dd><p>A <code>character</code> string representing either <em>digital</em> (DEFAULT) or <em>physical</em>
-units that should be used, if available.</p><ul><li><p>digital = Index in sample number, signal in integers (A/D units)</p></li>
-<li><p>physical = Index in elapsed time, signal in decimal voltage (e.g. mV).
-This will <strong>include 1 additional row over the header/column names</strong> that
-describes units</p></li>
-</ul></dd>
-
-
 <dt id="arg-channels">channels<a class="anchor" aria-label="anchor" href="#arg-channels"></a></dt>
 <dd><p>Either the signal/channel in a <code>character</code> vector as a name or number.
 Allows for duplication of signal or to re-order signal if needed. If
@@ -184,10 +180,22 @@ output an extension of a <code>data.table</code> object reflecting the underlyin
 function (e.g. <code><a href="signal_table.html">signal_table()</a></code> will return an object of class).</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>The <code>begin</code>, <code>end</code>, and <code>interval</code> arguments are converted into sample
+positions using the sampling frequency declared in the WFDB header. The
+reader first determines the starting sample from <code>begin</code>, then gives
+precedence to <code>interval</code> (when supplied) before falling back to <code>end</code>. Any
+request that extends beyond the recorded range is clamped so that the caller
+still receives all available data without a hard failure.</p>
+    </div>
+    <div class="section level2">
     <h2 id="functions">Functions<a class="anchor" aria-label="anchor" href="#functions"></a></h2>
 
 <ul><li><p><code>write_wfdb()</code>: Writes out signal and header data into a WFDB-compatible
-format from R.</p></li>
+format from R. The <code>units</code> parameter indicates whether the input signal data
+is in digital (raw ADC counts) or physical units. When <code>units="physical"</code>,
+the function automatically converts to digital units using the inverse formula:
+<code>digital = (physical * gain) + baseline</code> before writing to disk.</p></li>
 <li><p><code>read_wfdb()</code>: Reads a multicomponent WFDB-formatted set of files
 directly into an <code>egm</code> object. This serves to pull together
 <code>read_signal()</code>, <code>read_header()</code>, and <code><a href="wfdb_annotations.html">read_annotation()</a></code> for simplicity.</p></li>

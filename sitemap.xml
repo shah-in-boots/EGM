@@ -1,9 +1,9 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://shah-in-boots.github.io/EGM/404.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/LICENSE.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/articles/annotation-guide.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/articles/getting-started.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/articles/index.html</loc></url>
-<url><loc>https://shah-in-boots.github.io/EGM/articles/segmentation-guide.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/articles/wfdb-guide.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/authors.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/index.html</loc></url>
@@ -37,13 +37,13 @@
 <url><loc>https://shah-in-boots.github.io/EGM/reference/muse.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/print.windowed.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/prucka.html</loc></url>
-<url><loc>https://shah-in-boots.github.io/EGM/reference/segmentation.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/signal_table.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/standardize_windows.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/sub-.windowed.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/time_normalize_windows.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/validate_ecg_data.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb.html</loc></url>
+<url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb_annotation_labels.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb_annotations.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb_io.html</loc></url>
 <url><loc>https://shah-in-boots.github.io/EGM/reference/wfdb_paths.html</loc></url>
