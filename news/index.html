@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">EGM</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,11 +38,14 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="egm-development-version">EGM (development version)<a class="anchor" aria-label="anchor" href="#egm-development-version"></a></h2>
-<ul><li>Updates to <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> settings for documentation organization</li>
-<li>Debugging the color issues when adding a color theme to <code><a href="../reference/ggm.html">ggm()</a></code>
-</li>
-<li>Creation of subclass of <code>egm</code> objects called <code>ecg</code> to identify 12-lead ECG subtypes</li>
+<h2 class="pkg-version" data-toc-text="0.2.0" id="egm-020">EGM 0.2.0<a class="anchor" aria-label="anchor" href="#egm-020"></a></h2>
+<p>This release includes major improvements to WFDB functionality and package structure.</p>
+<ul><li><p><strong>Native WFDB implementation</strong>: Added C++ implementation for reading and writing WFDB files, removing the system dependency on external WFDB libraries</p></li>
+<li><p><strong>Annotation improvements</strong>: Enhanced annotation handling with new helper functions and improved frequency handling</p></li>
+<li><p><strong>Signal format</strong>: Updated signal format to accept integer data types for improved memory efficiency and compatibility</p></li>
+<li><p><strong>Documentation</strong>: Added new <code>annotation-guide</code> vignette and expanded <code>wfdb-guide</code> vignette with detailed examples</p></li>
+<li><p><strong>Breaking changes</strong>: Removed <code>segmentation.R</code> functions and related vignette (functionality may be restored in future releases)</p></li>
+<li><p><strong>Code quality</strong>: Extensive refactoring and documentation improvements across the package, including detailed inline comments</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.1" id="egm-011">EGM 0.1.1<a class="anchor" aria-label="anchor" href="#egm-011"></a></h2><p class="text-muted">CRAN release: 2025-10-14</p>
