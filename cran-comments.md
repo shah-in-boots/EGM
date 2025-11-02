@@ -1,9 +1,20 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 0 note
+0 errors | 0 warnings | 0 notes
 
-* This is a small patch and update to work with the new {testthat} changes and the update to {ggplot2} v4.0.0.
+## Release summary
 
-* The change in maintainers is only reflecting the change in contact information, and remains the same individual. 
+This is a minor but significant update (version 0.2.0) with improvements to WFDB functionality. 
+The package now includes native C++ implementations for WFDB file I/O, removing the need for external system dependencies.
 
-* An additional individual was added to reflect contributions to the package
+## Test environments
+
+* local: macOS (darwin, R 4.2.0)
+* GitHub Actions:
+  - windows-latest (R release)
+  - macOS-latest (R release)
+  - ubuntu-latest (R devel, release, oldrel)
+
+## Downstream dependencies
+
+There are currently no downstream dependencies for this package.
