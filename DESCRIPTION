@@ -1,6 +1,6 @@
 Package: EGM
 Title: Intracardiac Electrograms
-Version: 0.2.0
+Version: 0.2.0.900
 Authors@R: c(
     person(given = "Anish S.", family = "Shah", role = c("aut", "cre", "cph"), email = "shah.in.boots@gmail.com", comment = c(ORCID = "0000-0002-9729-1558")),
     person(given = "Darren", family = "Seaney", role = c("ctb"), email = "dseaney2@uic.edu")
