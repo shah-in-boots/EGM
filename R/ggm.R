@@ -290,7 +290,6 @@ theme_egm_light <- function() {
   list(
     theme_egm(background = "light"),
     # If needed to force the colors to be black, can add something like this...
-    #scale_color_manual(values = rep("black", length(.labels)), na.value = "black")
     scale_color_manual(
       values = rep("black", length(.labels)),
       na.value = "black"
@@ -306,7 +305,6 @@ theme_egm_dark <- function() {
   list(
     theme_egm(background = "dark"),
     # If needed to force the colors to be white, can add something like this...
-    #scale_color_manual(values = rep("white", length(.labels)), na.value = "white")
     scale_color_manual(
       values = rep("white", length(.labels)),
       na.value = "white"
