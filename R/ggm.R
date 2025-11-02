@@ -25,31 +25,6 @@
 #'   of a vector with a length of 2. The left value is the start, and right
 #'   value is the end time. This is given in seconds (decimals may be used).
 #'
-#' @param palette A `character` choice from the below options that describe the
-#'   color choices to be used for plotting. If set to the default, which is
-#'   `NULL`, no changes to the colors for individual channels will be performed.
-#'   If a positive choice is made, then the background __mode__ argument will be
-#' set to *dark* as the default, unless otherwise specified. *WARNING*: This is
-#' an experimental argument, and may be moved in future version.
-#'
-#'   * __NULL__: no changes to the colors will be made. DEFAULT.
-#'
-#'   * __material__: a colorscheme based off of the [Material Design](https://m3.material.io/styles/color/system/how-the-system-works) color scheme
-#'
-#' @param mode A `character` string from `c("dark", "light")` to describe the
-#'   base/background color settings to be used. If there are preset channel
-#'   colors that were exported in the `egm` object, these colors will be used
-#'   for the individual channels. If __palette__ is specified, then the *dark*
-#'   option will be set automatically (a palette choice cannot be made without
-#'   understanding the background to plate it across). *WARNING*: This is an
-#'   experimental argument, and may be moved in future version.
-#'
-#'   * The _dark_ theme mimics the "white on black" scheme seen in _LabSystem Pro_ format (and most other high-contrast visualizations), for minimizing eye strain. This calls the [theme_egm_dark()] function. DEFAULT.
-#'
-#'   * The _light_ theme mimics the "black on white" colors seen in the _Prucka_ system.
-#'
-#'   * `NULL` removes any theme, and uses the default [ggplot2::ggplot()] settings
-#'
 #' @param ... Additional arguments to be passed to the function
 #'
 #' @returns An `{ggplot2}` compatible object with the `ggm` class, which
@@ -63,7 +38,6 @@ ggm <- function(
   channels = character(),
   time_frame = NULL,
   palette = NULL,
-  mode = "dark",
   ...
 ) {
   # Global variables (used in data.table)
@@ -132,13 +106,6 @@ ggm <- function(
   channelData <-
     hea[, c("label", "source", "lead", "color")] |>
     as.data.table()
-  if (is.null(channelData$color)) {
-    if (mode == "light") {
-      channelData$color <- '#000000'
-    } else {
-      channelData$color <- '#FFFFFF'
-    }
-  }
 
   dt <-
     data.table::melt(
@@ -177,11 +144,36 @@ ggm <- function(
       labels = NULL
     )
 
+  # Respect default header colours while ensuring a contrasting background
+  selected_colors <- unique(stats::na.omit(dt$color))
+  to_rgb <- function(colour) {
+    tryCatch(
+      as.numeric(grDevices::col2rgb(colour)),
+      error = function(...) rep(NA_real_, 3)
+    )
+  }
+  is_white <- function(colour_vector) {
+    !any(is.na(colour_vector)) && all(colour_vector >= 250)
+  }
+  is_black <- function(colour_vector) {
+    !any(is.na(colour_vector)) && all(colour_vector <= 5)
+  }
+  colour_vectors <- lapply(selected_colors, to_rgb)
+  has_white <- any(vapply(colour_vectors, is_white, logical(1)))
+  has_black <- any(vapply(colour_vectors, is_black, logical(1)))
+
+  background_mode <- "default"
+  if (has_white && !has_black) {
+    background_mode <- "dark"
+  } else if (has_black) {
+    background_mode <- "light"
+  }
+
   # Update class
   g <- new_ggm(g, header = hea, annotation = ann)
 
-  # Add palette and color mode to the plot
-  g <- add_colors(g, palette = palette, mode = mode)
+  # Apply theme with appropriate background mode
+  g <- g + theme_egm(background = background_mode)
 
   # Return object if available
   g
@@ -233,10 +225,15 @@ add_annotations <- function(...) {}
 NULL
 
 #' @rdname colors
+#' @param background A background style to apply. Use `"default"` for the
+#'   standard appearance, `"dark"` for a black canvas suited to light traces,
+#'   or `"light"` for a white canvas suited to dark traces.
 #' @export
-theme_egm <- function() {
+theme_egm <- function(background = c("default", "dark", "light")) {
+  background <- match.arg(background)
   font <- "Arial"
-  theme_minimal() %+replace%
+  base_theme <-
+    theme_minimal() %+replace%
     theme(
       # Panels
       panel.grid.major.y = element_blank(),
@@ -259,6 +256,30 @@ theme_egm <- function() {
       # Legend
       legend.position = "none"
     )
+
+  if (background == "dark") {
+    base_theme <-
+      base_theme +
+      theme(
+        panel.background = element_rect(fill = "black", colour = NA),
+        plot.background = element_rect(fill = "black", colour = NA),
+        strip.text.y.left = element_text(color = "white"),
+        axis.text.x = element_text(color = "white"),
+        axis.ticks.x = element_line(color = "white")
+      )
+  } else if (background == "light") {
+    base_theme <-
+      base_theme +
+      theme(
+        panel.background = element_rect(fill = "white", colour = NA),
+        plot.background = element_rect(fill = "white", colour = NA),
+        strip.text.y.left = element_text(color = "black"),
+        axis.text.x = element_text(color = "black"),
+        axis.ticks.x = element_line(color = "black")
+      )
+  }
+
+  base_theme
 }
 
 
@@ -267,29 +288,7 @@ theme_egm <- function() {
 theme_egm_light <- function() {
   font <- "Arial"
   list(
-    theme_minimal() %+replace%
-      theme(
-        # Panels
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.y = element_blank(),
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-
-        # Axes
-        axis.ticks.y = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.ticks.x = element_line(),
-
-        # Facets
-        panel.spacing = unit(0, units = "npc"),
-        panel.background = element_blank(),
-        strip.text.y.left = element_text(angle = 0, hjust = 1),
-
-        # Legend
-        legend.position = "none"
-      ),
+    theme_egm(background = "light"),
     # If needed to force the colors to be black, can add something like this...
     #scale_color_manual(values = rep("black", length(.labels)), na.value = "black")
     scale_color_manual(
@@ -305,35 +304,7 @@ theme_egm_dark <- function() {
   font <- "Arial"
 
   list(
-    theme_minimal() %+replace%
-      theme(
-        # Panels and background
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.y = element_blank(),
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        panel.background = element_rect(fill = "black"),
-        plot.background = element_rect(fill = "black"),
-
-        # Axes
-        axis.ticks.y = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.text.x = element_text(color = "white"),
-        axis.ticks.x = element_line(color = "white"),
-
-        # Facets
-        panel.spacing = unit(0, units = "npc"),
-        strip.text.y.left = element_text(
-          angle = 0,
-          hjust = 1,
-          color = "white"
-        ),
-
-        # Legend
-        legend.position = "none"
-      ),
+    theme_egm(background = "dark"),
     # If needed to force the colors to be white, can add something like this...
     #scale_color_manual(values = rep("white", length(.labels)), na.value = "white")
     scale_color_manual(

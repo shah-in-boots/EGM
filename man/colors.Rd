@@ -7,11 +7,16 @@
 \alias{theme_egm_dark}
 \title{Theming and color options for \code{ggm} objects}
 \usage{
-theme_egm()
+theme_egm(background = c("default", "dark", "light"))
 
 theme_egm_light()
 
 theme_egm_dark()
+}
+\arguments{
+\item{background}{A background style to apply. Use \code{"default"} for the
+standard appearance, \code{"dark"} for a black canvas suited to light traces,
+or \code{"light"} for a white canvas suited to dark traces.}
 }
 \value{
 A \code{ggm} object, with inheritance similar to

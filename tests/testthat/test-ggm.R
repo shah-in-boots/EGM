@@ -42,49 +42,42 @@ test_that('header and labels work fluidly when plotting', {
   )
 })
 
-# Colors ----
-
-test_that("theming works", {
-  # EPS data
-  data <- read_bard(test_path('bard-egm.txt'))
-  expect_s3_class(data, "egm")
-
-  channels <- c("I", "CS", "HIS D", "HIS M", "RV")
-  time_frame <- c(.1, 3)
-
-  g <- ggm(
-    data = data,
-    channels = channels,
-    time_frame = time_frame,
-    mode = NULL
-  )
-
-  labels <- if ("get_labs" %in% getNamespaceExports("ggplot2")) {
-    ggplot2::get_labs(g)
-  } else {
-    g$labels
-  }
-
-  expect_equal(labels$x, "sample")
-  expect_length(g$theme, 0)
-
-  dark <- ggm(
-    data = data,
-    channels = channels,
-    time_frame = time_frame
-  )
-
-  # When adding a theme, should be similar to the built-in
-})
-
 test_that("multiple channel data from different leads can be theme", {
   fp <- system.file('extdata', 'bard-avnrt.txt', package = 'EGM')
   dat <- read_bard(fp)
 
   # Similarly, can be visualized with ease
   g <-
-    ggm(dat, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
+    ggm(dat, channels = c('HIS', 'CS', 'RV')) +
     theme_egm_dark()
 
   expect_true(inherits(g, 'ggm') & inherits(g, 'ggplot'))
+})
+
+test_that("ggm defaults to dark background when white channels present", {
+  fp <- system.file('extdata', 'bard-avnrt.txt', package = 'EGM')
+  dat <- read_bard(fp)
+
+  g <- ggm(dat)
+
+  expect_identical(g$theme$panel.background$fill, "black")
+  expect_identical(g$theme$strip.text.y.left$colour, "white")
+  expect_identical(g$theme$axis.text.x$colour, "white")
+  expect_identical(g$theme$axis.ticks.x$colour, "white")
+})
+
+test_that("ggm defaults to light background when black channels present", {
+
+  data <- read_wfdb(
+    record = 'ludb-ecg',
+    record_dir = test_path(),
+    annotator = 'i'
+  )
+
+  g <- ggm(data, channels = data$header$label)
+
+  expect_identical(g$theme$panel.background$fill, "white")
+  expect_identical(g$theme$strip.text.y.left$colour, "black")
+  expect_identical(g$theme$axis.text.x$colour, "black")
+  expect_identical(g$theme$axis.ticks.x$colour, "black")
 })
