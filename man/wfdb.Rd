@@ -11,10 +11,11 @@ acceptable, as well as hyphens (-) and underscores (_)}
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
 
-\item{annotator}{String that is the name of a WFDB-compatible annotation
-type, serving as the extension for the file that is written containing that
-annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
-further details.}
+\item{annotator}{Character vector of WFDB-compatible annotation types.
+When reading, multiple annotators can be specified to read multiple
+annotation files simultaneously (e.g., \code{c("ecgpuwave", "atr")}). When
+writing, must be a single string serving as the file extension. See
+\code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for further details.}
 
 \item{...}{Additional arguments to be passed to the function}
 }
@@ -55,5 +56,5 @@ triggers
 \author{
 Original software: George Moody, Tom Pollard, Benjamin Moody \cr
 R implementation: Anish S. Shah \cr
-Last updated: 2025-11-02 \cr
+Last updated: 2025-11-06 \cr
 }

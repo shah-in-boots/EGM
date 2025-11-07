@@ -305,7 +305,20 @@ window_by_rhythm <- function(
   # Get signal, header, and annotation data
   sig <- data.table::copy(object$signal)
   hea <- data.table::copy(object$header)
-  ann <- data.table::copy(object$annotation)
+  # Get first annotation from list (or empty if none)
+  ann_list <- object$annotation
+  if (length(ann_list) > 0) {
+    ann <- data.table::copy(ann_list[[1]])
+    if (length(ann_list) > 1) {
+      message(
+        "Multiple annotators found: ", paste(names(ann_list), collapse = ", "),
+        ". Using '", names(ann_list)[1], "' for windowing. ",
+        "Use get_annotation() to access other annotators."
+      )
+    }
+  } else {
+    ann <- annotation_table()
+  }
 
   # Helper function to filter annotations by criteria
   filter_annotations <- function(ann, criteria) {

@@ -53,6 +53,46 @@ new_ecg <- function(
   # Validate that this is appropriate 12-lead ECG data
   validate_ecg_data(signal, header)
 
+  # Convert annotation to list format (same logic as new_egm)
+  if (inherits(annotation, "annotation_table")) {
+    if (nrow(annotation) == 0) {
+      # Empty annotation_table → unnamed list with single empty annotation_table
+      annotation <- list(annotation)
+    } else {
+      # Non-empty annotation_table → named list with annotator name
+      annotator_name <- attr(annotation, "annotator")
+      if (is.null(annotator_name) || length(annotator_name) == 0 ||
+          is.na(annotator_name) || annotator_name == "") {
+        annotator_name <- "default"
+      }
+      annotation <- setNames(list(annotation), annotator_name)
+    }
+  } else if (is.list(annotation)) {
+    if (length(annotation) == 0) {
+      # Empty list → convert to unnamed list with empty annotation_table
+      annotation <- list(annotation_table())
+    } else {
+      # Non-empty list → validate structure
+      valid <- all(vapply(annotation, inherits, logical(1), "annotation_table"))
+      if (!valid) {
+        stop("All elements in annotation list must be annotation_table objects", call. = FALSE)
+      }
+      # Check if this is an unnamed list with a single empty annotation_table
+      is_empty_unnamed <- is.null(names(annotation)) &&
+                         length(annotation) == 1 &&
+                         nrow(annotation[[1]]) == 0
+      if (!is_empty_unnamed) {
+        # Non-empty annotations must be named
+        if (is.null(names(annotation)) || any(names(annotation) == "")) {
+          stop("annotation list must be named with annotator identifiers", call. = FALSE)
+        }
+      }
+    }
+  } else {
+    # If not annotation_table or list, convert to unnamed list with empty annotation_table
+    annotation <- list(annotation_table())
+  }
+
   # Create an egm object first, then add the ecg class
   structure(
     list(

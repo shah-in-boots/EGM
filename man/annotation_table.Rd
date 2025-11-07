@@ -20,10 +20,11 @@ annotation_table(
 is_annotation_table(x)
 }
 \arguments{
-\item{annotator}{String that is the name of a WFDB-compatible annotation
-type, serving as the extension for the file that is written containing that
-annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
-further details.}
+\item{annotator}{Character vector of WFDB-compatible annotation types.
+When reading, multiple annotators can be specified to read multiple
+annotation files simultaneously (e.g., \code{c("ecgpuwave", "atr")}). When
+writing, must be a single string serving as the file extension. See
+\code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for further details.}
 
 \item{time}{A \code{character} time stamp of the annotation, written in the format
 of \strong{HH:MM:SS.SSS}, starting at \strong{00:00:00.000}. This is converted to the

@@ -90,10 +90,11 @@ for analysis.
 
 \item{...}{Additional arguments to be passed to the function}
 
-\item{annotator}{String that is the name of a WFDB-compatible annotation
-type, serving as the extension for the file that is written containing that
-annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
-further details.}
+\item{annotator}{Character vector of WFDB-compatible annotation types.
+When reading, multiple annotators can be specified to read multiple
+annotation files simultaneously (e.g., \code{c("ecgpuwave", "atr")}). When
+writing, must be a single string serving as the file extension. See
+\code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for further details.}
 
 \item{begin, end, interval}{Timepoint as an \code{integer} (representing seconds),
 which is converted to an index position based on sampling frequency. The

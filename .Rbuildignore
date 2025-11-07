@@ -16,3 +16,5 @@
 ^CRAN-SUBMISSION$
 ^\.claude$
 ^\.claude/*$
+^vignettes/\.quarto$
+^vignettes/*_files$

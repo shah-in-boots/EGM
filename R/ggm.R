@@ -50,7 +50,20 @@ ggm <- function(
 
   # Process header and signal
   hea <- data$header
-  ann <- data$annotation
+  # Get first annotation from list (or empty if none)
+  ann_list <- data$annotation
+  if (length(ann_list) > 0) {
+    ann <- ann_list[[1]]
+    if (length(ann_list) > 1) {
+      message(
+        "Multiple annotators found: ", paste(names(ann_list), collapse = ", "),
+        ". Using '", names(ann_list)[1], "' for plotting. ",
+        "Use get_annotation() to access other annotators."
+      )
+    }
+  } else {
+    ann <- annotation_table()
+  }
   sig <- data.table::as.data.table(data$signal)
   hea$label <-
     as.character(hea$label) |>

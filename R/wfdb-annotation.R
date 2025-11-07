@@ -46,11 +46,14 @@
 #' (biphasic positive-negative). If the __type__ is an waveform onset or offset,
 #' then __number__ can be 0 (P wave), 1 (QRS complex), 2 (T wave).
 #'
-#' @returns This function will either read in an annotation using the [read_annotation()] function in the format of an `annotation_table` object, or write to file/disk an `annotation_table` to a WFDB-compatible annotation file using the [write_annotation()] function.
+#' @returns [read_annotation()] returns either a single `annotation_table` object
+#'   (when one annotator is specified) or a named list of `annotation_table`
+#'   objects (when multiple annotators are specified). [write_annotation()]
+#'   writes an `annotation_table` to a WFDB-compatible annotation file.
 #'
 #' __IMPORTANT__: as annotation files are created by annotators that were
-#' developed independently, there is a higher chance of an erroroneous file
-#' being created on disk. As such, this function will note an error an return an
+#' developed independently, there is a higher chance of an erroneous file
+#' being created on disk. As such, this function will note an error and return an
 #' empty `annotation_table` at times.
 #'
 #' @inheritParams wfdb
@@ -79,19 +82,67 @@ read_annotation <- function(
     "`record` must be a single character string" = is.character(
       record
     ),
-    "`annotator` must be a single character string" = is.character(
+    "`annotator` must be a character vector" = is.character(
       annotator
     )
   )
 
   record <- record[[1]]
-  annotator <- annotator[[1]]
   if (!nzchar(record)) {
     stop("`record` must be provided")
   }
-  if (!nzchar(annotator)) {
-    stop("`annotator` must be provided")
+  if (length(annotator) == 0 || any(!nzchar(annotator))) {
+    stop("`annotator` must contain at least one non-empty string")
   }
+
+  # Handle multiple annotators by calling single-annotator logic for each
+  if (length(annotator) > 1) {
+    # Read header once for efficiency
+    if (is.null(header)) {
+      header <- read_header(
+        record = record,
+        record_dir = record_dir
+      )
+    } else if (!inherits(header, "header_table")) {
+      stop("`header` must be a `header_table` object")
+    }
+
+    # Read each annotator
+    annotations <- lapply(annotator, function(ann) {
+      read_annotation_single(
+        record = record,
+        annotator = ann,
+        record_dir = record_dir,
+        begin = begin,
+        end = end,
+        header = header
+      )
+    })
+    names(annotations) <- annotator
+    return(annotations)
+  }
+
+  # Single annotator - use existing logic
+  annotator <- annotator[[1]]
+  read_annotation_single(
+    record = record,
+    annotator = annotator,
+    record_dir = record_dir,
+    begin = begin,
+    end = end,
+    header = header
+  )
+}
+
+# Internal helper function for reading a single annotator
+read_annotation_single <- function(
+  record,
+  annotator,
+  record_dir = ".",
+  begin = 0,
+  end = NA_real_,
+  header = NULL
+) {
 
   if (is.null(header)) {
     header <- read_header(
@@ -432,4 +483,162 @@ wfdb_annotation_decode <- function(annotation, column = "type") {
   merged$`..row_id..` <- NULL
 
   merged
+}
+
+# Multi-annotator helper functions --------------------------------------------
+
+#' Get annotation from EGM object
+#'
+#' @description Extract a specific annotator's annotation table from an
+#'   `egm` object that may contain multiple annotators.
+#'
+#' @param x An `egm` object containing annotations
+#' @param annotator Character string specifying which annotator to extract.
+#'   If NULL (default), returns all annotations.
+#'
+#' @returns An `annotation_table` object for the specified annotator, or
+#'   a named list of all annotation tables if annotator is NULL.
+#'
+#' @export
+get_annotation <- function(x, annotator = NULL) {
+  if (!inherits(x, "egm")) {
+    stop("`x` must be an egm object", call. = FALSE)
+  }
+
+  ann <- x$annotation
+
+  # annotation is always a list now
+  # Check if it's an unnamed list (no annotators)
+  annotators <- names(ann)
+  has_annotators <- !is.null(annotators) && length(annotators) > 0
+
+  # Handle empty annotations
+  if (!has_annotators) {
+    if (is.null(annotator)) {
+      return(list())
+    } else {
+      stop("No annotations available in this egm object", call. = FALSE)
+    }
+  }
+
+  # Return all if no specific annotator requested
+  if (is.null(annotator)) {
+    return(ann)
+  }
+
+  # Get specific annotator from list
+  if (!annotator %in% annotators) {
+    stop(
+      "Annotator '", annotator, "' not found. Available: ",
+      paste(annotators, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  return(ann[[annotator]])
+}
+
+#' List annotators in EGM object
+#'
+#' @description Get the names of all annotators present in an `egm` object.
+#'
+#' @param x An `egm` object containing annotations
+#'
+#' @returns A character vector of annotator names
+#'
+#' @export
+list_annotators <- function(x) {
+  if (!inherits(x, "egm")) {
+    stop("`x` must be an egm object", call. = FALSE)
+  }
+
+  ann <- x$annotation
+
+  # annotation is always a list now - return names as character vector
+  # names() returns NULL for unnamed list (no annotators), so convert to character()
+  ann_names <- names(ann)
+  if (is.null(ann_names) || length(ann_names) == 0) {
+    return(character(0))
+  }
+  ann_names
+}
+
+#' Merge multiple annotations into a single table
+#'
+#' @description Combine multiple annotation tables from an `egm` object into
+#'   a single annotation table with an additional `annotator` column to
+#'   identify the source of each annotation.
+#'
+#' @param x An `egm` object containing annotations, or a named list of
+#'   `annotation_table` objects
+#' @param annotators Optional character vector specifying which annotators
+#'   to merge. If NULL (default), merges all available annotators.
+#'
+#' @returns A single `annotation_table` object with all annotations combined
+#'   and an additional `annotator` column
+#'
+#' @export
+merge_annotations <- function(x, annotators = NULL) {
+  # Handle both egm objects and lists of annotation_tables
+  if (inherits(x, "egm")) {
+    ann_list <- x$annotation
+  } else if (is.list(x)) {
+    # Validate that all elements are annotation_tables
+    valid <- all(vapply(x, inherits, logical(1), "annotation_table"))
+    if (!valid) {
+      stop(
+        "All elements must be annotation_table objects",
+        call. = FALSE
+      )
+    }
+    ann_list <- x
+  } else {
+    stop(
+      "`x` must be an egm object or a list of annotation_table objects",
+      call. = FALSE
+    )
+  }
+
+  # Check if it's an unnamed list (no annotators)
+  ann_names <- names(ann_list)
+  has_annotators <- !is.null(ann_names) && length(ann_names) > 0
+
+  # Handle empty annotations (unnamed list)
+  if (!has_annotators) {
+    return(annotation_table())
+  }
+
+  # Filter to requested annotators
+  if (!is.null(annotators)) {
+    missing <- setdiff(annotators, ann_names)
+    if (length(missing) > 0) {
+      stop(
+        "Annotators not found: ", paste(missing, collapse = ", "),
+        call. = FALSE
+      )
+    }
+    ann_list <- ann_list[annotators]
+    ann_names <- names(ann_list)
+  }
+
+  # Add annotator column to each table and combine
+  ann_with_source <- lapply(ann_names, function(ann_name) {
+    dt <- data.table::as.data.table(ann_list[[ann_name]])
+    dt$annotator <- ann_name
+    dt
+  })
+
+  # Combine all tables
+  combined <- data.table::rbindlist(ann_with_source, fill = TRUE)
+
+  # Reorder columns to put annotator after the standard columns
+  standard_cols <- c("time", "sample", "type", "subtype", "channel", "number")
+  available_standard <- intersect(standard_cols, names(combined))
+  other_cols <- setdiff(names(combined), c(available_standard, "annotator"))
+  new_order <- c(available_standard, "annotator", other_cols)
+  data.table::setcolorder(combined, new_order)
+
+  # Sort by sample then annotator for consistent ordering
+  data.table::setorderv(combined, c("sample", "annotator"))
+
+  combined
 }

@@ -50,10 +50,11 @@
 #' @param record_dir File path of directory that should be used read and write
 #'   files. Defaults to current directory.
 #'
-#' @param annotator String that is the name of a WFDB-compatible annotation
-#'   type, serving as the extension for the file that is written containing that
-#'   annotation. Please see [read_annotation()] and [write_annotation()] for
-#'   further details.
+#' @param annotator Character vector of WFDB-compatible annotation types.
+#'   When reading, multiple annotators can be specified to read multiple
+#'   annotation files simultaneously (e.g., `c("ecgpuwave", "atr")`). When
+#'   writing, must be a single string serving as the file extension. See
+#'   [read_annotation()] and [write_annotation()] for further details.
 #'
 #' @param ... Additional arguments to be passed to the function
 #'
@@ -388,7 +389,7 @@ read_wfdb <- function(
     channels = channels
   )
 
-  # If annotatator is present, read annotation in as well
+  # If annotator is present, read annotation(s) in as well
   if (!is.null(annotator)) {
     annotation <- read_annotation(
       record = record,
@@ -396,7 +397,10 @@ read_wfdb <- function(
       annotator = annotator,
       header = header
     )
+    # read_annotation returns annotation_table for single, list for multiple
+    # egm() will convert to list format automatically
   } else {
+    # No annotations - empty annotation_table (will be converted to unnamed list with empty annotation_table)
     annotation <- annotation_table()
   }
 

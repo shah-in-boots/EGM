@@ -54,7 +54,3 @@ And the development version from [GitHub](https://github.com/) with:
 # install.packages("devtools")
 devtools::install_github("shah-in-boots/EGM")
 ```
-
-Notably, the package software utilizes the WFDB software if it is available. 
-You can expect errors in calling commands until the software is appropriately installed. 
-Further installation instructions are available on the [Github site](https://github.com/bemoody/wfdb). 

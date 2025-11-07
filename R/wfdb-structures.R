@@ -463,12 +463,12 @@ vec_cast.annotation_table.data.frame <- function(x, to, ...) {
 header_table <- function(
   record_name = character(), # Record line information
   number_of_channels = integer(),
-  frequency = 250.0,
+  frequency = integer(),
   samples = integer(),
   start_time = strptime(Sys.time(), "%Y-%m-%d %H:%M:%OSn"),
   ADC_saturation = integer(),
   file_name = character(), # Signal specific information
-  storage_format = 16L,
+  storage_format = integer(),
   ADC_gain = 200L,
   ADC_baseline = ADC_zero,
   ADC_units = "mV",
@@ -491,9 +491,10 @@ header_table <- function(
   # 	Info strings
 
   # File name from record name
-  if (length(record_name) == 0) {
-    record_name <- NA
-    file_name <- NA
+  # Note: file_name will be expanded to match channel_count later
+  if (length(record_name) == 0 || is.na(record_name[1])) {
+    record_name <- NA_character_
+    file_name <- NA_character_
   } else {
     file_name <- paste0(record_name, '.dat')
   }
@@ -563,7 +564,10 @@ header_table <- function(
   } else {
     as.integer(number_of_channels[1])
   }
-  if (channel_count == 0L && length(storage_format) > 0) {
+  # Infer channel count from label or storage_format if not explicitly provided
+  if (channel_count == 0L && length(label) > 0) {
+    channel_count <- as.integer(length(label))
+  } else if (channel_count == 0L && length(storage_format) > 0) {
     channel_count <- as.integer(length(storage_format))
   }
   channel_numbers <- if (channel_count > 0L) {
@@ -572,9 +576,26 @@ header_table <- function(
     integer()
   }
 
+  # Prepare per-channel values, ensuring they match channel_count
+  file_name_vec <- if (length(file_name) == 0 && channel_count > 0) {
+    rep(NA_character_, channel_count)
+  } else if (length(file_name) > 0) {
+    file_name
+  } else {
+    NA_character_
+  }
+
+  storage_format_vec <- if (length(storage_format) == 0 && channel_count > 0) {
+    rep(16L, channel_count)  # Default to 16-bit when channels exist
+  } else if (length(storage_format) > 0) {
+    storage_format
+  } else {
+    integer()
+  }
+
   x <- df_list(
-    "file_name" = ifelse(length(file_name) == 0, NA_character_, file_name),
-    "storage_format" = storage_format,
+    "file_name" = file_name_vec,
+    "storage_format" = storage_format_vec,
     "number" = channel_numbers,
     "ADC_gain" = ADC_gain,
     "ADC_baseline" = ADC_baseline,

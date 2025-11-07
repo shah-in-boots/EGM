@@ -111,7 +111,8 @@ test_that("read_prucka combines header and signal correctly", {
   # Test components
   expect_s3_class(prucka_data$signal, "signal_table")
   expect_s3_class(prucka_data$header, "header_table")
-  expect_s3_class(prucka_data$annotation, "annotation_table")
+  # annotation is now a list
+  expect_type(prucka_data$annotation, "list")
 })
 
 test_that("read_prucka assigns channel names correctly", {

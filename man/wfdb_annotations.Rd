@@ -22,10 +22,11 @@ write_annotation(data, annotator, record, record_dir = ".")
 include extensions, and is not a filepath. alphanumeric characters are
 acceptable, as well as hyphens (-) and underscores (_)}
 
-\item{annotator}{String that is the name of a WFDB-compatible annotation
-type, serving as the extension for the file that is written containing that
-annotation. Please see \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for
-further details.}
+\item{annotator}{Character vector of WFDB-compatible annotation types.
+When reading, multiple annotators can be specified to read multiple
+annotation files simultaneously (e.g., \code{c("ecgpuwave", "atr")}). When
+writing, must be a single string serving as the file extension. See
+\code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for further details.}
 
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
@@ -51,11 +52,14 @@ calculated):
 by the \code{\link[=annotation_table]{annotation_table()}} function}
 }
 \value{
-This function will either read in an annotation using the \code{\link[=read_annotation]{read_annotation()}} function in the format of an \code{annotation_table} object, or write to file/disk an \code{annotation_table} to a WFDB-compatible annotation file using the \code{\link[=write_annotation]{write_annotation()}} function.
+\code{\link[=read_annotation]{read_annotation()}} returns either a single \code{annotation_table} object
+(when one annotator is specified) or a named list of \code{annotation_table}
+objects (when multiple annotators are specified). \code{\link[=write_annotation]{write_annotation()}}
+writes an \code{annotation_table} to a WFDB-compatible annotation file.
 
 \strong{IMPORTANT}: as annotation files are created by annotators that were
-developed independently, there is a higher chance of an erroroneous file
-being created on disk. As such, this function will note an error an return an
+developed independently, there is a higher chance of an erroneous file
+being created on disk. As such, this function will note an error and return an
 empty \code{annotation_table} at times.
 }
 \description{

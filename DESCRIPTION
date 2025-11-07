@@ -41,9 +41,10 @@ Suggests:
     fastICA,
     moments,
     lifecycle,
+    quarto
 LinkingTo: 
     cpp11
 Config/testthat/edition: 3
 URL: https://shah-in-boots.github.io/EGM/
 BugReports: https://github.com/shah-in-boots/EGM/issues
-VignetteBuilder: knitr
+VignetteBuilder: knitr, quarto

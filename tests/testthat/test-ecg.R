@@ -41,7 +41,8 @@ test_that("ecg class can be created", {
   # Test internal components
   expect_s3_class(ecg_obj$signal, 'signal_table')
   expect_s3_class(ecg_obj$header, 'header_table')
-  expect_s3_class(ecg_obj$annotation, 'annotation_table')
+  # annotation is now always a list
+  expect_type(ecg_obj$annotation, 'list')
 })
 
 test_that("ecg validation accepts standard lead names", {

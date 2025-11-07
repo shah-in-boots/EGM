@@ -1,20 +1,23 @@
 ---
 title: "Understanding Annotations"
-output: rmarkdown::html_vignette
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: true
 vignette: >
   %\VignetteIndexEntry{Understanding WFDB Annotations}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: '#>'
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
-```
-
-```{r setup}
+```{r}
+#| label: setup
 library(EGM)
 ```
 
@@ -193,6 +196,188 @@ ann_decoded <- wfdb_annotation_decode(ann)
 head(ann_decoded)
 ```
 
+# Working with Multiple Annotators
+
+A key feature of the WFDB system is the ability to apply multiple independent annotation sets to a single recording. This is essential for comparing different automated algorithms, validating manual annotations, or analyzing different physiological features simultaneously.
+
+## Reading Multiple Annotators
+
+The `{EGM}` package supports reading multiple annotators in a single operation:
+
+```{r, eval=FALSE}
+# Read a single annotator (traditional approach)
+ann_single <- read_annotation(
+  record = "300",
+  record_dir = "path/to/data",
+  annotator = "ecgpuwave"
+)
+
+# Read multiple annotators simultaneously
+ann_multiple <- read_annotation(
+  record = "300",
+  record_dir = "path/to/data",
+  annotator = c("ecgpuwave", "atr", "wqrs")
+)
+
+# Returns a named list of annotation_table objects
+names(ann_multiple)
+# [1] "ecgpuwave" "atr" "wqrs"
+
+# Access individual annotators
+ann_multiple$ecgpuwave
+ann_multiple$atr
+```
+
+## Reading Complete Records with Multiple Annotators
+
+You can also read an entire WFDB record with multiple annotations in one call:
+
+```{r, eval=FALSE}
+# Read signal, header, and multiple annotations together
+record <- read_wfdb(
+  record = "300",
+  record_dir = "path/to/data",
+  annotator = c("ecgpuwave", "atr")
+)
+
+# The egm object now contains multiple annotators
+print(record)
+# <Electrogram>
+# -------------------
+# Recording Duration: 650 seconds
+# Recording frequency: 360 hz
+# Number of channels: 2
+# Channel Names: MLII V5
+# Annotators: ecgpuwave (4238 annotations), atr (2548 annotations)
+```
+
+## Helper Functions for Multi-Annotator Workflows
+
+### List Available Annotators
+
+```{r, eval=FALSE}
+# Get names of all annotators in an egm object
+annotators <- list_annotators(record)
+# [1] "ecgpuwave" "atr"
+```
+
+### Extract Specific Annotators
+
+```{r, eval=FALSE}
+# Extract a specific annotator from an egm object
+ecg_ann <- get_annotation(record, "ecgpuwave")
+
+# Extract all annotators as a list
+all_ann <- get_annotation(record)
+
+# This will error if the annotator doesn't exist
+# get_annotation(record, "nonexistent")  # Error!
+```
+
+### Merge Multiple Annotators
+
+For comparative analysis, you may want to combine multiple annotators into a single table:
+
+```{r, eval=FALSE}
+# Merge all annotators into one table
+merged <- merge_annotations(record)
+
+# The result includes an 'annotator' column to identify the source
+head(merged)
+#       time   sample type subtype channel number annotator
+# 1 00:00:01      360    N       0       0      0 atr
+# 2 00:00:01      361    (       0       0      1 ecgpuwave
+# 3 00:00:01      377    )       0       0      1 ecgpuwave
+# 4 00:00:02      720    N       0       0      0 atr
+# ...
+
+# Merge only specific annotators
+merged_subset <- merge_annotations(record, annotators = c("ecgpuwave"))
+
+# You can also merge from a list of annotation_table objects
+ann_list <- read_annotation(
+  record = "300",
+  annotator = c("ecgpuwave", "atr")
+)
+merged_from_list <- merge_annotations(ann_list)
+```
+
+## Use Cases for Multiple Annotators
+
+### Algorithm Comparison
+
+Compare the performance of different R-peak detection algorithms:
+
+```{r, eval=FALSE}
+# Read multiple QRS detection algorithms
+qrs_detectors <- read_annotation(
+  record = "300",
+  annotator = c("sqrs", "wqrs", "gqrs", "atr")  # atr is manual reference
+)
+
+# Merge for comparison
+all_detections <- merge_annotations(qrs_detectors)
+
+# Filter to N-type beats only
+normal_beats <- all_detections[type == "N"]
+
+# Compare detection counts
+table(normal_beats$annotator)
+#  atr gqrs sqrs wqrs
+# 2500 2487 2501 2498
+```
+
+### Multi-Channel Annotations
+
+Different annotators may apply to different signal channels:
+
+```{r, eval=FALSE}
+# Read multi-channel record with channel-specific annotations
+record <- read_wfdb(
+  record = "multi-lead",
+  annotator = c("lead_I_qrs", "lead_II_qrs", "global_rhythm")
+)
+
+# Extract annotations for specific channel
+lead_I_ann <- get_annotation(record, "lead_I_qrs")
+lead_I_annotations <- lead_I_ann[channel == 0]  # Assuming lead I is channel 0
+```
+
+### Combined Feature Extraction
+
+Use different annotators for different physiological features:
+
+```{r, eval=FALSE}
+# Read beat detection and wave delineation separately
+features <- read_annotation(
+  record = "300",
+  annotator = c("atr", "ecgpuwave")
+  # atr: R-peaks
+  # ecgpuwave: P/QRS/T wave boundaries
+)
+
+# Merge to analyze complete cardiac cycles
+all_features <- merge_annotations(features)
+
+# Find QRS onset markers from ecgpuwave
+qrs_onset <- all_features[type == "(" & number == 1]  # WFON for QRS
+
+# Find corresponding R-peaks from atr
+r_peaks <- all_features[type == "N" & annotator == "atr"]
+```
+
+## Best Practices
+
+1. **Consistent Naming**: Use descriptive annotator names that indicate their purpose
+
+2. **Validate Compatibility**: Ensure annotators are compatible with your signal channels
+
+3. **Memory Considerations**: Only load the annotators you need for your analysis
+
+4. **Comparison Workflows**: When comparing annotators, use `merge_annotations()` for aligned time-series analysis
+
+5. **Documentation**: Keep track of which annotator serves which purpose in your analysis pipeline
+
 # Intracardiac Electrogram Annotations
 
 <!--
@@ -209,6 +394,8 @@ The subtypes
 -->
 
 This is a work in progress, where we aim to define and implement a comprehensive set of annotations for intracardiac electrograms that are compatible with the standard WFDB annotation system.
+
+
 
 # Examples
 
@@ -237,3 +424,16 @@ For T-wave annotations (`t`), the **number** column describes morphology:
 - 3 = Negative
 - 4 = Biphasic (negative-positive)
 - 5 = Biphasic (positive-negative)
+
+# Registration
+
+When reviewing annotations, the `{EGM}` system allows for all annotation types to be included, whether or not they conform with the WFDB annotator standards. 
+The `annotation_table` class allows any __annotator__ type to be read in.
+
+However the `{EGM}` package would like to allow for editing of annotations and writing annotations, which requires some level of standardization (particularly when introducing a new annotation labels to intracardiac data). 
+
+To allow for editing on writing annotations (either through an algorithm approach or manual edits), several rules are inherent:
+
+1. An `annotator` class is required 
+
+

@@ -1,0 +1,73 @@
+---
+title: "Annotator Development and Registration"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: true
+vignette: >
+  %\VignetteIndexEntry{Annotator Development and Registration}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: '#>'
+---
+
+```{r}
+#| label: setup
+library(EGM)
+```
+
+When reviewing annotations, the `{EGM}` system allows for all annotation types to be included, whether or not they conform with the WFDB annotator standards. The `annotation_table` class allows any **annotator** type to be read in.
+
+However the `{EGM}` package would like to allow for editing of annotations and writing annotations, which requires some level of standardization (particularly when introducing a new annotation labels to intracardiac data).
+
+To allow for editing on writing annotations (either through an algorithm approach or manual edits), several rules are inherent:
+
+1.  An `annotator` class must be defined to insure internal consistency with that annotator type
+2.  The `annotation_table` class should be able to receive information about the annotations that is appropriate and type stable
+3.  Reading/writing an `annotation_table` is independent of the `annotator` class
+4.  When editing an `annotation_table` object, the `annotator` class for that must be available and should check for compliance with the editor rules
+
+# `annotator` class
+
+The `annotator` class is intended to allow for annotation type safety when implementing a annotator type. The `annotator` will reference the WFDB standard annotations and allow for pre-existing annotators to be included, including potential extension with novel annotators. Most annotators for surface ECG data will be inherently compliant with WFDB standard annotations (e.g. "N" for normal beats).
+
+Another advantage of the annotator class is that it allows for improved visualization of annotations by qualifying the annotation types to be more informative. Relevant attributes or qualities of annotations are:
+
+1.  [Focal annotations]{.underline}: These are primary annotations that describe a single event at a specific sample or time point. *For example, labeling a peak R wave in a QRS complex on surface ECG.*
+2.  [Window annotations]{.underline}: These show a range of information, like onset or offset of a specific focal event. *For example, marking the onset and offset of a QRS complex.*
+3.  [Meta annotations]{.underline}: These are usually qualifiers for the type of event. If a R peak is seen, it may have aberrated which could be marked additionally by being a left or right bundle branch block. The WFDB annotator system flattens this an includes aberrancy as a direct label, but for intracardiac data, there are more qualifiers that may be needed. 
+4. [Global annotations]{.underline}: These are annotations that may apply across channels to the entirety of a recording, like a change in rhythm or involve multiple channels (and cannot be applied to a single channel).
+
+## Plotting
+
+With these annotation categories, we can apply different visualization techniques to best emphasize the data. 
+Without these categories (*DEFAULT*), every annotation can be applied as a single time point, normally across channels, independent of the underlying event, although may only apply to a certain channel - visualization may be limited in multichannel recordings. 
+
+By giving categories, we can apply visualization features like sequences or ranges, and use this to assess intervals as well. 
+Here are examples of situations where categorization can help enhance empiric visualization.
+
+- Highlighting of a segment or window of interest (e.g. QRS complex)
+- Pinpoint a single peak or deflection of interest at its local value (single channel) in context of multiple channels
+- Denoting a change in state, like `+` for rhythm change, along a multichannel recording
+- Secondary or stacked annotations, e.g. an atrial signal that is near field (vs. far field)
+
+# `.egm` annotator
+
+An example that the `{EGM}` package proposes is the `.egm` annotator class to handle intracardiac recordings from EP studies.
+
+Major annotations are...
+
+- Atrial signal
+- Ventricular signal
+- His-purkinje signal
+
+Modifiers of those annotations are...
+
+- Near field (or local) vs. far field
+- Location of annotation (e.g. max dV/dt, first sharp deflection, onset, etc.)
+- 
