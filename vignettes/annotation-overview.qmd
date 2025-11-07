@@ -8,7 +8,7 @@ format:
     number-sections: true
 vignette: >
   %\VignetteIndexEntry{Understanding WFDB Annotations}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
 knitr:
   opts_chunk:
