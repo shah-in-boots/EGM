@@ -1,20 +1,23 @@
 ---
 title: "WFDB: An Introduction to the Waveform Database Software Package"
-output: rmarkdown::html_vignette
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: true
 vignette: >
   %\VignetteIndexEntry{WFDB: An Introduction to the Waveform Database Software Package}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: '#>'
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
-```
-
-```{r setup}
+```{r}
+#| label: setup
 library(EGM)
 ```
 
@@ -61,7 +64,7 @@ The `read_wfdb()` and `read_signal()` functions support a `units` parameter that
 
 Let's demonstrate this concept using a WFDB file:
 
-```{r, eval=TRUE}
+```{r}
 # Locate the WFDB files in the package
 dir_path <- system.file('extdata', package = 'EGM')
 
@@ -97,7 +100,7 @@ However, many real-world recordings have non-zero baseline values to account for
 
 Let's compare the first few samples from lead II in both formats:
 
-```{r, eval=TRUE}
+```{r}
 # Extract the first 10 samples from lead II
 digital_values <- ecg_digital$signal$II[1:10]
 physical_values <- ecg_physical$signal$II[1:10]
@@ -240,9 +243,5 @@ ann <- annotation_table(
 
 # Here are our annotations
 ann
-
-# Then, add this back to the original signal
-ecg$annotation <- ann
-ecg
 ```
 

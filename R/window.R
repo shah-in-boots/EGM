@@ -311,8 +311,11 @@ window_by_rhythm <- function(
     ann <- data.table::copy(ann_list[[1]])
     if (length(ann_list) > 1) {
       message(
-        "Multiple annotators found: ", paste(names(ann_list), collapse = ", "),
-        ". Using '", names(ann_list)[1], "' for windowing. ",
+        "Multiple annotators found: ",
+        paste(names(ann_list), collapse = ", "),
+        ". Using '",
+        names(ann_list)[1],
+        "' for windowing. ",
         "Use get_annotation() to access other annotators."
       )
     }

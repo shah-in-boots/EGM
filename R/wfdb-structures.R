@@ -586,7 +586,7 @@ header_table <- function(
   }
 
   storage_format_vec <- if (length(storage_format) == 0 && channel_count > 0) {
-    rep(16L, channel_count)  # Default to 16-bit when channels exist
+    rep(16L, channel_count) # Default to 16-bit when channels exist
   } else if (length(storage_format) > 0) {
     storage_format
   } else {

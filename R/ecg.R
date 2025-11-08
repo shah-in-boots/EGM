@@ -61,8 +61,12 @@ new_ecg <- function(
     } else {
       # Non-empty annotation_table → named list with annotator name
       annotator_name <- attr(annotation, "annotator")
-      if (is.null(annotator_name) || length(annotator_name) == 0 ||
-          is.na(annotator_name) || annotator_name == "") {
+      if (
+        is.null(annotator_name) ||
+          length(annotator_name) == 0 ||
+          is.na(annotator_name) ||
+          annotator_name == ""
+      ) {
         annotator_name <- "default"
       }
       annotation <- setNames(list(annotation), annotator_name)
@@ -75,16 +79,22 @@ new_ecg <- function(
       # Non-empty list → validate structure
       valid <- all(vapply(annotation, inherits, logical(1), "annotation_table"))
       if (!valid) {
-        stop("All elements in annotation list must be annotation_table objects", call. = FALSE)
+        stop(
+          "All elements in annotation list must be annotation_table objects",
+          call. = FALSE
+        )
       }
       # Check if this is an unnamed list with a single empty annotation_table
       is_empty_unnamed <- is.null(names(annotation)) &&
-                         length(annotation) == 1 &&
-                         nrow(annotation[[1]]) == 0
+        length(annotation) == 1 &&
+        nrow(annotation[[1]]) == 0
       if (!is_empty_unnamed) {
         # Non-empty annotations must be named
         if (is.null(names(annotation)) || any(names(annotation) == "")) {
-          stop("annotation list must be named with annotator identifiers", call. = FALSE)
+          stop(
+            "annotation list must be named with annotator identifiers",
+            call. = FALSE
+          )
         }
       }
     }

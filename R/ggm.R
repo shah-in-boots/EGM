@@ -56,8 +56,11 @@ ggm <- function(
     ann <- ann_list[[1]]
     if (length(ann_list) > 1) {
       message(
-        "Multiple annotators found: ", paste(names(ann_list), collapse = ", "),
-        ". Using '", names(ann_list)[1], "' for plotting. ",
+        "Multiple annotators found: ",
+        paste(names(ann_list), collapse = ", "),
+        ". Using '",
+        names(ann_list)[1],
+        "' for plotting. ",
         "Use get_annotation() to access other annotators."
       )
     }

@@ -143,7 +143,6 @@ read_annotation_single <- function(
   end = NA_real_,
   header = NULL
 ) {
-
   if (is.null(header)) {
     header <- read_header(
       record = record,
@@ -529,7 +528,9 @@ get_annotation <- function(x, annotator = NULL) {
   # Get specific annotator from list
   if (!annotator %in% annotators) {
     stop(
-      "Annotator '", annotator, "' not found. Available: ",
+      "Annotator '",
+      annotator,
+      "' not found. Available: ",
       paste(annotators, collapse = ", "),
       call. = FALSE
     )
@@ -612,7 +613,8 @@ merge_annotations <- function(x, annotators = NULL) {
     missing <- setdiff(annotators, ann_names)
     if (length(missing) > 0) {
       stop(
-        "Annotators not found: ", paste(missing, collapse = ", "),
+        "Annotators not found: ",
+        paste(missing, collapse = ", "),
         call. = FALSE
       )
     }

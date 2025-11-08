@@ -136,7 +136,11 @@ format.egm <- function(x, ...) {
     annotators <- names(ann)
     if (!is.null(annotators) && any(nzchar(annotators))) {
       counts <- vapply(ann, nrow, integer(1))
-      cat('Annotators: ', paste0(annotators, ' (', counts, ' annotations)', collapse = ', '), '\n')
+      cat(
+        'Annotators: ',
+        paste0(annotators, ' (', counts, ' annotations)', collapse = ', '),
+        '\n'
+      )
     } else {
       cat('Annotators: none\n')
     }
@@ -173,8 +177,11 @@ is_egm <- function(x) {
   } else {
     # Multiple annotations - return first with message
     message(
-      "Multiple annotators found: ", paste(names(ann), collapse = ", "),
-      ". Using '", names(ann)[1], "'. ",
+      "Multiple annotators found: ",
+      paste(names(ann), collapse = ", "),
+      ". Using '",
+      names(ann)[1],
+      "'. ",
       "Use get_annotation() to specify which annotator to use."
     )
     return(ann[[1]])

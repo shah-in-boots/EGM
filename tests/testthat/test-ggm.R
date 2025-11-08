@@ -67,7 +67,6 @@ test_that("ggm defaults to dark background when white channels present", {
 })
 
 test_that("ggm defaults to light background when black channels present", {
-
   data <- read_wfdb(
     record = 'ludb-ecg',
     record_dir = test_path(),

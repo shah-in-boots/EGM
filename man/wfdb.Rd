@@ -56,5 +56,5 @@ triggers
 \author{
 Original software: George Moody, Tom Pollard, Benjamin Moody \cr
 R implementation: Anish S. Shah \cr
-Last updated: 2025-11-06 \cr
+Last updated: 2025-11-07 \cr
 }
