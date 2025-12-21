@@ -23,7 +23,7 @@ file with the same base name as signal_file but with .inf extension.}
 channel of data). Defaults to all values.}
 }
 \value{
-An \code{egm} class object that is a list of EP signals the format of a
+An \code{EGM} class object that is a list of EP signals the format of a
 \code{data.table}, with an attached \strong{header} attribute that contains
 additional recording data.
 }
@@ -39,7 +39,7 @@ system.
 To export data from the GE CardioLab system:
 \enumerate{
 \item Open the study/recording in CardioLab
-\item Select the time segment you want to export
+\item Select the time sEGMent you want to export
 \item Navigate to \strong{File > Export} or \strong{Tools > Export}
 \item Choose \strong{ASCII Export} or \strong{Text Export} format
 \item Select the channels to export

@@ -500,7 +500,7 @@ wfdb_annotation_decode <- function(annotation, column = "type") {
 #'
 #' @export
 get_annotation <- function(x, annotator = NULL) {
-  if (!inherits(x, "egm")) {
+  if (!inherits(x, "EGM")) {
     stop("`x` must be an egm object", call. = FALSE)
   }
 
@@ -548,7 +548,7 @@ get_annotation <- function(x, annotator = NULL) {
 #'
 #' @export
 list_annotators <- function(x) {
-  if (!inherits(x, "egm")) {
+  if (!inherits(x, "EGM")) {
     stop("`x` must be an egm object", call. = FALSE)
   }
 
@@ -561,6 +561,187 @@ list_annotators <- function(x) {
     return(character(0))
   }
   ann_names
+}
+
+#' Add an annotation table to an EGM object
+#'
+#' @description Add an `annotation_table` to an `egm` object, with validation
+#'   to ensure compatibility. The annotation table is added to the list of
+#'   annotations using the annotator name as the list name. If an annotation
+#'   with the same annotator name already exists, you can choose to overwrite
+#'   it or merge the annotations.
+#'
+#' @param x An `egm` object to which the annotation will be added
+#' @param annotation An `annotation_table` object to add to the `egm` object
+#' @param overwrite Logical. If an annotation with the same annotator name
+#'   already exists, should it be overwritten? If `FALSE` (default), the
+#'   annotations will be merged. If `TRUE`, the existing annotation will be
+#'   replaced.
+#'
+#' @details
+#' # Validation
+#'
+#' The function performs several validation checks to ensure the annotation
+#' table is compatible with the `egm` object:
+#'
+#' * **Channel validation**: Checks that all channels referenced in the
+#'   annotation table (except channel 0, which is the global/default channel)
+#'   exist in the signal header.
+#' * **Sample validation**: Checks that all sample indices in the annotation
+#'   table are within the valid range of samples in the recording.
+#'
+#' # Handling Existing Annotations
+#'
+#' When adding an annotation table with an annotator name that already exists:
+#'
+#' * **Overwrite mode** (`overwrite = TRUE`): The existing annotation table
+#'   is completely replaced with the new one.
+#' * **Merge mode** (`overwrite = FALSE`): The new annotations are combined
+#'   with the existing ones, duplicates are removed, and the result is sorted
+#'   by sample number.
+#'
+#' # Empty Annotations
+#'
+#' If the `egm` object has no existing annotations (empty list or blank
+#' annotation table), the new annotation table will replace the empty
+#' annotations.
+#'
+#' @returns The modified `egm` object with the annotation table added
+#'
+#' @examples
+#' \dontrun{
+#' # Add a new annotation table to an egm object
+#' egm <- add_annotation(egm, my_annotation_table)
+#'
+#' # Overwrite an existing annotation
+#' egm <- add_annotation(egm, new_annotation, overwrite = TRUE)
+#'
+#' # Merge with existing annotation (default)
+#' egm <- add_annotation(egm, additional_annotation, overwrite = FALSE)
+#' }
+#'
+#' @export
+add_annotation <- function(x, annotation, overwrite = FALSE) {
+  # Validate inputs
+  if (!inherits(x, "EGM")) {
+    stop("`x` must be an egm object", call. = FALSE)
+  }
+
+  if (!inherits(annotation, "annotation_table")) {
+    stop("`annotation` must be an `annotation_table` object", call. = FALSE)
+  }
+
+  # Get annotator name from the annotation_table attribute
+  annotator_name <- attr(annotation, "annotator")
+  if (is.null(annotator_name) || length(annotator_name) == 0 || annotator_name == "") {
+    stop(
+      "`annotation_table` must have an 'annotator' attribute. ",
+      "This should be set when creating the annotation_table.",
+      call. = FALSE
+    )
+  }
+
+  # Validate channels (except channel 0 which is global/default)
+  annotation_channels <- unique(annotation$channel)
+  annotation_channels <- annotation_channels[annotation_channels != 0]
+  annotation_channels <- as.character(annotation_channels)
+
+  if (length(annotation_channels) > 0) {
+    # Get available channels from header (either channel name or number)
+    header_channels <-
+      c(x$header$number, x$header$label) |>
+      as.character() |>
+      unique()
+
+    invalid_channels <- setdiff(annotation_channels, header_channels)
+    if (length(invalid_channels) > 0) {
+      stop(
+        "Annotation contains invalid channels: ",
+        paste(invalid_channels, collapse = ", "),
+        "\nAvailable channels: ",
+        paste(header_channels, collapse = ", "),
+        call. = FALSE
+      )
+    }
+  }
+
+  # Validate samples are within range
+  record_line <- attr(x$header, "record_line")
+  max_samples <- record_line$samples
+
+  if (nrow(annotation) > 0) {
+    annotation_samples <- annotation$sample
+    invalid_samples <- annotation_samples[annotation_samples < 0 | annotation_samples > max_samples]
+
+    if (length(invalid_samples) > 0) {
+      stop(
+        "Annotation contains samples outside valid range [0, ",
+        max_samples,
+        "]: ",
+        paste(head(invalid_samples, 5), collapse = ", "),
+        if (length(invalid_samples) > 5) "..." else "",
+        call. = FALSE
+      )
+    }
+  }
+
+  # Get current annotations
+  current_annotations <- x$annotation
+
+  # Check if we have any existing annotations
+  existing_annotators <- names(current_annotations)
+  has_existing <- !is.null(existing_annotators) && length(existing_annotators) > 0
+
+  # Handle empty annotations - replace with new annotation
+  if (!has_existing) {
+    x$annotation <- stats::setNames(list(annotation), annotator_name)
+    message("Added annotation table '", annotator_name, "' to egm object")
+    return(x)
+  }
+
+  # Check if annotator already exists
+  if (annotator_name %in% existing_annotators) {
+    if (overwrite) {
+      # Overwrite mode - replace existing annotation
+      current_annotations[[annotator_name]] <- annotation
+      x$annotation <- current_annotations
+      message("Replaced annotation table '", annotator_name, "' in egm object")
+    } else {
+      # Merge mode - combine annotations
+      existing_ann <- current_annotations[[annotator_name]]
+
+      # Combine the two annotation tables
+      merged <- data.table::rbindlist(list(existing_ann, annotation))
+
+      # Remove duplicates and sort by sample
+      merged <- unique(merged)
+      data.table::setorderv(merged, "sample")
+
+      # Preserve the annotation_table class and attributes
+      merged <- new_annotation_table(
+        x = list(
+          time = merged$time,
+          sample = merged$sample,
+          type = merged$type,
+          subtype = merged$subtype,
+          channel = merged$channel,
+          number = merged$number
+        ),
+        annotator = annotator_name
+      )
+
+      current_annotations[[annotator_name]] <- merged
+      x$annotation <- current_annotations
+      message("Merged new annotations with existing '", annotator_name, "' in egm object")
+    }
+  } else {
+    # Annotator doesn't exist - add it
+    current_annotations[[annotator_name]] <- annotation
+    x$annotation <- current_annotations
+    message("Added annotation table '", annotator_name, "' to egm object")
+  }
+
+  return(x)
 }
 
 #' Merge multiple annotations into a single table
@@ -580,7 +761,7 @@ list_annotators <- function(x) {
 #' @export
 merge_annotations <- function(x, annotators = NULL) {
   # Handle both egm objects and lists of annotation_tables
-  if (inherits(x, "egm")) {
+  if (inherits(x, "EGM")) {
     ann_list <- x$annotation
   } else if (is.list(x)) {
     # Validate that all elements are annotation_tables

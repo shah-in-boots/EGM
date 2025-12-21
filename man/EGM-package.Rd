@@ -2,7 +2,6 @@
 % Please edit documentation in R/EGM-package.R
 \docType{package}
 \name{EGM-package}
-\alias{EGM}
 \alias{EGM-package}
 \title{EGM: Intracardiac Electrograms}
 \description{

@@ -10,7 +10,7 @@ add_annotations(...)
 \item{...}{
   Arguments passed on to \code{\link[=ggm]{ggm}}
   \describe{
-    \item{\code{data}}{Data of the \code{egm} class, which includes header (meta) and signal
+    \item{\code{data}}{Data of the \code{EGM} class, which includes header (meta) and signal
 information together.}
     \item{\code{channels}}{A \code{character} vector of which channels to use. Can give
 either the channel label (e.g "CS 1-2") or the recording device/catheter

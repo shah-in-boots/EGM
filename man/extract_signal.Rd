@@ -2,12 +2,12 @@
 % Please edit documentation in R/egm.R
 \name{extract_signal}
 \alias{extract_signal}
-\title{Extract raw signal data from an \code{egm} object}
+\title{Extract raw signal data from an \code{EGM} object}
 \usage{
 extract_signal(object, data_format = c("data.frame", "matrix", "array"), ...)
 }
 \arguments{
-\item{object}{An \code{egm} object that contains the signal data to be extracted}
+\item{object}{An \code{EGM} object that contains the signal data to be extracted}
 
 \item{data_format}{A \code{character} choice of either \emph{data.frame} (default),
 \emph{matrix}, or \emph{array} that tells how the data should be structured.

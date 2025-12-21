@@ -6,14 +6,14 @@
 #'
 #' `r lifecycle::badge("experimental")`
 #'
-#' The `ggm()` function is used to plot objects of the `egm` class. This
+#' The `ggm()` function is used to plot objects of the `EGM` class. This
 #' function however is more than just a plotting function - it serves as a
 #' visualization tool and confirmation of patterns, annotations, and underlying
 #' waveforms in the data. The power of this, instead of being a `geom_*()`
 #' object, is that annotations, intervals, and measurements can be added
 #' incrementally.
 #'
-#' @param data Data of the `egm` class, which includes header (meta) and signal
+#' @param data Data of the `EGM` class, which includes header (meta) and signal
 #'   information together.
 #'
 #' @param channels A `character` vector of which channels to use. Can give
@@ -43,7 +43,7 @@ ggm <- function(
   # Global variables (used in data.table)
   . <- color <- mV <- label <- NULL
 
-  stopifnot(inherits(data, "egm"))
+  stopifnot(inherits(data, "EGM"))
 
   # Clean channels
   channels <- gsub("_", "\ ", x = channels)

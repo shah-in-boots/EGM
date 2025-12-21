@@ -82,7 +82,7 @@
 #' @param n Number of signal values to return (this will be the same for each
 #'   channel of data). Defaults to all values.
 #'
-#' @return An `egm` class object that is a list of EP signals the format of a
+#' @return An `EGM` class object that is a list of EP signals the format of a
 #'   `data.table`, with an attached __header__ attribute that contains
 #'   additional recording data.
 #'
@@ -111,7 +111,7 @@ read_bard <- function(file, n = Inf) {
   # Assign channel names from header
   names(sig) <- c('sample', as.character(hea$label))
 
-  egm(signal = sig, header = hea)
+  EGM(signal = sig, header = hea)
 }
 
 #' @rdname bard

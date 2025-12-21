@@ -15,7 +15,7 @@ lapply.windowed(X, FUN, ...)
 }
 \value{
 A list of the results of applying FUN to each element of X,
-or a new windowed object if all results are egm objects
+or a new windowed object if all results are EGM objects
 }
 \description{
 Apply a function to each element of a windowed object

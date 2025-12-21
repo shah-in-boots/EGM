@@ -45,10 +45,10 @@ read_signal(
 read_header(record, record_dir = ".", ...)
 }
 \arguments{
-\item{data}{Can either be an \code{egm} object, or a \code{data.frame} (or similar)
+\item{data}{Can either be an \code{EGM} object, or a \code{data.frame} (or similar)
 object. The function will appropriately set defaults based on the type.
 \itemize{
-\item \code{egm} = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format
+\item \code{EGM} = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format
 \item \code{signal_table} = This is a customized \code{data.table} class that has an invariant column containing sample information.
 \item \code{data.frame} or \code{data.table} = Must have a column that represents a time point or index, and columns that represent signal values (preferably integers)
 }}
@@ -137,7 +137,7 @@ the function automatically converts to digital units using the inverse formula:
 \code{digital = (physical * gain) + baseline} before writing to disk.
 
 \item \code{read_wfdb()}: Reads a multicomponent WFDB-formatted set of files
-directly into an \code{egm} object. This serves to pull together
+directly into an \code{EGM} object. This serves to pull together
 \code{\link[=read_signal]{read_signal()}}, \code{\link[=read_header]{read_header()}}, and \code{\link[=read_annotation]{read_annotation()}} for simplicity.
 
 \item \code{read_signal()}: Specifically reads the signal data from the WFDB binary

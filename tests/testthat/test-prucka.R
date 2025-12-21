@@ -105,7 +105,7 @@ test_that("read_prucka combines header and signal correctly", {
   prucka_data <- read_prucka(file)
 
   # Test egm structure
-  expect_s3_class(prucka_data, "egm")
+  expect_s3_class(prucka_data, "EGM")
   expect_length(prucka_data, 3)
 
   # Test components
@@ -128,5 +128,5 @@ test_that("read_prucka finds inf file automatically", {
   file <- test_path("prucka.txt")
   prucka_data <- read_prucka(file)
 
-  expect_s3_class(prucka_data, "egm")
+  expect_s3_class(prucka_data, "EGM")
 })

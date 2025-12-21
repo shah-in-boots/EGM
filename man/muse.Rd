@@ -11,9 +11,9 @@ read_muse(file)
 \item{file}{An ECG file from MUSE in XML format}
 }
 \value{
-An \code{egm} class object that is a list of \code{eps} signals the format of a
-\code{data.table}, with an attached \strong{header} attribute that contains
-additional recording data.
+An \code{EGM} class object that is a list of surface ECG signals the
+format of a \code{data.table}, with an attached \strong{header} attribute that
+contains additional recording data.
 }
 \description{
 This function serves to read/convert XML based files from the MUSE system to

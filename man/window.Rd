@@ -18,7 +18,7 @@ window_by_rhythm(
 )
 }
 \arguments{
-\item{object}{Object of the \code{egm} class, which includes header, signal
+\item{object}{Object of the \code{EGM} class, which includes header, signal
 information, and annotation information.}
 
 \item{window_method}{A \code{character} string specifying the windowing method.
@@ -47,7 +47,7 @@ indices in the returned windows to be relative to the window start. Default
 is TRUE.}
 }
 \value{
-A list of \code{egm} objects, each representing a window of the original
+A list of \code{EGM} objects, each representing a window of the original
 signal.
 }
 \description{
@@ -55,7 +55,7 @@ signal.
 
 Creates windows of signal data using various methods, such as rhythm patterns,
 time intervals, or reference points. Each window is returned as an individual
-\code{egm} object for further analysis.
+\code{EGM} object for further analysis.
 }
 \details{
 This function provides a modular approach to windowing electrophysiological

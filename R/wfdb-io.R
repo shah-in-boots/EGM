@@ -86,10 +86,10 @@ NULL
 #'
 #' @inheritParams wfdb
 #'
-#' @param data Can either be an `egm` object, or a `data.frame` (or similar)
+#' @param data Can either be an `EGM` object, or a `data.frame` (or similar)
 #'   object. The function will appropriately set defaults based on the type.
 #'
-#'   * `egm` = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format
+#'   * `EGM` = Will extract signal and header data directly from object, and thus is simplest to convert to a WFDB format
 #'
 #'   * `signal_table` = This is a customized `data.table` class that has an invariant column containing sample information.
 #'
@@ -174,10 +174,10 @@ write_wfdb <- function(
     fs::dir_create(record_dir, recurse = TRUE)
   }
 
-  if (inherits(data, "egm")) {
+  if (inherits(data, "EGM")) {
     if (!is.null(header)) {
       message(
-        "Ignoring the supplied `header` because `data` is an `egm` object; its embedded header already contains the metadata required for WFDB exports."
+        "Ignoring the supplied `header` because `data` is an `EGM` object; its embedded header already contains the metadata required for WFDB exports."
       )
     }
     signal <- data$signal
@@ -188,7 +188,7 @@ write_wfdb <- function(
 
   if (is.null(header)) {
     stop(
-      "A header_table must be supplied when `data` is not an `egm` object"
+      "A header_table must be supplied when `data` is not an `EGM` object"
     )
   }
   if (!inherits(header, "header_table")) {
@@ -359,7 +359,7 @@ write_wfdb <- function(
 # Reading WFDB format data -----------------------------------------------------
 
 #' @describeIn wfdb_io Reads a multicomponent WFDB-formatted set of files
-#'   directly into an `egm` object. This serves to pull together
+#'   directly into an `EGM` object. This serves to pull together
 #'   [read_signal()], [read_header()], and [read_annotation()] for simplicity.
 #'
 #' @export
@@ -398,13 +398,13 @@ read_wfdb <- function(
       header = header
     )
     # read_annotation returns annotation_table for single, list for multiple
-    # egm() will convert to list format automatically
+    # EGM() will convert to list format automatically
   } else {
     # No annotations - empty annotation_table (will be converted to unnamed list with empty annotation_table)
     annotation <- annotation_table()
   }
 
-  egm(signal = signal, header = header, annotation = annotation)
+  EGM(signal = signal, header = header, annotation = annotation)
 }
 
 

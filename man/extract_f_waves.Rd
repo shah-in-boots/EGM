@@ -15,7 +15,7 @@ extract_f_waves(
 )
 }
 \arguments{
-\item{object}{An object of class \code{egm} or of subclass \code{ecg}}
+\item{object}{An object of class \code{EGM} or of subclass \code{ECG}}
 
 \item{lead}{Optional. A character string specifying the lead to analyze. If
 NULL (default), all available surface leads will be processed.}
@@ -33,7 +33,7 @@ analyzed. Default is TRUE.}
 
 \item{.force_all}{Logical. If FALSE (default), only process surface ECG leads.
 If TRUE, process all available leads. This parameter is ignored if the object
-is of class 'ecg', in which case all leads are processed.}
+is of class 'ECG', in which case all leads are processed.}
 
 \item{...}{Additional arguments passed to methods}
 }

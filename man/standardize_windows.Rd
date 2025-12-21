@@ -53,7 +53,7 @@ frames.
 }
 \description{
 Standardizes \code{windowed} objects by applying various
-transformations to each window. This function converts each \code{egm} object in a
+transformations to each window. This function converts each \code{EGM} object in a
 \code{windowed} list to a standardized data frame with uniform properties,
 facilitating comparison and analysis.
 }

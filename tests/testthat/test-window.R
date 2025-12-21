@@ -27,7 +27,7 @@ test_that("Basic `windowed` specific functions work", {
   dir <- test_path()
   object <- read_wfdb(rec, dir, "ecgpuwave")
 
-  # Create windows from an egm object
+  # Create windows from an EGM object
   windows <- window(
     object,
     method = "rhythm",
@@ -38,12 +38,12 @@ test_that("Basic `windowed` specific functions work", {
   )
 
   expect_s3_class(windows, "windowed")
-  expect_s3_class(windows[[1]], "egm")
+  expect_s3_class(windows[[1]], "EGM")
 
   # Get information about the windows
   expect_output(
     print(windows),
-    regexp = "windowed: 13 EGM segments"
+    regexp = "windowed: 13 EGM windows"
   )
 
   # Subset to the first 5 windows

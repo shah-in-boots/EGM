@@ -21,7 +21,7 @@ read_bard_signal(file, n = Inf)
 channel of data). Defaults to all values.}
 }
 \value{
-An \code{egm} class object that is a list of EP signals the format of a
+An \code{EGM} class object that is a list of EP signals the format of a
 \code{data.table}, with an attached \strong{header} attribute that contains
 additional recording data.
 }

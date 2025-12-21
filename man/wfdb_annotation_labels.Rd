@@ -63,3 +63,6 @@ wfdb_annotation_decode(ann)
 Moody GB. \emph{WFDB Applications Guide}. PhysioNet. Available at
 \url{https://www.physionet.org/physiotools/wag/}.
 }
+\seealso{
+read_annotation() write_annotation()
+}

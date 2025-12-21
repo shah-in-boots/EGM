@@ -26,7 +26,7 @@ test_that('R data objects can be converted or written to WFDB format', {
   sig <- read_bard_signal(file)
   hea <- read_bard_header(file)
   rec <- attributes(hea)$record_line
-  data <- egm(sig, hea)
+  data <- EGM(sig, hea)
 
   write_wfdb(
     data = data,
@@ -36,7 +36,7 @@ test_that('R data objects can be converted or written to WFDB format', {
 
   headerFile <- readLines(test_path('bard-egm.hea'))
   expect_gt(length(headerFile), 14)
-  expect_output(print(headerFile[1]), 'egm 14')
+  expect_output(print(headerFile[1]), 'bard-egm 14')
 
   file <- system.file('extdata', 'muse-sinus.xml', package = 'EGM')
   ecg <- read_muse(file)
@@ -60,7 +60,7 @@ test_that('write_wfdb honours explicit headers and preserves integer storage', {
     storage_format = 16L,
     label = 'BASE'
   )
-  egm_obj <- egm(sig, default_header)
+  EGM_obj <- EGM(sig, default_header)
 
   override_header <- header_table(
     record_name = 'override',
@@ -106,7 +106,7 @@ test_that('write_wfdb honours explicit headers and preserves integer storage', {
       },
       {
         write_wfdb(
-          egm_obj,
+          EGM_obj,
           record = 'custom',
           record_dir = tmp,
           header = override_header
@@ -131,7 +131,7 @@ test_that('rdsamp can read in WFDB formatted files for signal data', {
 
   # Reads in EGM data (which is an EP study)
   x <- read_signal(
-    record = 'egm',
+    record = 'EGM',
     record_dir = test_path(),
     begin = 0L,
     units = 'digital'
@@ -160,7 +160,7 @@ test_that('rdsamp can read in WFDB formatted files for signal data', {
 })
 
 test_that('internals of `read_header()` can create `header_table` from bard data', {
-  fp <- test_path("egm.hea")
+  fp <- test_path("EGM.hea")
 
   record_line <- readLines(con = fp, n = 1)
   record_items <-
@@ -217,7 +217,7 @@ test_that('internals of `read_header()` can create `header_table` from bard data
   expect_equal(nrow(h), 14)
 })
 
-test_that('can read in WFDB file into `egm` directly', {
+test_that('can read in WFDB file into `EGM` directly', {
   skip_on_ci()
 
   # Basics
@@ -241,7 +241,7 @@ test_that('can read in WFDB file into `egm` directly', {
     channels = channels
   )
 
-  expect_s3_class(x, 'egm')
+  expect_s3_class(x, 'EGM')
 
   # From the stored package data
 
@@ -294,14 +294,14 @@ test_that("native signal reader returns a signal_table", {
   expect_equal(nrow(signal), attr(header, "record_line")$samples)
 })
 
-test_that("native reader returns an egm object", {
+test_that("native reader returns an EGM object", {
   fp <- system.file("extdata", "muse-sinus.dat", package = "EGM")
   dir <- fs::path_dir(fp)
-  egm_obj <- read_wfdb("muse-sinus", dir)
+  EGM_obj <- read_wfdb("muse-sinus", dir)
 
-  expect_s3_class(egm_obj, "egm")
-  expect_s3_class(egm_obj$signal, "signal_table")
-  expect_s3_class(egm_obj$header, "header_table")
+  expect_s3_class(EGM_obj, "EGM")
+  expect_s3_class(EGM_obj$signal, "signal_table")
+  expect_s3_class(EGM_obj$header, "header_table")
 })
 
 test_that("native writer produces WFDB files", {
@@ -309,17 +309,17 @@ test_that("native writer produces WFDB files", {
 
   fp <- system.file("extdata", "muse-sinus.dat", package = "EGM")
   dir <- fs::path_dir(fp)
-  egm_obj <- read_wfdb("muse-sinus", dir)
+  EGM_obj <- read_wfdb("muse-sinus", dir)
 
   tmp <- withr::local_tempdir()
-  write_wfdb(egm_obj, record = "native-test", record_dir = tmp)
+  write_wfdb(EGM_obj, record = "native-test", record_dir = tmp)
 
   expect_true(fs::file_exists(fs::path(tmp, "native-test.dat")))
   expect_true(fs::file_exists(fs::path(tmp, "native-test.hea")))
 
   roundtrip <- read_wfdb("native-test", tmp)
-  expect_equal(nrow(roundtrip$signal), nrow(egm_obj$signal))
-  expect_equal(ncol(roundtrip$signal), ncol(egm_obj$signal))
+  expect_equal(nrow(roundtrip$signal), nrow(EGM_obj$signal))
+  expect_equal(ncol(roundtrip$signal), ncol(EGM_obj$signal))
 })
 
 test_that("format 212 records roundtrip correctly", {
@@ -519,27 +519,27 @@ test_that('digital units preserve raw ADC values with non-zero baseline', {
     label = c("I", "II")
   )
 
-  egm_obj <- egm(signal, header)
+  EGM_obj <- EGM(signal, header)
 
   # Write in digital units (default)
   write_wfdb(
-    data = egm_obj,
+    data = EGM_obj,
     record = 'baseline-test',
     record_dir = tmp_dir,
     units = "digital"
   )
 
   # Read back in digital units
-  egm_read <- read_wfdb(
+  EGM_read <- read_wfdb(
     record = 'baseline-test',
     record_dir = tmp_dir,
     units = "digital"
   )
 
   # Digital units should preserve exact raw ADC values
-  expect_equal(egm_read$signal$I, signal$I)
-  expect_equal(egm_read$signal$II, signal$II)
-  expect_equal(egm_read$header$ADC_baseline, c(1024L, 2048L))
+  expect_equal(EGM_read$signal$I, signal$I)
+  expect_equal(EGM_read$signal$II, signal$II)
+  expect_equal(EGM_read$header$ADC_baseline, c(1024L, 2048L))
 })
 
 test_that('physical units apply correct conversion with baseline and gain', {
@@ -568,18 +568,18 @@ test_that('physical units apply correct conversion with baseline and gain', {
     label = c("I", "II")
   )
 
-  egm_obj <- egm(signal, header)
+  EGM_obj <- EGM(signal, header)
 
   # Write in digital units
   write_wfdb(
-    data = egm_obj,
+    data = EGM_obj,
     record = 'physical-test',
     record_dir = tmp_dir,
     units = "digital"
   )
 
   # Read in physical units
-  egm_physical <- read_wfdb(
+  EGM_physical <- read_wfdb(
     record = 'physical-test',
     record_dir = tmp_dir,
     units = "physical"
@@ -587,14 +587,14 @@ test_that('physical units apply correct conversion with baseline and gain', {
 
   # Check conversion: physical = (digital - baseline) / gain
   # For channel I: (1024 - 1024) / 200 = 0.0
-  expect_equal(egm_physical$signal$I[1], 0.0, tolerance = 1e-10)
+  expect_equal(EGM_physical$signal$I[1], 0.0, tolerance = 1e-10)
   # For channel I: (1224 - 1024) / 200 = 1.0
-  expect_equal(egm_physical$signal$I[3], 1.0, tolerance = 1e-10)
+  expect_equal(EGM_physical$signal$I[3], 1.0, tolerance = 1e-10)
 
   # For channel II: (2048 - 2048) / 200 = 0.0
-  expect_equal(egm_physical$signal$II[1], 0.0, tolerance = 1e-10)
+  expect_equal(EGM_physical$signal$II[1], 0.0, tolerance = 1e-10)
   # For channel II: (2448 - 2048) / 200 = 2.0
-  expect_equal(egm_physical$signal$II[3], 2.0, tolerance = 1e-10)
+  expect_equal(EGM_physical$signal$II[3], 2.0, tolerance = 1e-10)
 })
 
 test_that('physical units round-trip preserves values', {
@@ -621,26 +621,26 @@ test_that('physical units round-trip preserves values', {
     label = c("I", "II")
   )
 
-  egm_obj <- egm(signal_physical, header)
+  EGM_obj <- EGM(signal_physical, header)
 
   # Write in physical units (should convert to digital internally)
   write_wfdb(
-    data = egm_obj,
+    data = EGM_obj,
     record = 'physical-roundtrip',
     record_dir = tmp_dir,
     units = "physical"
   )
 
   # Read back in physical units
-  egm_read <- read_wfdb(
+  EGM_read <- read_wfdb(
     record = 'physical-roundtrip',
     record_dir = tmp_dir,
     units = "physical"
   )
 
   # Physical values should round-trip accurately (within rounding error)
-  expect_equal(egm_read$signal$I, signal_physical$I, tolerance = 1e-2)
-  expect_equal(egm_read$signal$II, signal_physical$II, tolerance = 1e-2)
+  expect_equal(EGM_read$signal$I, signal_physical$I, tolerance = 1e-2)
+  expect_equal(EGM_read$signal$II, signal_physical$II, tolerance = 1e-2)
 })
 
 test_that('digital-to-physical-to-digital round-trip is exact', {
@@ -668,16 +668,16 @@ test_that('digital-to-physical-to-digital round-trip is exact', {
   )
 
   # Write digital
-  egm_obj <- egm(signal_digital, header)
+  EGM_obj <- EGM(signal_digital, header)
   write_wfdb(
-    data = egm_obj,
+    data = EGM_obj,
     record = 'full-roundtrip',
     record_dir = tmp_dir,
     units = "digital"
   )
 
   # Read as physical
-  egm_physical <- read_wfdb(
+  EGM_physical <- read_wfdb(
     record = 'full-roundtrip',
     record_dir = tmp_dir,
     units = "physical"
@@ -685,20 +685,21 @@ test_that('digital-to-physical-to-digital round-trip is exact', {
 
   # Write physical back
   write_wfdb(
-    data = egm_physical,
+    data = EGM_physical,
     record = 'full-roundtrip-2',
     record_dir = tmp_dir,
     units = "physical"
   )
 
   # Read as digital
-  egm_digital_final <- read_wfdb(
+  EGM_digital_final <- read_wfdb(
     record = 'full-roundtrip-2',
     record_dir = tmp_dir,
     units = "digital"
   )
 
   # Should get back original digital values (within rounding)
-  expect_equal(egm_digital_final$signal$I, signal_digital$I, tolerance = 1)
-  expect_equal(egm_digital_final$signal$II, signal_digital$II, tolerance = 1)
+  expect_equal(EGM_digital_final$signal$I, signal_digital$I, tolerance = 1)
+  expect_equal(EGM_digital_final$signal$II, signal_digital$II, tolerance = 1)
 })
+

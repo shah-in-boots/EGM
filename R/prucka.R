@@ -12,7 +12,7 @@
 #' To export data from the GE CardioLab system:
 #'
 #' 1. Open the study/recording in CardioLab
-#' 2. Select the time segment you want to export
+#' 2. Select the time sEGMent you want to export
 #' 3. Navigate to **File > Export** or **Tools > Export**
 #' 4. Choose **ASCII Export** or **Text Export** format
 #' 5. Select the channels to export
@@ -55,7 +55,7 @@
 #' @param n Number of signal values to return (this will be the same for each
 #'   channel of data). Defaults to all values.
 #'
-#' @return An `egm` class object that is a list of EP signals the format of a
+#' @return An `EGM` class object that is a list of EP signals the format of a
 #'   `data.table`, with an attached __header__ attribute that contains
 #'   additional recording data.
 #'
@@ -91,8 +91,8 @@ read_prucka <- function(signal_file, header_file = NULL, n = Inf) {
   # Assign channel names from header
   names(sig) <- c('sample', as.character(hea$label))
 
-  # Return as egm object
-  egm(signal = sig, header = hea)
+  # Return as EGM object
+  EGM(signal = sig, header = hea)
 }
 
 

@@ -3,7 +3,7 @@
 test_that("plots can be generated easily", {
   # EPS data
   data <- read_bard(test_path('bard-egm.txt'))
-  expect_s3_class(data, "egm")
+  expect_s3_class(data, "EGM")
 
   channels <- c("I", "CS", "HIS D", "HIS M", "RV")
   time_frame <- c(.1, 3)

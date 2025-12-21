@@ -1,18 +1,18 @@
 # Class definition for `windowed` objects -------------------------------------
 
-#' Create a `windowed` object containing a list of egm segments
+#' Create a `windowed` object containing a list of EGM windows
 #'
 #' @description
 #'
 #' `r lifecycle::badge("experimental")`
 #'
-#' `windowed` objects are lists of `egm` objects that represent segments or
+#' `windowed` objects are lists of `EGM` objects that represent segments or
 #' windows of the original signal. This allows for specialized methods to be
 #' applied to collections of signal windows. This function primarily serves as
 #' the class generation function, and only applies class attributes. It is used
 #' by the [window()] function to ensure appropriate class and properties.
 #'
-#' @param x A list of `egm` objects
+#' @param x A list of `EGM` objects
 #' @param window_method The windowing method used to create the list
 #' @param source_record The name of the original record
 #' @param ... Additional arguments passed to methods
@@ -32,10 +32,10 @@ windowed <- function(
   }
 
   if (length(x) > 0) {
-    # Check that all elements are egm objects
-    is_egm_list <- all(sapply(x, inherits, "egm"))
-    if (!is_egm_list) {
-      stop("All elements of x must be of class 'egm'")
+    # Check that all elements are EGM objects
+    is_EGM_list <- all(sapply(x, inherits, "EGM"))
+    if (!is_EGM_list) {
+      stop("All elements of x must be of class 'EGM'")
     }
   }
 
@@ -70,7 +70,7 @@ is_windowed <- function(x) {
 #'
 #' @export
 format.windowed <- function(x, ...) {
-  cat("<windowed: ", length(x), " EGM segments>\n", sep = "")
+  cat("<windowed: ", length(x), " EGM windows>\n", sep = "")
   cat("Method: ", attr(x, "method"), "\n", sep = "")
   cat("Source: ", attr(x, "source_record"), "\n", sep = "")
   cat("Created: ", format(attr(x, "creation_time")), "\n", sep = "")
@@ -170,15 +170,15 @@ c.windowed <- function(...) {
 #' @param ... Additional arguments passed to FUN
 #'
 #' @return A list of the results of applying FUN to each element of X,
-#'   or a new windowed object if all results are egm objects
+#'   or a new windowed object if all results are EGM objects
 #'
 #' @export
 lapply.windowed <- function(X, FUN, ...) {
   # Apply the function to each element
   results <- NextMethod()
 
-  # Check if results are all egm objects
-  if (all(sapply(results, inherits, "egm"))) {
+  # Check if results are all EGM objects
+  if (all(sapply(results, inherits, "EGM"))) {
     # Return a new windowed object
     return(windowed(
       results,
@@ -201,14 +201,14 @@ lapply.windowed <- function(X, FUN, ...) {
 #'
 #' Creates windows of signal data using various methods, such as rhythm patterns,
 #' time intervals, or reference points. Each window is returned as an individual
-#' `egm` object for further analysis.
+#' `EGM` object for further analysis.
 #'
 #' @details
 #' This function provides a modular approach to windowing electrophysiological
 #' signals. The method parameter determines the windowing strategy, with each
 #' method requiring its own set of additional parameters.
 #'
-#' @param object Object of the `egm` class, which includes header, signal
+#' @param object Object of the `EGM` class, which includes header, signal
 #'   information, and annotation information.
 #'
 #' @param window_method A `character` string specifying the windowing method.
@@ -235,14 +235,14 @@ lapply.windowed <- function(X, FUN, ...) {
 #'
 #' @param ... Additional arguments passed to specific windowing methods.
 #'
-#' @return A list of `egm` objects, each representing a window of the original
+#' @return A list of `EGM` objects, each representing a window of the original
 #'   signal.
 #'
 #' @export
 window <- function(object, window_method = c("rhythm"), ...) {
   # Validate input
   stopifnot(
-    "Requires object of <egm> class for evaluation" = inherits(object, 'egm')
+    "Requires object of <EGM> class for evaluation" = inherits(object, 'EGM')
   )
 
   # Match the method argument
@@ -268,7 +268,7 @@ window <- function(object, window_method = c("rhythm"), ...) {
     }
 
   # Return as `windowed` object
-  # This is an internal class to allow for lists of `egm` objects
+  # This is an internal class to allow for lists of `EGM` objects
   windowed(
     windows,
     window_method = window_method,
@@ -458,7 +458,7 @@ window_by_rhythm <- function(
     }
 
     # Add to list of windows
-    windows[[window_count]] <- egm(
+    windows[[window_count]] <- EGM(
       signal = window_signal,
       header = window_header,
       annotation = window_annotation
@@ -483,7 +483,7 @@ window_by_rhythm <- function(
 #' Standardize windows of signal data
 #'
 #' @description Standardizes `windowed` objects by applying various
-#' transformations to each window. This function converts each `egm` object in a
+#' transformations to each window. This function converts each `EGM` object in a
 #' `windowed` list to a standardized data frame with uniform properties,
 #' facilitating comparison and analysis.
 #'
@@ -635,8 +635,8 @@ time_normalize_windows <- function(
 
   # Get the sampling frequency from the first window
   first_window <- x[[1]]
-  if (!inherits(first_window, "egm")) {
-    stop("Windows must be egm objects")
+  if (!inherits(first_window, "EGM")) {
+    stop("Windows must be EGM objects")
   }
 
   frequency <- attributes(first_window$header)$record_line$frequency

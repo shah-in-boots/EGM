@@ -7,7 +7,7 @@
 ggm(data, channels = character(), time_frame = NULL, palette = NULL, ...)
 }
 \arguments{
-\item{data}{Data of the \code{egm} class, which includes header (meta) and signal
+\item{data}{Data of the \code{EGM} class, which includes header (meta) and signal
 information together.}
 
 \item{channels}{A \code{character} vector of which channels to use. Can give
@@ -29,7 +29,7 @@ original data.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-The \code{ggm()} function is used to plot objects of the \code{egm} class. This
+The \code{ggm()} function is used to plot objects of the \code{EGM} class. This
 function however is more than just a plotting function - it serves as a
 visualization tool and confirmation of patterns, annotations, and underlying
 waveforms in the data. The power of this, instead of being a \verb{geom_*()}

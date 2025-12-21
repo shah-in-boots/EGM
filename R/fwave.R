@@ -3,7 +3,7 @@
 #' This function analyzes F waves in an ECG signal, extracting various
 #' characteristics.
 #'
-#' @param object An object of class `egm` or of subclass `ecg`
+#' @param object An object of class `EGM` or of subclass `ECG`
 #'
 #' @param lead Optional. A character string specifying the lead to analyze. If
 #'   NULL (default), all available surface leads will be processed.
@@ -21,7 +21,7 @@
 #'
 #' @param .force_all Logical. If FALSE (default), only process surface ECG leads.
 #'   If TRUE, process all available leads. This parameter is ignored if the object
-#'   is of class 'ecg', in which case all leads are processed.
+#'   is of class 'ECG', in which case all leads are processed.
 #'
 #' @param ... Additional arguments passed to methods
 #'
@@ -49,8 +49,8 @@ extract_f_waves <- function(
   ...
 ) {
   # Validate input
-  if (!inherits(object, "egm")) {
-    stop("Input must be of class 'egm'")
+  if (!inherits(object, "EGM")) {
+    stop("Input must be of class 'EGM'")
   }
 
   # Validate atrial / F wave characteristics
@@ -80,7 +80,7 @@ extract_f_waves <- function(
     }
   } else {
     # Check if object is ecg class (which would already only have surface leads)
-    is_ecg_object <- inherits(object, "ecg")
+    is_ecg_object <- inherits(object, "ECG")
 
     # If it's an ECG object or .force_all is TRUE, process all available leads
     if (is_ecg_object || .force_all) {
@@ -89,7 +89,7 @@ extract_f_waves <- function(
       if (verbose) {
         if (is_ecg_object) {
           message(
-            "Object is of class 'ecg'. Analyzing all ",
+            "Object is of class 'ECG'. Analyzing all ",
             length(leads_to_process),
             " leads."
           )

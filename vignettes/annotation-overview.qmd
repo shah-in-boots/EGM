@@ -176,7 +176,7 @@ wfdb_annotation_decode(ann)
 
 Here's a practical example of reading, interpreting, and visualizing ECG annotations:
 
-```{r, eval=FALSE}
+```{r}
 # Read an ECG with annotations
 record_path <- system.file('extdata', package = 'EGM')
 ecg <- read_wfdb(
@@ -232,30 +232,23 @@ ann_multiple$atr
 
 You can also read an entire WFDB record with multiple annotations in one call:
 
-```{r, eval=FALSE}
+```{r}
 # Read signal, header, and multiple annotations together
 record <- read_wfdb(
   record = "300",
-  record_dir = "path/to/data",
+  record_dir = test_path(),
   annotator = c("ecgpuwave", "atr")
 )
 
 # The egm object now contains multiple annotators
 print(record)
-# <Electrogram>
-# -------------------
-# Recording Duration: 650 seconds
-# Recording frequency: 360 hz
-# Number of channels: 2
-# Channel Names: MLII V5
-# Annotators: ecgpuwave (4238 annotations), atr (2548 annotations)
 ```
 
 ## Helper Functions for Multi-Annotator Workflows
 
 ### List Available Annotators
 
-```{r, eval=FALSE}
+```{r}
 # Get names of all annotators in an egm object
 annotators <- list_annotators(record)
 # [1] "ecgpuwave" "atr"
@@ -263,7 +256,7 @@ annotators <- list_annotators(record)
 
 ### Extract Specific Annotators
 
-```{r, eval=FALSE}
+```{r}
 # Extract a specific annotator from an egm object
 ecg_ann <- get_annotation(record, "ecgpuwave")
 
@@ -278,18 +271,12 @@ all_ann <- get_annotation(record)
 
 For comparative analysis, you may want to combine multiple annotators into a single table:
 
-```{r, eval=FALSE}
+```{r}
 # Merge all annotators into one table
 merged <- merge_annotations(record)
 
 # The result includes an 'annotator' column to identify the source
 head(merged)
-#       time   sample type subtype channel number annotator
-# 1 00:00:01      360    N       0       0      0 atr
-# 2 00:00:01      361    (       0       0      1 ecgpuwave
-# 3 00:00:01      377    )       0       0      1 ecgpuwave
-# 4 00:00:02      720    N       0       0      0 atr
-# ...
 
 # Merge only specific annotators
 merged_subset <- merge_annotations(record, annotators = c("ecgpuwave"))
@@ -297,86 +284,11 @@ merged_subset <- merge_annotations(record, annotators = c("ecgpuwave"))
 # You can also merge from a list of annotation_table objects
 ann_list <- read_annotation(
   record = "300",
+  record_dir = test_path(),
   annotator = c("ecgpuwave", "atr")
 )
 merged_from_list <- merge_annotations(ann_list)
 ```
-
-## Use Cases for Multiple Annotators
-
-### Algorithm Comparison
-
-Compare the performance of different R-peak detection algorithms:
-
-```{r, eval=FALSE}
-# Read multiple QRS detection algorithms
-qrs_detectors <- read_annotation(
-  record = "300",
-  annotator = c("sqrs", "wqrs", "gqrs", "atr")  # atr is manual reference
-)
-
-# Merge for comparison
-all_detections <- merge_annotations(qrs_detectors)
-
-# Filter to N-type beats only
-normal_beats <- all_detections[type == "N"]
-
-# Compare detection counts
-table(normal_beats$annotator)
-#  atr gqrs sqrs wqrs
-# 2500 2487 2501 2498
-```
-
-### Multi-Channel Annotations
-
-Different annotators may apply to different signal channels:
-
-```{r, eval=FALSE}
-# Read multi-channel record with channel-specific annotations
-record <- read_wfdb(
-  record = "multi-lead",
-  annotator = c("lead_I_qrs", "lead_II_qrs", "global_rhythm")
-)
-
-# Extract annotations for specific channel
-lead_I_ann <- get_annotation(record, "lead_I_qrs")
-lead_I_annotations <- lead_I_ann[channel == 0]  # Assuming lead I is channel 0
-```
-
-### Combined Feature Extraction
-
-Use different annotators for different physiological features:
-
-```{r, eval=FALSE}
-# Read beat detection and wave delineation separately
-features <- read_annotation(
-  record = "300",
-  annotator = c("atr", "ecgpuwave")
-  # atr: R-peaks
-  # ecgpuwave: P/QRS/T wave boundaries
-)
-
-# Merge to analyze complete cardiac cycles
-all_features <- merge_annotations(features)
-
-# Find QRS onset markers from ecgpuwave
-qrs_onset <- all_features[type == "(" & number == 1]  # WFON for QRS
-
-# Find corresponding R-peaks from atr
-r_peaks <- all_features[type == "N" & annotator == "atr"]
-```
-
-## Best Practices
-
-1. **Consistent Naming**: Use descriptive annotator names that indicate their purpose
-
-2. **Validate Compatibility**: Ensure annotators are compatible with your signal channels
-
-3. **Memory Considerations**: Only load the annotators you need for your analysis
-
-4. **Comparison Workflows**: When comparing annotators, use `merge_annotations()` for aligned time-series analysis
-
-5. **Documentation**: Keep track of which annotator serves which purpose in your analysis pipeline
 
 # Intracardiac Electrogram Annotations
 

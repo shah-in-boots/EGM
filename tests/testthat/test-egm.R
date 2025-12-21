@@ -1,24 +1,24 @@
-test_that("egm class can be made", {
+test_that("EGM class can be made", {
   df <- read_bard(file = test_path("bard-egm.txt"))
 
   file <- test_path("bard-egm.txt")
   sig <- read_bard_signal(file)
   hea <- read_bard_header(file)
 
-  x <- new_egm(signal = sig, header = hea)
-  expect_s3_class(x, "egm")
+  x <- new_EGM(signal = sig, header = hea)
+  expect_s3_class(x, "EGM")
   expect_s3_class(x$signal, 'signal_table')
   expect_s3_class(x$signal, "data.table")
   expect_s3_class(x$signal, "data.frame")
   expect_s3_class(x$header, 'header_table')
 })
 
-test_that("egm/signal class definition works", {
+test_that("EGM/signal class definition works", {
   # Class definition
-  x <- new_egm()
+  x <- new_EGM()
   expect_length(x, 3)
-  expect_true(is_egm(x))
-  expect_equal(new_egm(), egm())
+  expect_true(is_EGM(x))
+  expect_equal(new_EGM(), EGM())
 
   # Random signal with peaks and troughs, cosine pattern
   x <- cos(2 * pi * (1:1000) * (1:100) / 1e+5)
@@ -43,9 +43,9 @@ test_that("egm/signal class definition works", {
     frequency = frequency
   )
 
-  s1 <- new_egm(signal = sig, header = hea)
-  expect_s3_class(s1, "egm")
-  s2 <- egm(sig, hea)
+  s1 <- new_EGM(signal = sig, header = hea)
+  expect_s3_class(s1, "EGM")
+  s2 <- EGM(sig, hea)
   expect_equal(s1, s2)
 
   # Basic output data
@@ -53,11 +53,11 @@ test_that("egm/signal class definition works", {
 })
 
 
-test_that('signal can be removed from egm object', {
+test_that('signal can be removed from EGM object', {
   skip_on_ci()
 
   object <- read_wfdb('ecg', test_path())
-  expect_s3_class(object, 'egm')
+  expect_s3_class(object, 'EGM')
 
   # Default = data.frame
   raw <- extract_signal(object)

@@ -1,4 +1,4 @@
-test_that("ecg class can be created", {
+test_that("ECG class can be created", {
   # Create a simple ECG object with minimal data
   lead_names <- c(
     "I",
@@ -26,17 +26,17 @@ test_that("ecg class can be created", {
     label = lead_names
   )
 
-  ecg_obj <- ecg(signal = sig, header = hea)
+  ecg_obj <- ECG(signal = sig, header = hea)
 
   # Test class inheritance
-  expect_s3_class(ecg_obj, "ecg")
-  expect_s3_class(ecg_obj, "egm")
+  expect_s3_class(ecg_obj, "ECG")
+  expect_s3_class(ecg_obj, "EGM")
   expect_s3_class(ecg_obj, "list")
 
   # Test structure
   expect_length(ecg_obj, 3)
-  expect_true(is_ecg(ecg_obj))
-  expect_true(is_egm(ecg_obj))
+  expect_true(is_ECG(ecg_obj))
+  expect_true(is_EGM(ecg_obj))
 
   # Test internal components
   expect_s3_class(ecg_obj$signal, 'signal_table')
@@ -74,7 +74,7 @@ test_that("ecg validation accepts standard lead names", {
   )
 
   # Should create without warnings
-  expect_silent(ecg(signal = sig, header = hea))
+  expect_silent(ECG(signal = sig, header = hea))
 })
 
 test_that("ecg validation handles non-standard lead names with warnings", {
@@ -106,7 +106,7 @@ test_that("ecg validation handles non-standard lead names with warnings", {
   )
 
   # Should create with warnings
-  expect_warning(ecg(signal = sig, header = hea), "Non-standard ECG lead names")
+  expect_warning(ECG(signal = sig, header = hea), "Non-standard ECG lead names")
 })
 
 test_that("ecg validation warns about incorrect lead count", {
@@ -125,7 +125,7 @@ test_that("ecg validation warns about incorrect lead count", {
   )
 
   # Should create with warnings
-  expect_warning(ecg(signal = sig, header = hea), "should contain 12 leads")
+  expect_warning(ECG(signal = sig, header = hea), "should contain 12 leads")
 })
 
 test_that("format and print methods work correctly", {
@@ -156,14 +156,14 @@ test_that("format and print methods work correctly", {
     label = lead_names
   )
 
-  ecg_obj <- ecg(signal = sig, header = hea)
+  ecg_obj <- ECG(signal = sig, header = hea)
 
   # Check print output
   expect_output(print(ecg_obj), "Electrogram")
   expect_output(print(ecg_obj), "Type: Standard 12-lead ECG")
 })
 
-test_that("as_ecg conversion works", {
+test_that("as_ECG conversion works", {
   # Create a simple EGM object
   lead_names <- c(
     "I",
@@ -191,14 +191,14 @@ test_that("as_ecg conversion works", {
     label = lead_names
   )
 
-  egm_obj <- egm(signal = sig, header = hea)
+  egm_obj <- EGM(signal = sig, header = hea)
 
   # Convert to ECG
-  ecg_obj <- as_ecg(egm_obj)
+  ecg_obj <- as_ECG(egm_obj)
 
   # Test class conversion
-  expect_s3_class(ecg_obj, "ecg")
-  expect_s3_class(ecg_obj, "egm")
+  expect_s3_class(ecg_obj, "ECG")
+  expect_s3_class(ecg_obj, "EGM")
 
   # Test object structure preservation
   expect_equal(ecg_obj$signal, egm_obj$signal)
@@ -206,15 +206,15 @@ test_that("as_ecg conversion works", {
   expect_equal(ecg_obj$annotation, egm_obj$annotation)
 })
 
-test_that("as_ecg conversion rejects non-egm objects", {
+test_that("as_ECG conversion rejects non-egm objects", {
   # Try converting something that isn't an egm
   not_egm <- list(a = 1, b = 2)
 
   # Should error
-  expect_error(as_ecg(not_egm), "must be of class 'egm'")
+  expect_error(as_ECG(not_egm), "must be of class 'EGM'")
 })
 
-test_that("read_muse returns ecg object", {
+test_that("read_muse returns ECG object", {
   # Skip if file doesn't exist
   file <- system.file("extdata", "muse-sinus.xml", package = "EGM")
   if (file == "") {
@@ -225,8 +225,8 @@ test_that("read_muse returns ecg object", {
   ecg_obj <- read_muse(file)
 
   # Check class
-  expect_s3_class(ecg_obj, "ecg")
-  expect_s3_class(ecg_obj, "egm")
+  expect_s3_class(ecg_obj, "ECG")
+  expect_s3_class(ecg_obj, "EGM")
 
   # Check structure
   expect_length(ecg_obj, 3)

@@ -29,10 +29,10 @@ test_that("extract_f_waves handles invalid input", {
 
   expect_error(
     extract_f_waves("not an egm object"),
-    "Input must be of class 'egm'"
+    "Input must be of class 'EGM'"
   )
 
-  class(mock_af) <- "egm"
+  class(mock_af) <- "EGM"
 
   expect_error(
     extract_f_waves(mock_af, lead = "non_existent_lead"),
