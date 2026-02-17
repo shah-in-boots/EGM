@@ -8,12 +8,12 @@ test_that("can read in annotation files", {
   )
 
   expect_s3_class(x, "data.frame")
-  expect_length(x, 6)
+  expect_length(x, 7)
   expect_output(print(x), 'ecgpuwave')
   expect_s3_class(x, "data.table")
   expect_named(
     x,
-    expected = c("time", "sample", "type", "subtype", "channel", "number")
+    expected = c("time", "sample", "type", "subtype", "channel", "number", "aux")
   )
 })
 
@@ -30,7 +30,7 @@ test_that("can read in faulty signal safely", {
   expect_message({
     ann <- read_annotation(record, record_dir, annotator = "ecgpuwave")
   })
-  expect_length(ann, 6)
+  expect_length(ann, 7)
   expect_equal(nrow(ann), 0)
 })
 
@@ -64,11 +64,11 @@ test_that("can read multiple annotators at once", {
   # Check that each has the expected structure
   expect_named(
     anns$ecgpuwave,
-    c("time", "sample", "type", "subtype", "channel", "number")
+    c("time", "sample", "type", "subtype", "channel", "number", "aux")
   )
   expect_named(
     anns$atr,
-    c("time", "sample", "type", "subtype", "channel", "number")
+    c("time", "sample", "type", "subtype", "channel", "number", "aux")
   )
 })
 

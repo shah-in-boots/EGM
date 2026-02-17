@@ -126,16 +126,28 @@ long long lcm_ll(long long a, long long b) {
 }
 
 // Binary readers -------------------------------------------------------------
-// The following helpers read signed integers encoded in little-endian order
-// from the WFDB signal file.  Each function performs the read, checks for early
-// EOF, and returns the correctly sign-extended value.
-int8_t read_int8(std::istream &stream) {
+// The following helpers read integers from the WFDB signal file.  Each
+// function performs the read, checks for early EOF, and returns the correctly
+// typed value.
+
+// read_int8_signed: Format 8 stores signed 8-bit first differences.
+int8_t read_int8_signed(std::istream &stream) {
         unsigned char buffer;
         stream.read(reinterpret_cast<char *>(&buffer), 1);
         if (!stream) {
                 stop("Unexpected end of signal file");
         }
         return static_cast<int8_t>(buffer);
+}
+
+// read_uint8: Format 80 stores unsigned 8-bit offset binary values.
+uint8_t read_uint8(std::istream &stream) {
+        unsigned char buffer;
+        stream.read(reinterpret_cast<char *>(&buffer), 1);
+        if (!stream) {
+                stop("Unexpected end of signal file");
+        }
+        return buffer;
 }
 
 int16_t read_int16_little(std::istream &stream) {
@@ -352,13 +364,13 @@ void write_skip_value(std::ostream &stream, int32_t value) {
         }
 }
 
-// skip_auxiliary -------------------------------------------------------------
-// Code 63 annotations carry arbitrary auxiliary data.  We intentionally ignore
-// these payloads for now but must consume the byte stream (with odd-length
-// padding) to keep subsequent reads aligned.
-void skip_auxiliary(std::istream &stream, int length) {
+// read_auxiliary --------------------------------------------------------------
+// Code 63 annotations carry auxiliary data such as rhythm change labels or
+// comment text.  We read the payload and return it as a string.  The WFDB
+// format pads odd-length payloads with a trailing null byte.
+std::string read_auxiliary(std::istream &stream, int length) {
         if (length <= 0) {
-                return;
+                return std::string();
         }
         std::vector<char> buffer(length);
         stream.read(buffer.data(), length);
@@ -369,6 +381,50 @@ void skip_auxiliary(std::istream &stream, int length) {
                 stream.get();
                 if (!stream) {
                         stop("Unexpected end of annotation file while reading AUX padding");
+                }
+        }
+        // AUX data may contain embedded NULs; construct the string from the
+        // actual character content, stopping at the first NUL or the end.
+        size_t str_len = 0;
+        while (str_len < static_cast<size_t>(length) && buffer[str_len] != '\0') {
+                ++str_len;
+        }
+        return std::string(buffer.data(), str_len);
+}
+
+// write_auxiliary -------------------------------------------------------------
+// Write an AUX record (code 63) containing the given string payload.  The WFDB
+// format requires odd-length payloads to be padded with a trailing null byte.
+void write_auxiliary(std::ostream &stream, const std::string &aux) {
+        int length = static_cast<int>(aux.size());
+        if (length <= 0) {
+                return;
+        }
+        if (length > 1023) {
+                length = 1023;
+        }
+
+        // Write the AUX header (code 63, interval = length)
+        unsigned char byte0 = static_cast<unsigned char>(length & 0xFF);
+        unsigned char byte1 = static_cast<unsigned char>(((63 & 0x3F) << 2) |
+                                                         ((length >> 8) & 0x03));
+        unsigned char header_buf[2] = {byte0, byte1};
+        stream.write(reinterpret_cast<const char *>(header_buf), 2);
+        if (!stream) {
+                stop("Failed to write annotation data");
+        }
+
+        // Write the payload
+        stream.write(aux.c_str(), length);
+        if (!stream) {
+                stop("Failed to write annotation data");
+        }
+
+        // Pad to even boundary
+        if (length % 2 == 1) {
+                stream.put('\0');
+                if (!stream) {
+                        stop("Failed to write annotation data");
                 }
         }
 }
@@ -433,7 +489,21 @@ cpp11::writable::list read_header_native_cpp(const std::string &header_path) {
 
         record_stream >> record_name;
         record_stream >> number_of_channels;
-        record_stream >> frequency;
+
+        // The sampling frequency field may include counter frequency and base
+        // counter value: FREQ/COUNTER_FREQ(BASE_COUNT).  We parse just the
+        // primary sampling frequency, discarding the optional suffixes.
+        std::string freq_token;
+        record_stream >> freq_token;
+        if (!freq_token.empty()) {
+                // Strip counter frequency (/...) if present
+                auto slash_pos = freq_token.find('/');
+                std::string primary_freq = (slash_pos != std::string::npos)
+                        ? freq_token.substr(0, slash_pos)
+                        : freq_token;
+                frequency = parse_double(primary_freq);
+        }
+
         record_stream >> samples;
 
         writable::strings file_name(number_of_channels);
@@ -605,7 +675,8 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                              cpp11::doubles adc_gain,
                                              cpp11::integers adc_baseline,
                                              bool physical,
-                                             cpp11::strings channel_names) {
+                                             cpp11::strings channel_names,
+                                             cpp11::integers initial_values) {
         std::ifstream stream(data_path, std::ios::binary);
         ensure_can_open(stream, data_path);
 
@@ -686,6 +757,18 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                 output_columns.emplace_back(samples_to_read);
         }
 
+        // Format 8 (signed 8-bit first differences) requires a running
+        // accumulator per channel, initialised from the header's initial_value
+        // field.  Format 80 (unsigned 8-bit offset binary) does not use delta
+        // encoding but requires an unsigned-to-signed offset of -128.
+        std::vector<int32_t> fmt8_accum(number_of_channels, 0);
+        for (int i = 0; i < number_of_channels; ++i) {
+                if (storage_format[i] == 8) {
+                        int iv = initial_values[i];
+                        fmt8_accum[i] = (iv != NA_INTEGER) ? iv : 0;
+                }
+        }
+
         stream.seekg(0, std::ios::beg);
 
         int output_index = 0;
@@ -707,7 +790,6 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                 if (store_row && !channel_map[channel_idx].empty()) {
                                         double value = static_cast<double>(values.first);
                                         if (physical) {
-                                                // Convert to physical units: (digital - baseline) / gain
                                                 int baseline_value = adc_baseline[channel_idx];
                                                 if (baseline_value != NA_INTEGER) {
                                                         value -= static_cast<double>(baseline_value);
@@ -717,7 +799,6 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                                         value /= gain_value;
                                                 }
                                         }
-                                        // If not physical, value remains as raw ADC count (digital units)
                                         for (size_t output_idx : channel_map[channel_idx]) {
                                                 output_columns[output_idx][output_index] = value;
                                         }
@@ -726,7 +807,6 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                 if (store_row && !channel_map[channel_idx + 1].empty()) {
                                         double value = static_cast<double>(values.second);
                                         if (physical) {
-                                                // Convert to physical units: (digital - baseline) / gain
                                                 int baseline_value = adc_baseline[channel_idx + 1];
                                                 if (baseline_value != NA_INTEGER) {
                                                         value -= static_cast<double>(baseline_value);
@@ -736,7 +816,6 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                                         value /= gain_value;
                                                 }
                                         }
-                                        // If not physical, value remains as raw ADC count (digital units)
                                         for (size_t output_idx : channel_map[channel_idx + 1]) {
                                                 output_columns[output_idx][output_index] = value;
                                         }
@@ -748,10 +827,23 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
 
                         double raw_value = 0.0;
                         switch (fmt) {
-                        case 8:
-                        case 80:
-                                raw_value = static_cast<double>(read_int8(stream));
+                        case 8: {
+                                // Format 8: signed 8-bit first differences.
+                                // Each byte is a delta; the running sum from
+                                // initial_value yields the absolute sample.
+                                int8_t delta = read_int8_signed(stream);
+                                fmt8_accum[channel_idx] += delta;
+                                raw_value = static_cast<double>(fmt8_accum[channel_idx]);
                                 break;
+                        }
+                        case 80: {
+                                // Format 80: unsigned 8-bit offset binary.
+                                // The stored value is unsigned (0-255); the
+                                // real digital value is (stored - 128).
+                                uint8_t stored = read_uint8(stream);
+                                raw_value = static_cast<double>(static_cast<int>(stored) - 128);
+                                break;
+                        }
                         case 16:
                                 raw_value = static_cast<double>(read_int16_little(stream));
                                 break;
@@ -766,9 +858,6 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                         }
 
                         if (store_row && !channel_map[channel_idx].empty()) {
-                                // Formats other than 212 map directly to a single channel.
-                                // For digital units, preserve raw ADC counts.
-                                // For physical units, apply conversion: (digital - baseline) / gain
                                 double value = raw_value;
                                 if (physical) {
                                         int baseline_value = adc_baseline[channel_idx];
@@ -780,7 +869,6 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                                 value /= gain_value;
                                         }
                                 }
-                                // If not physical, value remains as raw ADC count (digital units)
                                 for (size_t output_idx : channel_map[channel_idx]) {
                                         output_columns[output_idx][output_index] = value;
                                 }
@@ -874,6 +962,12 @@ void write_wfdb_native_cpp(const std::string &data_path,
         const int *int_data = is_integer_matrix ? INTEGER(signal_matrix_sexp) : nullptr;
         const double *dbl_data = is_double_matrix ? REAL(signal_matrix_sexp) : nullptr;
 
+        // Format 8 (first differences) requires tracking the previous sample
+        // value per channel to compute deltas.
+        std::vector<int32_t> fmt8_prev(number_of_channels, 0);
+        // Track initial_value per channel for the header (first digital sample)
+        std::vector<int32_t> computed_initial(number_of_channels, 0);
+
         for (int i = 0; i < samples; ++i) {
                 for (int channel_idx = 0; channel_idx < number_of_channels; ++channel_idx) {
                         // Extract value from either integer or double matrix
@@ -903,16 +997,27 @@ void write_wfdb_native_cpp(const std::string &data_path,
                         long long scaled = static_cast<long long>(std::llround(value));
                         int fmt = format_vec[channel_idx];
                         // Clamp to the legal range of the target storage format
-                        // before casting down to the native integer width.  The
-                        // ranges here mirror the limits enforced by the reader.
+                        // before casting down to the native integer width.
                         switch (fmt) {
                         case 8:
-                        case 80:
-                                if (scaled > std::numeric_limits<int8_t>::max()) {
-                                        scaled = std::numeric_limits<int8_t>::max();
+                                // Format 8: clamp absolute value to int8 accumulator range
+                                // but on-disk we write deltas, so allow full int range
+                                // (the delta clamping is done during serialization)
+                                if (scaled > std::numeric_limits<int32_t>::max()) {
+                                        scaled = std::numeric_limits<int32_t>::max();
                                 }
-                                if (scaled < std::numeric_limits<int8_t>::min()) {
-                                        scaled = std::numeric_limits<int8_t>::min();
+                                if (scaled < std::numeric_limits<int32_t>::min()) {
+                                        scaled = std::numeric_limits<int32_t>::min();
+                                }
+                                break;
+                        case 80:
+                                // Format 80: unsigned 8-bit offset binary.
+                                // digital value range is -128 to +127 (stored as 0-255)
+                                if (scaled > 127LL) {
+                                        scaled = 127LL;
+                                }
+                                if (scaled < -128LL) {
+                                        scaled = -128LL;
                                 }
                                 break;
                         case 16:
@@ -951,6 +1056,11 @@ void write_wfdb_native_cpp(const std::string &data_path,
                                 stop("Unsupported WFDB storage format: %d", fmt);
                         }
                         digital_row[channel_idx] = static_cast<int32_t>(scaled);
+
+                        // Record initial value from first sample
+                        if (i == 0) {
+                                computed_initial[channel_idx] = static_cast<int32_t>(scaled);
+                        }
                 }
 
                 for (int channel_idx = 0; channel_idx < number_of_channels;) {
@@ -959,14 +1069,35 @@ void write_wfdb_native_cpp(const std::string &data_path,
                         // Format 212 consumes two channels at a time, hence the
                         // manual increment when writing those pairs.
                         switch (fmt) {
-                        case 8:
-                        case 80:
-                                data_stream.put(static_cast<char>(digital_row[channel_idx] & 0xFF));
+                        case 8: {
+                                // Format 8: write the delta (first difference)
+                                int32_t abs_val = digital_row[channel_idx];
+                                int32_t delta = abs_val - fmt8_prev[channel_idx];
+                                // Clamp delta to signed 8-bit range
+                                if (delta > 127) delta = 127;
+                                if (delta < -128) delta = -128;
+                                data_stream.put(static_cast<char>(static_cast<int8_t>(delta)));
+                                if (!data_stream) {
+                                        stop("Failed to write signal data");
+                                }
+                                // Update prev: note that clamped delta means
+                                // prev tracks what the reader will reconstruct
+                                fmt8_prev[channel_idx] += delta;
+                                ++channel_idx;
+                                break;
+                        }
+                        case 80: {
+                                // Format 80: unsigned 8-bit offset binary.
+                                // Store (digital_value + 128) as unsigned byte.
+                                int32_t val = digital_row[channel_idx];
+                                uint8_t stored = static_cast<uint8_t>(val + 128);
+                                data_stream.put(static_cast<char>(stored));
                                 if (!data_stream) {
                                         stop("Failed to write signal data");
                                 }
                                 ++channel_idx;
                                 break;
+                        }
                         case 16:
                                 write_int16_little(data_stream, static_cast<int16_t>(digital_row[channel_idx]));
                                 ++channel_idx;
@@ -1039,10 +1170,11 @@ void write_wfdb_native_cpp(const std::string &data_path,
                 if (zero_value == NA_INTEGER) {
                         zero_value = 0;
                 }
-                int initial = initial_value[channel_idx];
-                if (initial == NA_INTEGER) {
-                        initial = zero_value;
-                }
+
+                // Use the computed initial value from the actual first sample
+                // to ensure the header accurately reflects the written data.
+                int initial = computed_initial[channel_idx];
+
                 int checksum_value = checksum[channel_idx];
                 if (checksum_value == NA_INTEGER) {
                         checksum_value = 0;
@@ -1068,8 +1200,8 @@ void write_wfdb_native_cpp(const std::string &data_path,
                         label_value = "CH" + std::to_string(channel_idx + 1);
                 }
 
-                header_stream << file_name << "\t" << storage_format[channel_idx] << "\t" << adc_spec << "\t" << resolution_value
-                              << "\t" << zero_value << "\t" << initial << "\t" << checksum_value << "\t" << blocksize_value << "\t"
+                header_stream << file_name << " " << storage_format[channel_idx] << " " << adc_spec << " " << resolution_value
+                              << " " << zero_value << " " << initial << " " << checksum_value << " " << blocksize_value << " "
                               << label_value << "\n";
         }
 
@@ -1103,19 +1235,32 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
         // The annotation reader keeps track of the running sample position.
         // Special codes (59-63) mutate state rather than producing actual
         // annotations, so the logic below resembles a small state machine.
+        //
+        // Per the WFDB specification:
+        //   - NUM (60): sets num for current AND subsequent annotations
+        //   - CHN (62): sets chan for current AND subsequent annotations
+        //   - SUB (61): sets subtyp for current annotation ONLY
+        // The modifier codes appear BEFORE the annotation they apply to.
         std::vector<int> samples;
         std::vector<std::string> types;
         std::vector<int> subtypes;
         std::vector<int> channels;
         std::vector<int> numbers;
+        std::vector<std::string> auxdata;
 
         int32_t current_sample = 0;
-        int pending_num = 0;
-        bool has_pending_num = false;
+
+        // Persistent state for NUM and CHN (carry forward until changed)
+        int current_num = 0;
+        int current_channel = 0;
+
+        // Transient state for SUB (applies to next annotation only)
         int pending_subtype = 0;
         bool has_pending_subtype = false;
-        int pending_channel = 0;
-        bool has_pending_channel = false;
+
+        // Transient state for AUX (applies to next annotation only)
+        std::string pending_aux;
+        bool has_pending_aux = false;
 
         while (true) {
                 int first = stream.get();
@@ -1141,55 +1286,53 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 }
 
                 if (code == 60) {
-                        if (!numbers.empty()) {
-                                numbers.back() = interval;
-                        } else {
-                                pending_num = interval;
-                                has_pending_num = true;
-                        }
+                        // NUM: update persistent num state
+                        current_num = interval;
                         continue;
                 }
 
                 if (code == 61) {
-                        if (!subtypes.empty()) {
-                                subtypes.back() = interval;
-                        } else {
-                                pending_subtype = interval;
-                                has_pending_subtype = true;
-                        }
+                        // SUB: set subtype for next annotation only
+                        pending_subtype = interval;
+                        has_pending_subtype = true;
                         continue;
                 }
 
                 if (code == 62) {
-                        if (!channels.empty()) {
-                                channels.back() = interval;
-                        } else {
-                                pending_channel = interval;
-                                has_pending_channel = true;
-                        }
+                        // CHN: update persistent channel state
+                        current_channel = interval;
                         continue;
                 }
 
                 if (code == 63) {
-                        skip_auxiliary(stream, interval);
+                        // AUX: read auxiliary data for next annotation
+                        pending_aux = read_auxiliary(stream, interval);
+                        has_pending_aux = true;
                         continue;
                 }
 
                 current_sample += interval;
                 std::string symbol = annotation_symbol(code);
+
+                // SUB applies to this annotation only, then resets
                 int subtype_value = has_pending_subtype ? pending_subtype : 0;
-                int channel_value = has_pending_channel ? pending_channel : 0;
-                int num_value = has_pending_num ? pending_num : 0;
+                // NUM and CHN persist until changed
+                int channel_value = current_channel;
+                int num_value = current_num;
+                // AUX applies to this annotation only
+                std::string aux_value = has_pending_aux ? pending_aux : "";
 
                 samples.push_back(current_sample);
                 types.push_back(symbol);
                 subtypes.push_back(subtype_value);
                 channels.push_back(channel_value);
                 numbers.push_back(num_value);
+                auxdata.push_back(aux_value);
 
-                has_pending_num = false;
+                // Reset transient state only
                 has_pending_subtype = false;
-                has_pending_channel = false;
+                has_pending_aux = false;
+                pending_aux.clear();
         }
 
         size_t n = samples.size();
@@ -1198,6 +1341,7 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
         cpp11::writable::integers subtype_vec(n);
         cpp11::writable::integers channel_vec(n);
         cpp11::writable::integers number_vec(n);
+        cpp11::writable::strings aux_vec(n);
 
         for (size_t i = 0; i < n; ++i) {
                 sample_vec[i] = samples[i];
@@ -1205,6 +1349,7 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 subtype_vec[i] = subtypes[i];
                 channel_vec[i] = channels[i];
                 number_vec[i] = numbers[i];
+                aux_vec[i] = auxdata[i];
         }
 
         cpp11::writable::list result;
@@ -1213,8 +1358,9 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
         result.push_back(subtype_vec);
         result.push_back(channel_vec);
         result.push_back(number_vec);
+        result.push_back(aux_vec);
 
-        cpp11::writable::strings names = {"sample", "type", "subtype", "channel", "number"};
+        cpp11::writable::strings names = {"sample", "type", "subtype", "channel", "number", "aux"};
         result.names() = names;
 
         return result;
@@ -1226,7 +1372,8 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                                  cpp11::strings types,
                                  cpp11::integers subtypes,
                                  cpp11::integers channels,
-                                 cpp11::integers numbers) {
+                                 cpp11::integers numbers,
+                                 cpp11::strings aux_strings) {
         if (samples.size() != types.size()) {
                 stop("Samples and types must have the same length");
         }
@@ -1237,6 +1384,10 @@ void write_annotation_native_cpp(const std::string &annotation_path,
         }
 
         int prev_sample = 0;
+        // Track persistent state for CHN and NUM so we only emit change records
+        // when the value actually differs from what the reader would assume.
+        int prev_channel = 0;
+        int prev_num = 0;
 
         auto get_value = [](const cpp11::integers &vec, int index) {
                 if (index >= vec.size()) {
@@ -1249,9 +1400,19 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                 return value;
         };
 
+        auto get_string = [](const cpp11::strings &vec, int index) -> std::string {
+                if (index >= vec.size()) {
+                        return "";
+                }
+                if (cpp11::is_na(vec[index])) {
+                        return "";
+                }
+                return static_cast<std::string>(vec[index]);
+        };
+
         // Emit annotations in order, encoding the sample delta relative to the
-        // previous entry.  Optional subtype/channel/number fields are only
-        // written when non-zero to keep the output compact.
+        // previous entry.  Per the WFDB specification, modifier codes (SUB, CHN,
+        // NUM, AUX) are written BEFORE the annotation they modify.
         for (int i = 0; i < samples.size(); ++i) {
                 int sample = samples[i];
                 if (cpp11::is_na(sample)) {
@@ -1271,8 +1432,8 @@ void write_annotation_native_cpp(const std::string &annotation_path,
 
                 int diff = sample - prev_sample;
                 int interval = encode_interval(stream, diff);
-                write_annotation_pair(stream, code, interval);
 
+                // Write modifier codes BEFORE the annotation pair
                 int subtype_value = get_value(subtypes, i);
                 if (subtype_value < 0 || subtype_value > 1023) {
                         stop("Annotation subtype must be between 0 and 1023");
@@ -1285,17 +1446,28 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                 if (channel_value < 0 || channel_value > 1023) {
                         stop("Annotation channel must be between 0 and 1023");
                 }
-                if (channel_value != 0) {
+                if (channel_value != prev_channel) {
                         write_annotation_pair(stream, 62, channel_value);
+                        prev_channel = channel_value;
                 }
 
                 int num_value = get_value(numbers, i);
                 if (num_value < 0 || num_value > 1023) {
                         stop("Annotation number must be between 0 and 1023");
                 }
-                if (num_value != 0) {
+                if (num_value != prev_num) {
                         write_annotation_pair(stream, 60, num_value);
+                        prev_num = num_value;
                 }
+
+                // Write AUX data if present
+                std::string aux_str = get_string(aux_strings, i);
+                if (!aux_str.empty()) {
+                        write_auxiliary(stream, aux_str);
+                }
+
+                // Write the actual annotation
+                write_annotation_pair(stream, code, interval);
 
                 prev_sample = sample;
         }

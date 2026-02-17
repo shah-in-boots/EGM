@@ -28,10 +28,10 @@ extern "C" SEXP _EGM_read_header_native_cpp(SEXP header_path) {
   END_CPP11
 }
 // wfdb.cpp
-cpp11::writable::list read_signal_native_cpp(const std::string & data_path, int number_of_channels, int total_samples, cpp11::integers storage_format, int begin_sample, int end_sample, cpp11::integers channel_indices, cpp11::doubles adc_gain, cpp11::integers adc_baseline, bool physical, cpp11::strings channel_names);
-extern "C" SEXP _EGM_read_signal_native_cpp(SEXP data_path, SEXP number_of_channels, SEXP total_samples, SEXP storage_format, SEXP begin_sample, SEXP end_sample, SEXP channel_indices, SEXP adc_gain, SEXP adc_baseline, SEXP physical, SEXP channel_names) {
+cpp11::writable::list read_signal_native_cpp(const std::string & data_path, int number_of_channels, int total_samples, cpp11::integers storage_format, int begin_sample, int end_sample, cpp11::integers channel_indices, cpp11::doubles adc_gain, cpp11::integers adc_baseline, bool physical, cpp11::strings channel_names, cpp11::integers initial_values);
+extern "C" SEXP _EGM_read_signal_native_cpp(SEXP data_path, SEXP number_of_channels, SEXP total_samples, SEXP storage_format, SEXP begin_sample, SEXP end_sample, SEXP channel_indices, SEXP adc_gain, SEXP adc_baseline, SEXP physical, SEXP channel_names, SEXP initial_values) {
   BEGIN_CPP11
-    return cpp11::as_sexp(read_signal_native_cpp(cpp11::as_cpp<cpp11::decay_t<const std::string &>>(data_path), cpp11::as_cpp<cpp11::decay_t<int>>(number_of_channels), cpp11::as_cpp<cpp11::decay_t<int>>(total_samples), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(storage_format), cpp11::as_cpp<cpp11::decay_t<int>>(begin_sample), cpp11::as_cpp<cpp11::decay_t<int>>(end_sample), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(channel_indices), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(adc_gain), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(adc_baseline), cpp11::as_cpp<cpp11::decay_t<bool>>(physical), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(channel_names)));
+    return cpp11::as_sexp(read_signal_native_cpp(cpp11::as_cpp<cpp11::decay_t<const std::string &>>(data_path), cpp11::as_cpp<cpp11::decay_t<int>>(number_of_channels), cpp11::as_cpp<cpp11::decay_t<int>>(total_samples), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(storage_format), cpp11::as_cpp<cpp11::decay_t<int>>(begin_sample), cpp11::as_cpp<cpp11::decay_t<int>>(end_sample), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(channel_indices), cpp11::as_cpp<cpp11::decay_t<cpp11::doubles>>(adc_gain), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(adc_baseline), cpp11::as_cpp<cpp11::decay_t<bool>>(physical), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(channel_names), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(initial_values)));
   END_CPP11
 }
 // wfdb.cpp
@@ -50,10 +50,10 @@ extern "C" SEXP _EGM_read_annotation_native_cpp(SEXP annotation_path) {
   END_CPP11
 }
 // wfdb.cpp
-void write_annotation_native_cpp(const std::string & annotation_path, cpp11::integers samples, cpp11::strings types, cpp11::integers subtypes, cpp11::integers channels, cpp11::integers numbers);
-extern "C" SEXP _EGM_write_annotation_native_cpp(SEXP annotation_path, SEXP samples, SEXP types, SEXP subtypes, SEXP channels, SEXP numbers) {
+void write_annotation_native_cpp(const std::string & annotation_path, cpp11::integers samples, cpp11::strings types, cpp11::integers subtypes, cpp11::integers channels, cpp11::integers numbers, cpp11::strings aux_strings);
+extern "C" SEXP _EGM_write_annotation_native_cpp(SEXP annotation_path, SEXP samples, SEXP types, SEXP subtypes, SEXP channels, SEXP numbers, SEXP aux_strings) {
   BEGIN_CPP11
-    write_annotation_native_cpp(cpp11::as_cpp<cpp11::decay_t<const std::string &>>(annotation_path), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(samples), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(types), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(subtypes), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(channels), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(numbers));
+    write_annotation_native_cpp(cpp11::as_cpp<cpp11::decay_t<const std::string &>>(annotation_path), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(samples), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(types), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(subtypes), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(channels), cpp11::as_cpp<cpp11::decay_t<cpp11::integers>>(numbers), cpp11::as_cpp<cpp11::decay_t<cpp11::strings>>(aux_strings));
     return R_NilValue;
   END_CPP11
 }
@@ -64,8 +64,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_EGM_fun",                               (DL_FUNC) &_EGM_fun,                                0},
     {"_EGM_read_annotation_native_cpp",        (DL_FUNC) &_EGM_read_annotation_native_cpp,         1},
     {"_EGM_read_header_native_cpp",            (DL_FUNC) &_EGM_read_header_native_cpp,             1},
-    {"_EGM_read_signal_native_cpp",            (DL_FUNC) &_EGM_read_signal_native_cpp,            11},
-    {"_EGM_write_annotation_native_cpp",       (DL_FUNC) &_EGM_write_annotation_native_cpp,        6},
+    {"_EGM_read_signal_native_cpp",            (DL_FUNC) &_EGM_read_signal_native_cpp,            12},
+    {"_EGM_write_annotation_native_cpp",       (DL_FUNC) &_EGM_write_annotation_native_cpp,        7},
     {"_EGM_write_wfdb_native_cpp",             (DL_FUNC) &_EGM_write_wfdb_native_cpp,             20},
     {NULL, NULL, 0}
 };

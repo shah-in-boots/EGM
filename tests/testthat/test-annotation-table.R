@@ -13,6 +13,6 @@ test_that('annotation table class can be made', {
 
   # ECG data should be 12 annotation columns and 1 index column
   expect_s3_class(dat, 'annotation_table')
-  expect_length(dat, 6)
+  expect_length(dat, 7)
   expect_equal(nrow(dat), 117)
 })
