@@ -182,6 +182,7 @@ read_annotation_single <- function(
   subtype <- as.integer(ann_list$subtype)
   channel <- as.integer(ann_list$channel)
   number <- as.integer(ann_list$number)
+  aux <- as.character(ann_list$aux)
 
   # If annotation is empty, message user
   # Return annotation table with name of annotator
@@ -226,6 +227,7 @@ read_annotation_single <- function(
   subtype <- subtype[selection]
   channel <- channel[selection]
   number <- number[selection]
+  aux <- aux[selection]
 
   time_strings <- if (!is.na(frequency) && frequency > 0) {
     seconds <- samples / frequency
@@ -244,7 +246,8 @@ read_annotation_single <- function(
     type = types,
     subtype = subtype,
     channel = channel,
-    number = number
+    number = number,
+    aux = aux
   )
 }
 
@@ -303,6 +306,7 @@ write_annotation <- function(
     }
     # Normalise arbitrary data frames into the strongly-typed
     # annotation_table class expected elsewhere in the package.
+    aux_col <- if ("aux" %in% names(data)) as.character(data$aux) else character()
     data <- annotation_table(
       annotator = annotator,
       time = as.character(data$time),
@@ -310,7 +314,8 @@ write_annotation <- function(
       type = as.character(data$type),
       subtype = as.character(data$subtype),
       channel = as.integer(data$channel),
-      number = as.integer(data$number)
+      number = as.integer(data$number),
+      aux = aux_col
     )
   }
 
@@ -347,6 +352,14 @@ write_annotation <- function(
   channel_vals <- parse_optional_int(ann_dt$channel)
   number_vals <- parse_optional_int(ann_dt$number)
 
+  # Extract auxiliary data strings if present in the annotation table
+  aux_vals <- if ("aux" %in% names(ann_dt)) {
+    as.character(ann_dt$aux)
+  } else {
+    rep("", length(samples))
+  }
+  aux_vals[is.na(aux_vals)] <- ""
+
   annotation_path <- fs::path(record_dir, record, ext = annotator)
   # Offload the binary encoding to the native implementation which shares
   # logic with the reader, ensuring the two functions round-trip cleanly.
@@ -356,7 +369,8 @@ write_annotation <- function(
     types = types,
     subtypes = subtype_vals,
     channels = channel_vals,
-    numbers = number_vals
+    numbers = number_vals,
+    aux_strings = aux_vals
   )
 
   invisible(annotation_path)
@@ -718,6 +732,7 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
       data.table::setorderv(merged, "sample")
 
       # Preserve the annotation_table class and attributes
+      aux_col <- if ("aux" %in% names(merged)) merged$aux else rep("", nrow(merged))
       merged <- new_annotation_table(
         x = list(
           time = merged$time,
@@ -725,7 +740,8 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
           type = merged$type,
           subtype = merged$subtype,
           channel = merged$channel,
-          number = merged$number
+          number = merged$number,
+          aux = aux_col
         ),
         annotator = annotator_name
       )
@@ -814,7 +830,7 @@ merge_annotations <- function(x, annotators = NULL) {
   combined <- data.table::rbindlist(ann_with_source, fill = TRUE)
 
   # Reorder columns to put annotator after the standard columns
-  standard_cols <- c("time", "sample", "type", "subtype", "channel", "number")
+  standard_cols <- c("time", "sample", "type", "subtype", "channel", "number", "aux")
   available_standard <- intersect(standard_cols, names(combined))
   other_cols <- setdiff(names(combined), c(available_standard, "annotator"))
   new_order <- c(available_standard, "annotator", other_cols)

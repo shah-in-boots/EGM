@@ -517,7 +517,8 @@ read_signal <- function(
     adc_gain = as.numeric(header$ADC_gain),
     adc_baseline = as.integer(header$ADC_baseline),
     physical = identical(units, "physical"),
-    channel_names = channel_names
+    channel_names = channel_names,
+    initial_values = as.integer(header$initial_value)
   )
 
   signal <- data.table::as.data.table(signal_list)
@@ -541,8 +542,12 @@ read_header <- function(record, record_dir = ".", ...) {
   # `header_table` S3 class returned to R callers.
   header_info <- read_header_native_cpp(header_path)
   start_time <- parse_date_and_time(header_info$record_line)
+  # When the header file lacks a timestamp, preserve NA rather than
+
+  # fabricating one from the current system time.  This ensures round-trip
+  # fidelity: records without timestamps remain without timestamps.
   if (is.na(start_time)) {
-    start_time <- formals(header_table)$start_time
+    start_time <- as.POSIXct(NA)
   }
 
   info_strings <- header_info$info_strings

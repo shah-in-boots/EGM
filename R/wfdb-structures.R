@@ -177,6 +177,7 @@ annotation_table <- function(
   subtype = character(),
   channel = integer(),
   number = integer(),
+  aux = character(),
   ...
 ) {
   # Invariant rules:
@@ -219,6 +220,11 @@ annotation_table <- function(
     channel <- vector(mode = "integer", length = n)
   }
 
+  # Auxiliary data
+  if (length(aux) == 0) {
+    aux <- vector(mode = "character", length = n)
+  }
+
   # Sample/time are more complicated
   # Sample can be given, and if so, time can be imputed if frequency is known
   if (length(time) == 0 && length(sample) > 0) {
@@ -254,7 +260,8 @@ annotation_table <- function(
     type = type,
     subtype = subtype,
     channel = channel,
-    number = number
+    number = number,
+    aux = aux
   )
 
   new_annotation_table(x, annotator)
@@ -270,7 +277,7 @@ new_annotation_table <- function(x = list(), annotator = character()) {
 
     checkmate::assert_names(
       names(x),
-      identical.to = c("time", "sample", "type", "subtype", "channel", "number")
+      identical.to = c("time", "sample", "type", "subtype", "channel", "number", "aux")
     )
   }
 
@@ -465,7 +472,7 @@ header_table <- function(
   number_of_channels = integer(),
   frequency = integer(),
   samples = integer(),
-  start_time = strptime(Sys.time(), "%Y-%m-%d %H:%M:%OSn"),
+  start_time = as.POSIXct(NA),
   ADC_saturation = integer(),
   file_name = character(), # Signal specific information
   storage_format = integer(),
