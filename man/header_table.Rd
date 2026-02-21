@@ -10,7 +10,7 @@ header_table(
   number_of_channels = integer(),
   frequency = integer(),
   samples = integer(),
-  start_time = strptime(Sys.time(), "\%Y-\%m-\%d \%H:\%M:\%OSn"),
+  start_time = as.POSIXct(NA),
   ADC_saturation = integer(),
   file_name = character(),
   storage_format = integer(),

@@ -1,0 +1,23 @@
+   n  posicion  ecg    
+
+   frecuencia de muestreo = 500
+     posicion en milisegundos
+
+     1            188.
+     2            850.
+     3           1514.
+     4           2180.
+     5           2840.
+     6           3504.
+     7           4166.
+     8           4832.
+     9           5498.
+    10           6158.
+    11           6820.
+    12           7486.
+    13           8148.
+    14           8814.
+    15           9478.
+ RMAX =       1.000   Factor d'escala senyal
+ PA_RMAX =  953798.438   Factor d'escala senyal   passa_alt
+ PB_RMAX =     518.340   Factor d'escala senyal   passa_baix

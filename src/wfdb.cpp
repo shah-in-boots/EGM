@@ -1236,11 +1236,10 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
         // Special codes (59-63) mutate state rather than producing actual
         // annotations, so the logic below resembles a small state machine.
         //
-        // Per the WFDB specification:
-        //   - NUM (60): sets num for current AND subsequent annotations
-        //   - CHN (62): sets chan for current AND subsequent annotations
-        //   - SUB (61): sets subtyp for current annotation ONLY
-        // The modifier codes appear BEFORE the annotation they apply to.
+        // Per WFDB CLI behaviour (rdann/wrann), modifier records (60-63)
+        // apply to the most recently emitted annotation, not a future one.
+        // We still keep a fallback path for malformed streams that place
+        // modifiers before the first annotation.
         std::vector<int> samples;
         std::vector<std::string> types;
         std::vector<int> subtypes;
@@ -1250,11 +1249,13 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
 
         int32_t current_sample = 0;
 
-        // Persistent state for NUM and CHN (carry forward until changed)
+        // Fallback defaults used only if a malformed stream emits modifiers
+        // before the first actual annotation.
         int current_num = 0;
         int current_channel = 0;
 
-        // Transient state for SUB (applies to next annotation only)
+        // Transient state for malformed streams that place modifiers before
+        // the annotation they are intended to modify.
         int pending_subtype = 0;
         bool has_pending_subtype = false;
 
@@ -1286,28 +1287,49 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 }
 
                 if (code == 60) {
-                        // NUM: update persistent num state
-                        current_num = interval;
+                        // NUM: modify previous annotation; if none exists yet,
+                        // keep as fallback for the first annotation.
+                        if (!numbers.empty()) {
+                                numbers.back() = interval;
+                        } else {
+                                current_num = interval;
+                        }
                         continue;
                 }
 
                 if (code == 61) {
-                        // SUB: set subtype for next annotation only
-                        pending_subtype = interval;
-                        has_pending_subtype = true;
+                        // SUB: modify previous annotation; if none exists yet,
+                        // keep as fallback for the first annotation.
+                        if (!subtypes.empty()) {
+                                subtypes.back() = interval;
+                        } else {
+                                pending_subtype = interval;
+                                has_pending_subtype = true;
+                        }
                         continue;
                 }
 
                 if (code == 62) {
-                        // CHN: update persistent channel state
-                        current_channel = interval;
+                        // CHN: modify previous annotation; if none exists yet,
+                        // keep as fallback for the first annotation.
+                        if (!channels.empty()) {
+                                channels.back() = interval;
+                        } else {
+                                current_channel = interval;
+                        }
                         continue;
                 }
 
                 if (code == 63) {
-                        // AUX: read auxiliary data for next annotation
-                        pending_aux = read_auxiliary(stream, interval);
-                        has_pending_aux = true;
+                        std::string aux_value = read_auxiliary(stream, interval);
+                        // AUX: modify previous annotation; if none exists yet,
+                        // keep as fallback for the first annotation.
+                        if (!auxdata.empty()) {
+                                auxdata.back() = aux_value;
+                        } else {
+                                pending_aux = aux_value;
+                                has_pending_aux = true;
+                        }
                         continue;
                 }
 
@@ -1316,7 +1338,8 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
 
                 // SUB applies to this annotation only, then resets
                 int subtype_value = has_pending_subtype ? pending_subtype : 0;
-                // NUM and CHN persist until changed
+                // NUM and CHN are only used for malformed files where modifiers
+                // appeared before the first annotation.
                 int channel_value = current_channel;
                 int num_value = current_num;
                 // AUX applies to this annotation only
@@ -1333,6 +1356,9 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 has_pending_subtype = false;
                 has_pending_aux = false;
                 pending_aux.clear();
+                // Reset fallback defaults after first use.
+                current_num = 0;
+                current_channel = 0;
         }
 
         size_t n = samples.size();
@@ -1384,10 +1410,6 @@ void write_annotation_native_cpp(const std::string &annotation_path,
         }
 
         int prev_sample = 0;
-        // Track persistent state for CHN and NUM so we only emit change records
-        // when the value actually differs from what the reader would assume.
-        int prev_channel = 0;
-        int prev_num = 0;
 
         auto get_value = [](const cpp11::integers &vec, int index) {
                 if (index >= vec.size()) {
@@ -1411,8 +1433,8 @@ void write_annotation_native_cpp(const std::string &annotation_path,
         };
 
         // Emit annotations in order, encoding the sample delta relative to the
-        // previous entry.  Per the WFDB specification, modifier codes (SUB, CHN,
-        // NUM, AUX) are written BEFORE the annotation they modify.
+        // previous entry. WFDB modifier codes (SUB, CHN, NUM, AUX) are written
+        // immediately AFTER the annotation they modify.
         for (int i = 0; i < samples.size(); ++i) {
                 int sample = samples[i];
                 if (cpp11::is_na(sample)) {
@@ -1433,7 +1455,10 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                 int diff = sample - prev_sample;
                 int interval = encode_interval(stream, diff);
 
-                // Write modifier codes BEFORE the annotation pair
+                // Write the actual annotation
+                write_annotation_pair(stream, code, interval);
+
+                // Write modifier codes AFTER the annotation pair.
                 int subtype_value = get_value(subtypes, i);
                 if (subtype_value < 0 || subtype_value > 1023) {
                         stop("Annotation subtype must be between 0 and 1023");
@@ -1446,28 +1471,23 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                 if (channel_value < 0 || channel_value > 1023) {
                         stop("Annotation channel must be between 0 and 1023");
                 }
-                if (channel_value != prev_channel) {
+                if (channel_value != 0) {
                         write_annotation_pair(stream, 62, channel_value);
-                        prev_channel = channel_value;
                 }
 
                 int num_value = get_value(numbers, i);
                 if (num_value < 0 || num_value > 1023) {
                         stop("Annotation number must be between 0 and 1023");
                 }
-                if (num_value != prev_num) {
+                if (num_value != 0) {
                         write_annotation_pair(stream, 60, num_value);
-                        prev_num = num_value;
                 }
 
-                // Write AUX data if present
+                // Write AUX data if present.
                 std::string aux_str = get_string(aux_strings, i);
                 if (!aux_str.empty()) {
                         write_auxiliary(stream, aux_str);
                 }
-
-                // Write the actual annotation
-                write_annotation_pair(stream, code, interval);
 
                 prev_sample = sample;
         }

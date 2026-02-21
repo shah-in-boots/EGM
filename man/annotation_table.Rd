@@ -14,6 +14,7 @@ annotation_table(
   subtype = character(),
   channel = integer(),
   number = integer(),
+  aux = character(),
   ...
 )
 

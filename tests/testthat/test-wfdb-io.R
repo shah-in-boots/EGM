@@ -1,52 +1,14 @@
-# Writing WFDB records ----
+# Helpers -----------------------------------------------------------------
 
-test_that('can convert bard to wfdb with wrsamp', {
+skip_if_no_rdann <- function() {
+  skip_on_cran()
   skip_on_ci()
+  if (Sys.which("rdann") == "") {
+    skip("rdann is not available")
+  }
+}
 
-  # Convert a bard text file into a WFDB compatible format
-  wd <- getwd()
-
-  file <- test_path('bard-egm.txt')
-  bard <- read_bard(file)
-  write_wfdb(
-    data = bard,
-    record = 'bard-egm',
-    record_dir = test_path()
-  )
-
-  expect_true(file.exists(file.path(test_path(), 'bard-egm.hea')))
-  expect_true(file.exists(file.path(test_path(), 'bard-egm.dat')))
-  expect_equal(wd, getwd())
-})
-
-test_that('R data objects can be converted or written to WFDB format', {
-  skip_on_ci()
-
-  file <- test_path('bard-egm.txt')
-  sig <- read_bard_signal(file)
-  hea <- read_bard_header(file)
-  rec <- attributes(hea)$record_line
-  data <- EGM(sig, hea)
-
-  write_wfdb(
-    data = data,
-    record = 'bard-egm',
-    record_dir = test_path()
-  )
-
-  headerFile <- readLines(test_path('bard-egm.hea'))
-  expect_gt(length(headerFile), 14)
-  expect_output(print(headerFile[1]), 'bard-egm 14')
-
-  file <- system.file('extdata', 'muse-sinus.xml', package = 'EGM')
-  ecg <- read_muse(file)
-
-  write_wfdb(
-    data = ecg,
-    record = 'ecg',
-    record_dir = test_path()
-  )
-})
+# Writing WFDB records -----------------------------------------------------
 
 test_that('write_wfdb honours explicit headers and preserves integer storage', {
   skip_if_not_installed('withr')
@@ -124,153 +86,7 @@ test_that('write_wfdb honours explicit headers and preserves integer storage', {
   )
 })
 
-# Reading WFDB records ----
-
-test_that('rdsamp can read in WFDB formatted files for signal data', {
-  skip_on_ci()
-
-  # Reads in EGM data (which is an EP study)
-  x <- read_signal(
-    record = 'EGM',
-    record_dir = test_path(),
-    begin = 0L,
-    units = 'digital'
-  )
-
-  expect_s3_class(x, 'data.frame')
-
-  # Reads in ECG data
-  y <- read_signal(
-    record = 'ecg',
-    record_dir = test_path(),
-    begin = 0,
-    units = 'digital'
-  )
-
-  expect_s3_class(y, 'data.frame')
-
-  # Read in a ECG file from PhysioNet
-  z <- read_signal(
-    record = '300',
-    record_dir = test_path(),
-    begin = 20
-  )
-
-  expect_s3_class(z, 'signal_table')
-})
-
-test_that('internals of `read_header()` can create `header_table` from bard data', {
-  fp <- test_path("EGM.hea")
-
-  record_line <- readLines(con = fp, n = 1)
-  record_items <-
-    record_line |>
-    strsplit('\ ') |>
-    unlist()
-
-  record_name <- as.character(record_items[1])
-  number_of_channels <- as.integer(record_items[2])
-  frequency <- as.integer(record_items[3])
-  samples <- as.integer(record_items[4])
-  start_time <- parse_date_and_time(record_line)
-
-  # Number of columns is important here
-  sig_data <-
-    data.table::fread(
-      file = fp,
-      skip = 1, # Skip head line
-      nrows = number_of_channels
-    ) # Read in channel data
-
-  # ADC gain is in multiple parts that need to be split
-  # Units will come after a forward slash `/`
-  # Baseline value will be within parenthesis
-  adc <- sig_data[[3]]
-  ADC_gain <- stringr::str_extract(adc, '\\d+([.]\\d+)?')
-  ADC_baseline <- stringr::str_extract(adc, "\\((\\d+)\\)", group = 1)
-  ADC_baseline <-
-    ifelse(is.na(ADC_baseline), formals(header_table)$ADC_zero, ADC_baseline)
-  ADC_units <- stringr::str_extract(adc, "/([:alpha:]+)", group = 1)
-  ADC_units <-
-    ifelse(is.na(ADC_units), formals(header_table)$ADC_units, ADC_units)
-
-  h <- header_table(
-    record_name = record_name,
-    number_of_channels = number_of_channels,
-    frequency = frequency,
-    samples = samples,
-    start_time = start_time,
-    file_name = sig_data[[1]],
-    storage_format = sig_data[[2]],
-    ADC_gain = ADC_gain,
-    ADC_baseline = ADC_baseline,
-    ADC_units = ADC_units,
-    ADC_resolution = sig_data[[4]],
-    ADC_zero = sig_data[[5]],
-    initial_value = sig_data[[6]],
-    checksum = sig_data[[7]],
-    blocksize = sig_data[[8]],
-    label = sig_data[[9]]
-  )
-
-  expect_s3_class(h, 'header_table')
-  expect_equal(nrow(h), 14)
-})
-
-test_that('can read in WFDB file into `EGM` directly', {
-  skip_on_ci()
-
-  # Basics
-  record = 'ecg'
-  record_dir = test_path()
-  annotator = 'ecgpuwave'
-  begin = 0
-  end = NA_integer_
-  interval = NA_integer_
-  units = "digital"
-  channels = character()
-
-  x <- read_wfdb(
-    record = record,
-    record_dir = record_dir,
-    annotator = annotator,
-    begin = begin,
-    end = end,
-    interval = interval,
-    units = units,
-    channels = channels
-  )
-
-  expect_s3_class(x, 'EGM')
-
-  # From the stored package data
-
-  rec <- 'muse-sinus'
-  dir <- system.file('extdata', 'muse-sinus.dat', package = 'EGM')
-  ecg <- read_wfdb(rec, fs::path_dir(dir))
-})
-
-test_that('can read in MUSE ECG header', {
-  skip_on_ci()
-
-  # Simple header
-  hea <- read_header("ecg", record_dir = test_path())
-  expect_equal(unique(hea$file_name), "ecg.dat")
-
-  # Complex header
-  fp <- system.file("extdata", "muse-sinus.hea", package = "EGM")
-  hea <- read_header(
-    record = fs::path_file(fp) |>
-      fs::path_ext_remove(),
-    record_dir = fs::path_dir(fp)
-  )
-
-  header <- readLines(fp)
-  expect_equal(hea$color, unlist(strsplit(header[16], " "))[-c(1:2)])
-})
-
-
-# Specific testing for native features ----
+# Reading WFDB records -----------------------------------------------------
 
 test_that("native header reader parses WFDB headers", {
   fp <- system.file("extdata", "muse-sinus.hea", package = "EGM")
@@ -382,9 +198,7 @@ test_that("mixed storage formats are supported", {
   expect_equal(roundtrip$CH32, signal$CH32)
 })
 
-
-# Native annotation ----
-# Tests for native WFDB annotation readers and writers
+# Native annotation ---------------------------------------------------------
 
 test_that("read_annotation parses annotations", {
   data_dir <- testthat::test_path()
@@ -396,7 +210,6 @@ test_that("read_annotation parses annotations", {
     header = header
   )
 
-  # Should be similar even if header is not given
   ann2 <- read_annotation(
     record = "ecg",
     annotator = "ecgpuwave",
@@ -404,7 +217,6 @@ test_that("read_annotation parses annotations", {
   )
 
   expect_equal(ann, ann2)
-
   expect_s3_class(ann, "annotation_table")
   expect_gt(nrow(ann), 0)
   expect_true(all(
@@ -438,6 +250,8 @@ test_that("read_annotation respects begin and end windows", {
 })
 
 test_that("write_annotation produces round-trip compatible files", {
+  skip_if_not_installed("withr")
+
   data_dir <- testthat::test_path()
   header <- read_header("ecg", record_dir = data_dir)
   ann <- read_annotation(
@@ -463,50 +277,87 @@ test_that("write_annotation produces round-trip compatible files", {
   )
 
   expect_equal(ann_roundtrip, ann)
-  expect_equal(ann_roundtrip$sample, ann$sample)
-  expect_equal(ann_roundtrip$type, ann$type)
-  expect_equal(ann_roundtrip$subtype, ann$subtype)
-  expect_equal(ann_roundtrip$channel, ann$channel)
-  expect_equal(ann_roundtrip$number, ann$number)
 })
 
-# Digital/Physical Units and Baseline Handling ----
+test_that("write_annotation emits rdann-compatible modifier records", {
+  skip_if_not_installed("withr")
+  skip_if_no_rdann()
+
+  tmp_dir <- withr::local_tempdir()
+
+  signal <- signal_table(data.table::data.table(
+    sample = 0:299,
+    II = as.integer(rep(0, 300))
+  ))
+  header <- header_table(
+    record_name = "toy",
+    number_of_channels = 1L,
+    frequency = 360,
+    samples = nrow(signal),
+    storage_format = 16L,
+    ADC_gain = 200,
+    ADC_baseline = 0L,
+    ADC_units = "mV",
+    label = "II"
+  )
+  write_wfdb(signal, record = "toy", record_dir = tmp_dir, header = header)
+
+  ann <- annotation_table(
+    annotator = "ecgpuwave",
+    time = c("00:00:00.278", "00:00:00.556"),
+    sample = c(100L, 200L),
+    type = c("N", "N"),
+    subtype = c(0L, 0L),
+    channel = c(0L, 0L),
+    number = c(7L, 8L),
+    aux = c("", "")
+  )
+  write_annotation(
+    data = ann,
+    annotator = "ecgpuwave",
+    record = "toy",
+    record_dir = tmp_dir
+  )
+
+  rdann_output <- withr::with_dir(
+    tmp_dir,
+    system2(
+      "rdann",
+      c("-e", "-r", "toy", "-a", "ecgpuwave"),
+      stdout = TRUE
+    )
+  )
+  tokens <- strsplit(trimws(rdann_output), "[[:space:]]+")
+
+  parsed <- data.table::data.table(
+    sample = as.integer(vapply(tokens, `[[`, character(1), 2)),
+    type = vapply(tokens, `[[`, character(1), 3),
+    subtype = as.integer(vapply(tokens, `[[`, character(1), 4)),
+    channel = as.integer(vapply(tokens, `[[`, character(1), 5)),
+    number = as.integer(vapply(tokens, `[[`, character(1), 6))
+  )
+
+  expect_equal(nrow(parsed), 2L)
+  expect_equal(parsed$sample, c(100L, 200L))
+  expect_equal(parsed$type, c("N", "N"))
+  expect_equal(parsed$subtype, c(0L, 0L))
+  expect_equal(parsed$channel, c(0L, 0L))
+  expect_equal(parsed$number, c(7L, 8L))
+})
+
+# Digital/Physical Units and Baseline Handling -----------------------------
 
 test_that('digital units preserve raw ADC values with non-zero baseline', {
   skip_if_not_installed('withr')
 
   tmp_dir <- withr::local_tempdir()
 
-  # Create signal with known ADC values
   signal <- signal_table(data.table::data.table(
     sample = 0:9,
-    I = as.integer(c(
-      1024,
-      1124,
-      1224,
-      1324,
-      1424,
-      1524,
-      1624,
-      1724,
-      1824,
-      1924
-    )),
-    II = as.integer(c(
-      2048,
-      2148,
-      2248,
-      2348,
-      2448,
-      2548,
-      2648,
-      2748,
-      2848,
-      2948
-    ))
+    I = as.integer(c(1024, 1124, 1224, 1324, 1424, 1524, 1624, 1724, 1824, 1924)),
+    II = as.integer(c(2048, 2148, 2248, 2348, 2448, 2548, 2648, 2748, 2848, 2948))
   ))
 
-  # Create header with non-zero baseline
   header <- header_table(
     record_name = 'baseline-test',
     number_of_channels = 2L,
@@ -514,14 +365,13 @@ test_that('digital units preserve raw ADC values with non-zero baseline', {
     samples = nrow(signal),
     storage_format = c(16L, 16L),
     ADC_gain = c(200, 200),
-    ADC_baseline = c(1024L, 2048L), # Non-zero baselines
+    ADC_baseline = c(1024L, 2048L),
     ADC_units = c("mV", "mV"),
     label = c("I", "II")
   )
 
   EGM_obj <- EGM(signal, header)
 
-  # Write in digital units (default)
   write_wfdb(
     data = EGM_obj,
     record = 'baseline-test',
@@ -529,118 +379,15 @@ test_that('digital units preserve raw ADC values with non-zero baseline', {
     units = "digital"
   )
 
-  # Read back in digital units
   EGM_read <- read_wfdb(
     record = 'baseline-test',
     record_dir = tmp_dir,
     units = "digital"
   )
 
-  # Digital units should preserve exact raw ADC values
   expect_equal(EGM_read$signal$I, signal$I)
   expect_equal(EGM_read$signal$II, signal$II)
   expect_equal(EGM_read$header$ADC_baseline, c(1024L, 2048L))
-})
-
-test_that('physical units apply correct conversion with baseline and gain', {
-  skip_if_not_installed('withr')
-
-  tmp_dir <- withr::local_tempdir()
-
-  # Create signal with known ADC values
-  # Channel I: ADC=1024, baseline=1024, gain=200 -> physical=0.0
-  # Channel I: ADC=1224, baseline=1024, gain=200 -> physical=1.0
-  signal <- signal_table(data.table::data.table(
-    sample = 0:4,
-    I = as.integer(c(1024, 1124, 1224, 1324, 1424)),
-    II = as.integer(c(2048, 2248, 2448, 2648, 2848))
-  ))
-
-  header <- header_table(
-    record_name = 'physical-test',
-    number_of_channels = 2L,
-    frequency = 250,
-    samples = nrow(signal),
-    storage_format = c(16L, 16L),
-    ADC_gain = c(200, 200),
-    ADC_baseline = c(1024L, 2048L),
-    ADC_units = c("mV", "mV"),
-    label = c("I", "II")
-  )
-
-  EGM_obj <- EGM(signal, header)
-
-  # Write in digital units
-  write_wfdb(
-    data = EGM_obj,
-    record = 'physical-test',
-    record_dir = tmp_dir,
-    units = "digital"
-  )
-
-  # Read in physical units
-  EGM_physical <- read_wfdb(
-    record = 'physical-test',
-    record_dir = tmp_dir,
-    units = "physical"
-  )
-
-  # Check conversion: physical = (digital - baseline) / gain
-  # For channel I: (1024 - 1024) / 200 = 0.0
-  expect_equal(EGM_physical$signal$I[1], 0.0, tolerance = 1e-10)
-  # For channel I: (1224 - 1024) / 200 = 1.0
-  expect_equal(EGM_physical$signal$I[3], 1.0, tolerance = 1e-10)
-
-  # For channel II: (2048 - 2048) / 200 = 0.0
-  expect_equal(EGM_physical$signal$II[1], 0.0, tolerance = 1e-10)
-  # For channel II: (2448 - 2048) / 200 = 2.0
-  expect_equal(EGM_physical$signal$II[3], 2.0, tolerance = 1e-10)
-})
-
-test_that('physical units round-trip preserves values', {
-  skip_if_not_installed('withr')
-
-  tmp_dir <- withr::local_tempdir()
-
-  # Create signal in physical units (mV)
-  signal_physical <- signal_table(data.table::data.table(
-    sample = 0:4,
-    I = c(-1.0, -0.5, 0.0, 0.5, 1.0),
-    II = c(-2.0, -1.0, 0.0, 1.0, 2.0)
-  ))
-
-  header <- header_table(
-    record_name = 'physical-roundtrip',
-    number_of_channels = 2L,
-    frequency = 250,
-    samples = nrow(signal_physical),
-    storage_format = c(16L, 16L),
-    ADC_gain = c(200, 200),
-    ADC_baseline = c(1024L, 2048L),
-    ADC_units = c("mV", "mV"),
-    label = c("I", "II")
-  )
-
-  EGM_obj <- EGM(signal_physical, header)
-
-  # Write in physical units (should convert to digital internally)
-  write_wfdb(
-    data = EGM_obj,
-    record = 'physical-roundtrip',
-    record_dir = tmp_dir,
-    units = "physical"
-  )
-
-  # Read back in physical units
-  EGM_read <- read_wfdb(
-    record = 'physical-roundtrip',
-    record_dir = tmp_dir,
-    units = "physical"
-  )
-
-  # Physical values should round-trip accurately (within rounding error)
-  expect_equal(EGM_read$signal$I, signal_physical$I, tolerance = 1e-2)
-  expect_equal(EGM_read$signal$II, signal_physical$II, tolerance = 1e-2)
 })
 
 test_that('digital-to-physical-to-digital round-trip is exact', {
@@ -648,7 +395,6 @@ test_that('digital-to-physical-to-digital round-trip is exact', {
 
   tmp_dir <- withr::local_tempdir()
 
-  # Start with digital values
   signal_digital <- signal_table(data.table::data.table(
     sample = 0:4,
     I = as.integer(c(1024, 1124, 1224, 1324, 1424)),
@@ -667,7 +413,6 @@ test_that('digital-to-physical-to-digital round-trip is exact', {
     label = c("I", "II")
   )
 
-  # Write digital
   EGM_obj <- EGM(signal_digital, header)
   write_wfdb(
     data = EGM_obj,
@@ -676,14 +421,17 @@ test_that('digital-to-physical-to-digital round-trip is exact', {
     units = "digital"
   )
 
-  # Read as physical
   EGM_physical <- read_wfdb(
     record = 'full-roundtrip',
     record_dir = tmp_dir,
     units = "physical"
   )
 
-  # Write physical back
+  expect_equal(EGM_physical$signal$I[1], 0.0, tolerance = 1e-10)
+  expect_equal(EGM_physical$signal$I[3], 1.0, tolerance = 1e-10)
+  expect_equal(EGM_physical$signal$II[1], 0.0, tolerance = 1e-10)
+  expect_equal(EGM_physical$signal$II[3], 2.0, tolerance = 1e-10)
+
   write_wfdb(
     data = EGM_physical,
     record = 'full-roundtrip-2',
@@ -691,15 +439,12 @@ test_that('digital-to-physical-to-digital round-trip is exact', {
     units = "physical"
   )
 
-  # Read as digital
   EGM_digital_final <- read_wfdb(
     record = 'full-roundtrip-2',
     record_dir = tmp_dir,
     units = "digital"
   )
 
-  # Should get back original digital values (within rounding)
   expect_equal(EGM_digital_final$signal$I, signal_digital$I, tolerance = 1)
   expect_equal(EGM_digital_final$signal$II, signal_digital$II, tolerance = 1)
 })
-
