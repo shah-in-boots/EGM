@@ -198,6 +198,102 @@ test_that("mixed storage formats are supported", {
   expect_equal(roundtrip$CH32, signal$CH32)
 })
 
+test_that("format 8 first-difference records roundtrip correctly", {
+  skip_if_not_installed("withr")
+
+  # Format 8 stores 8-bit first differences, so successive samples must stay
+  # within +/-127 of each other.  This guards against the regression where the
+  # writer primed the difference accumulator at 0 while the reader primed it at
+  # the header initial value, double-counting sample 0 on read-back.
+  header <- header_table(
+    record_name = "diff8",
+    number_of_channels = 1L,
+    frequency = 360,
+    samples = 6L,
+    storage_format = 8L,
+    ADC_gain = 200,
+    ADC_baseline = 0L,
+    ADC_units = "mV",
+    label = "II"
+  )
+
+  signal <- signal_table(data.table::data.table(
+    sample = 0:5,
+    II = c(500L, 505L, 498L, 520L, 510L, 511L)
+  ))
+
+  tmp <- withr::local_tempdir()
+  write_wfdb(signal, record = "diff8", record_dir = tmp, header = header)
+
+  roundtrip <- read_signal("diff8", tmp, units = "digital")
+  expect_equal(roundtrip$II, signal$II)
+})
+
+test_that("format 80 offset-binary records roundtrip correctly", {
+  skip_if_not_installed("withr")
+
+  header <- header_table(
+    record_name = "off80",
+    number_of_channels = 1L,
+    frequency = 250,
+    samples = 5L,
+    storage_format = 80L,
+    ADC_gain = 200,
+    ADC_baseline = 0L,
+    ADC_units = "mV",
+    label = "II"
+  )
+
+  # Format 80 holds a signed value in the range [-128, 127].
+  signal <- signal_table(data.table::data.table(
+    sample = 0:4,
+    II = c(-128L, -1L, 0L, 1L, 127L)
+  ))
+
+  tmp <- withr::local_tempdir()
+  write_wfdb(signal, record = "off80", record_dir = tmp, header = header)
+
+  roundtrip <- read_signal("off80", tmp, units = "digital")
+  expect_equal(roundtrip$II, signal$II)
+})
+
+test_that("write_wfdb computes a correct WFDB signal checksum", {
+  skip_if_not_installed("withr")
+
+  header <- header_table(
+    record_name = "cksum",
+    number_of_channels = 1L,
+    frequency = 250,
+    samples = 4L,
+    storage_format = 16L,
+    ADC_gain = 200,
+    ADC_baseline = 0L,
+    ADC_units = "mV",
+    label = "II"
+  )
+
+  samples <- c(30000L, 30000L, 30000L, 1000L)
+  signal <- signal_table(data.table::data.table(
+    sample = 0:3,
+    II = samples
+  ))
+
+  tmp <- withr::local_tempdir()
+  write_wfdb(signal, record = "cksum", record_dir = tmp, header = header)
+
+  # The WFDB checksum is the sum of all digital samples, truncated to 16 bits
+  # and interpreted as a signed value (so it may be negative).
+  raw <- sum(as.numeric(samples)) %% 65536
+  expected <- ifelse(raw >= 32768, raw - 65536, raw)
+
+  hea_lines <- readLines(fs::path(tmp, "cksum", ext = "hea"))
+  signal_line <- hea_lines[2]
+  fields <- strsplit(trimws(signal_line), "[[:space:]]+")[[1]]
+  written_checksum <- as.integer(fields[7]) # 7th field is the checksum
+
+  expect_equal(written_checksum, as.integer(expected))
+})
+
 # Native annotation ---------------------------------------------------------
 
 test_that("read_annotation parses annotations", {
@@ -247,6 +343,43 @@ test_that("read_annotation respects begin and end windows", {
   } else {
     succeed()
   }
+})
+
+test_that("reading carries persistent channel/number forward (WFDB semantics)", {
+  skip_if_not_installed("withr")
+  tmp <- withr::local_tempdir()
+
+  # Hand-build a raw annotation stream that sets the channel exactly ONCE,
+  # which is how standard WFDB tools (wrann) store a persistent field.  Each
+  # entry is a little-endian 16-bit word: (code << 10) | interval.
+  bytes <- as.raw(c(
+    0x64, 0x04, # "N" beat, interval 100  -> sample 100
+    0x05, 0xF8, # CHN = 5 (code 62); applies to the beat above and persists
+    0x32, 0x04, # "N" beat, interval 50   -> sample 150
+    0x32, 0x04, # "N" beat, interval 50   -> sample 200
+    0x00, 0x00  # terminator
+  ))
+  writeBin(bytes, fs::path(tmp, "persist", ext = "qrs"))
+
+  header <- header_table(
+    record_name = "persist",
+    number_of_channels = 1L,
+    frequency = 360,
+    samples = 1000L,
+    storage_format = 16L,
+    label = "II"
+  )
+
+  ann <- read_annotation(
+    record = "persist",
+    annotator = "qrs",
+    record_dir = tmp,
+    header = header
+  )
+
+  expect_equal(ann$sample, c(100L, 150L, 200L))
+  # The single CHN record must carry forward to every subsequent annotation.
+  expect_equal(ann$channel, c(5L, 5L, 5L))
 })
 
 test_that("write_annotation produces round-trip compatible files", {

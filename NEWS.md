@@ -1,3 +1,21 @@
+# EGM (development version)
+
+* **WFDB fidelity fixes** in the native C++ reader/writer:
+    * Fixed a format 8 (8-bit first difference) round-trip bug where the writer
+      primed its difference accumulator at 0 while the reader primed it at the
+      header initial value, causing sample 0 to be double-counted on read-back.
+    * Annotation `chan` and `num` fields are now treated as *persistent* (they
+      carry forward to subsequent annotations until changed), matching the WFDB
+      specification; `subtype` and `aux` remain per-annotation. This fixes
+      reading of standard WFDB annotation files that record these fields only
+      when they change. The writer now emits `chan`/`num` records only on change.
+    * `write_wfdb()` now computes the WFDB signal checksum from the data being
+      written, so files validate cleanly with standard WFDB tools (e.g. `rdsamp`).
+    * Fixed missing-value (`NA`) detection for the ADC gain, which previously
+      used an equality comparison against `NA_REAL` (always false for a NaN).
+* Added regression tests for format 8/80 round-trips, checksum computation, and
+  persistent annotation field handling.
+
 # EGM 0.2.0
 
 This release includes major improvements to WFDB functionality and package structure.

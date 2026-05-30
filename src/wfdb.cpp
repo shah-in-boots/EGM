@@ -795,7 +795,7 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                                         value -= static_cast<double>(baseline_value);
                                                 }
                                                 double gain_value = adc_gain[channel_idx];
-                                                if (gain_value != NA_REAL && gain_value != 0.0) {
+                                                if (!is_na(gain_value) && gain_value != 0.0) {
                                                         value /= gain_value;
                                                 }
                                         }
@@ -812,7 +812,7 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                                         value -= static_cast<double>(baseline_value);
                                                 }
                                                 double gain_value = adc_gain[channel_idx + 1];
-                                                if (gain_value != NA_REAL && gain_value != 0.0) {
+                                                if (!is_na(gain_value) && gain_value != 0.0) {
                                                         value /= gain_value;
                                                 }
                                         }
@@ -865,7 +865,7 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
                                                 value -= static_cast<double>(baseline_value);
                                         }
                                         double gain_value = adc_gain[channel_idx];
-                                        if (gain_value != NA_REAL && gain_value != 0.0) {
+                                        if (!is_na(gain_value) && gain_value != 0.0) {
                                                 value /= gain_value;
                                         }
                                 }
@@ -968,6 +968,14 @@ void write_wfdb_native_cpp(const std::string &data_path,
         // Track initial_value per channel for the header (first digital sample)
         std::vector<int32_t> computed_initial(number_of_channels, 0);
 
+        // WFDB stores a 16-bit checksum for every signal: the running sum of
+        // all of that signal's digitised samples.  We accumulate it here (in a
+        // 64-bit integer to avoid overflow) and truncate to 16 bits when the
+        // header is written.  Computing it from the data we actually write
+        // means standard WFDB tools (e.g. rdsamp) will not report a checksum
+        // error after a round trip.
+        std::vector<long long> checksum_accum(number_of_channels, 0);
+
         for (int i = 0; i < samples; ++i) {
                 for (int channel_idx = 0; channel_idx < number_of_channels; ++channel_idx) {
                         // Extract value from either integer or double matrix
@@ -985,7 +993,7 @@ void write_wfdb_native_cpp(const std::string &data_path,
                         if (physical) {
                                 double gain_value = adc_gain[channel_idx];
                                 int baseline_value = adc_baseline[channel_idx];
-                                if (gain_value != NA_REAL && gain_value != 0.0) {
+                                if (!is_na(gain_value) && gain_value != 0.0) {
                                         value *= gain_value;
                                 }
                                 if (baseline_value != NA_INTEGER) {
@@ -1057,9 +1065,24 @@ void write_wfdb_native_cpp(const std::string &data_path,
                         }
                         digital_row[channel_idx] = static_cast<int32_t>(scaled);
 
-                        // Record initial value from first sample
+                        // Accumulate the per-signal checksum from the digital
+                        // value, exactly as the WFDB specification defines it.
+                        checksum_accum[channel_idx] += scaled;
+
+                        // Record initial value from first sample.
                         if (i == 0) {
                                 computed_initial[channel_idx] = static_cast<int32_t>(scaled);
+                                // For format 8 (first differences) prime the
+                                // "previous value" accumulator with the first
+                                // sample so the first difference written is 0.
+                                // On read-back sample 0 is recovered as
+                                // (initial_value + 0); priming with 0 instead
+                                // would make the reader double-count the initial
+                                // value (see read_signal_native_cpp, where the
+                                // accumulator starts at initial_value).
+                                if (fmt == 8) {
+                                        fmt8_prev[channel_idx] = static_cast<int32_t>(scaled);
+                                }
                         }
                 }
 
@@ -1144,7 +1167,11 @@ void write_wfdb_native_cpp(const std::string &data_path,
         for (int channel_idx = 0; channel_idx < number_of_channels; ++channel_idx) {
                 std::string adc_spec;
                 double gain_value = adc_gain[channel_idx];
-                if (gain_value == NA_REAL) {
+                // NOTE: an R NA is represented as a special NaN, so it must be
+                // tested with is_na() -- a plain `gain_value == NA_REAL` is
+                // always false because NaN never compares equal to anything.
+                // 200 is the WFDB default gain when none is recorded.
+                if (is_na(gain_value)) {
                         gain_value = 200.0;
                 }
                 int baseline_value = adc_baseline[channel_idx];
@@ -1175,10 +1202,15 @@ void write_wfdb_native_cpp(const std::string &data_path,
                 // to ensure the header accurately reflects the written data.
                 int initial = computed_initial[channel_idx];
 
-                int checksum_value = checksum[channel_idx];
-                if (checksum_value == NA_INTEGER) {
-                        checksum_value = 0;
-                }
+                // Prefer the checksum we computed from the data we just wrote
+                // over any value carried in from the header.  The WFDB checksum
+                // is the sum of all of a signal's samples, truncated to 16 bits
+                // and interpreted as a signed value (hence it may be negative).
+                // The incoming `checksum` argument is retained for API
+                // compatibility but is intentionally not trusted here, because
+                // the signal may have been edited since the header was read.
+                int checksum_value = static_cast<int>(static_cast<int16_t>(
+                        static_cast<uint16_t>(checksum_accum[channel_idx] & 0xFFFFLL)));
                 int blocksize_value = blocksize[channel_idx];
                 if (blocksize_value == NA_INTEGER) {
                         blocksize_value = 0;
@@ -1236,10 +1268,19 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
         // Special codes (59-63) mutate state rather than producing actual
         // annotations, so the logic below resembles a small state machine.
         //
-        // Per WFDB CLI behaviour (rdann/wrann), modifier records (60-63)
-        // apply to the most recently emitted annotation, not a future one.
-        // We still keep a fallback path for malformed streams that place
-        // modifiers before the first annotation.
+        // Per the WFDB specification (and the rdann/wrann tools), modifier
+        // records (60-63) follow the annotation they qualify and apply to the
+        // most recently emitted annotation.  Two of these fields behave
+        // differently from the other two:
+        //
+        //   * `chan` (CHN, code 62) and `num` (NUM, code 60) are PERSISTENT:
+        //     once set they remain in effect for every following annotation
+        //     until explicitly changed again.  This is why WFDB files only
+        //     store them when they change.
+        //
+        //   * `subtype` (SUB, code 61) and `aux` (AUX, code 63) are
+        //     PER-ANNOTATION: they apply only to the single annotation they
+        //     follow and reset to their defaults (0 and "") afterwards.
         std::vector<int> samples;
         std::vector<std::string> types;
         std::vector<int> subtypes;
@@ -1249,17 +1290,18 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
 
         int32_t current_sample = 0;
 
-        // Fallback defaults used only if a malformed stream emits modifiers
-        // before the first actual annotation.
+        // Persistent fields: these carry their value forward to subsequent
+        // annotations until a CHN/NUM record changes them.
         int current_num = 0;
         int current_channel = 0;
 
-        // Transient state for malformed streams that place modifiers before
-        // the annotation they are intended to modify.
+        // Per-annotation state, only used to attach a SUB record to the next
+        // annotation in the rare (technically malformed) case where the
+        // modifier appears before any annotation has been emitted.
         int pending_subtype = 0;
         bool has_pending_subtype = false;
 
-        // Transient state for AUX (applies to next annotation only)
+        // Per-annotation state for AUX, handled the same way as SUB above.
         std::string pending_aux;
         bool has_pending_aux = false;
 
@@ -1287,19 +1329,20 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 }
 
                 if (code == 60) {
-                        // NUM: modify previous annotation; if none exists yet,
-                        // keep as fallback for the first annotation.
+                        // NUM (persistent): update the running value and the
+                        // annotation it follows.  The new value also becomes
+                        // the default for every subsequent annotation.
+                        current_num = interval;
                         if (!numbers.empty()) {
                                 numbers.back() = interval;
-                        } else {
-                                current_num = interval;
                         }
                         continue;
                 }
 
                 if (code == 61) {
-                        // SUB: modify previous annotation; if none exists yet,
-                        // keep as fallback for the first annotation.
+                        // SUB (per-annotation): apply only to the previous
+                        // annotation.  If none exists yet, stash it for the
+                        // next one (handles technically malformed streams).
                         if (!subtypes.empty()) {
                                 subtypes.back() = interval;
                         } else {
@@ -1310,20 +1353,20 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 }
 
                 if (code == 62) {
-                        // CHN: modify previous annotation; if none exists yet,
-                        // keep as fallback for the first annotation.
+                        // CHN (persistent): update the running value and the
+                        // annotation it follows; it carries forward thereafter.
+                        current_channel = interval;
                         if (!channels.empty()) {
                                 channels.back() = interval;
-                        } else {
-                                current_channel = interval;
                         }
                         continue;
                 }
 
                 if (code == 63) {
                         std::string aux_value = read_auxiliary(stream, interval);
-                        // AUX: modify previous annotation; if none exists yet,
-                        // keep as fallback for the first annotation.
+                        // AUX (per-annotation): apply only to the previous
+                        // annotation, or stash it for the next one if none
+                        // has been emitted yet.
                         if (!auxdata.empty()) {
                                 auxdata.back() = aux_value;
                         } else {
@@ -1336,13 +1379,11 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 current_sample += interval;
                 std::string symbol = annotation_symbol(code);
 
-                // SUB applies to this annotation only, then resets
+                // SUB and AUX apply to this annotation only.  CHN and NUM use
+                // the persistent running values, which are NOT reset below.
                 int subtype_value = has_pending_subtype ? pending_subtype : 0;
-                // NUM and CHN are only used for malformed files where modifiers
-                // appeared before the first annotation.
                 int channel_value = current_channel;
                 int num_value = current_num;
-                // AUX applies to this annotation only
                 std::string aux_value = has_pending_aux ? pending_aux : "";
 
                 samples.push_back(current_sample);
@@ -1352,13 +1393,11 @@ cpp11::writable::list read_annotation_native_cpp(const std::string &annotation_p
                 numbers.push_back(num_value);
                 auxdata.push_back(aux_value);
 
-                // Reset transient state only
+                // Reset the per-annotation transient state only; the persistent
+                // current_num / current_channel deliberately carry forward.
                 has_pending_subtype = false;
                 has_pending_aux = false;
                 pending_aux.clear();
-                // Reset fallback defaults after first use.
-                current_num = 0;
-                current_channel = 0;
         }
 
         size_t n = samples.size();
@@ -1410,6 +1449,11 @@ void write_annotation_native_cpp(const std::string &annotation_path,
         }
 
         int prev_sample = 0;
+        // Track the most recently written persistent fields so we only emit a
+        // CHN/NUM record when the value actually changes (WFDB semantics).
+        // Both start at 0, the WFDB default for the first annotation.
+        int prev_chan = 0;
+        int prev_num = 0;
 
         auto get_value = [](const cpp11::integers &vec, int index) {
                 if (index >= vec.size()) {
@@ -1459,6 +1503,10 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                 write_annotation_pair(stream, code, interval);
 
                 // Write modifier codes AFTER the annotation pair.
+
+                // SUB (subtype) is per-annotation: emit it whenever this
+                // annotation carries a non-zero subtype.  It does not persist,
+                // so there is no need to "reset" it for the next annotation.
                 int subtype_value = get_value(subtypes, i);
                 if (subtype_value < 0 || subtype_value > 1023) {
                         stop("Annotation subtype must be between 0 and 1023");
@@ -1467,20 +1515,27 @@ void write_annotation_native_cpp(const std::string &annotation_path,
                         write_annotation_pair(stream, 61, subtype_value);
                 }
 
+                // CHN (channel) is persistent: only emit a record when the
+                // value differs from the previous annotation.  Emitting on a
+                // change back to 0 is required so the reader stops carrying the
+                // old channel forward.
                 int channel_value = get_value(channels, i);
                 if (channel_value < 0 || channel_value > 1023) {
                         stop("Annotation channel must be between 0 and 1023");
                 }
-                if (channel_value != 0) {
+                if (channel_value != prev_chan) {
                         write_annotation_pair(stream, 62, channel_value);
+                        prev_chan = channel_value;
                 }
 
+                // NUM is persistent, handled exactly like CHN above.
                 int num_value = get_value(numbers, i);
                 if (num_value < 0 || num_value > 1023) {
                         stop("Annotation number must be between 0 and 1023");
                 }
-                if (num_value != 0) {
+                if (num_value != prev_num) {
                         write_annotation_pair(stream, 60, num_value);
+                        prev_num = num_value;
                 }
 
                 // Write AUX data if present.
