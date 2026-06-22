@@ -220,14 +220,23 @@ lapply.windowed <- function(X, FUN, ...) {
 #'   "sinus"). Currently supported: "sinus" (requires reference check).
 #'
 #' @param onset_criteria A named list of criteria to identify onset points.
-#'   Names should match column names in the annotation table.
+#'   Names should match column names in the annotation table, with the addition
+#'   of a virtual `wave` field (`"P"`, `"QRS"`, or `"T"`) that is inferred
+#'   positionally from the enclosed peak symbol (see [label_waves()]). For
+#'   `rhythm_type = "sinus"` this defaults to `list(type = "(", wave = "P")`
+#'   (P-wave onset) when omitted.
 #'
 #' @param offset_criteria A named list of criteria to identify offset points.
-#'   Names should match column names in the annotation table.
+#'   Supports the same fields as `onset_criteria`. For `rhythm_type = "sinus"`
+#'   this defaults to `list(type = ")", wave = "T")` (T-wave offset) when
+#'   omitted. Override either criterion for alternative segmentations (e.g.
+#'   `offset_criteria = list(type = "(", wave = "P")` for P-onset to next
+#'   P-onset).
 #'
 #' @param reference_criteria A named list of criteria to identify reference
 #'   points that must exist between onset and offset. Set to NULL to skip
-#'   reference validation.
+#'   reference validation. For `rhythm_type = "sinus"` this defaults to
+#'   `list(type = "N")` (the QRS peak) when NULL.
 #'
 #' @param adjust_sample_indices Logical, whether to adjust annotation sample
 #'   indices in the returned windows to be relative to the window start. Default
@@ -277,6 +286,13 @@ window <- function(object, window_method = c("rhythm"), ...) {
 }
 
 #' @rdname window
+#' @param channel_criteria An optional channel that guides multi-lead windowing.
+#'   When the annotation table spans multiple channels (e.g. an `ecgpuwave`-style
+#'   file run per lead, where each lead is kept apart by the `channel` column),
+#'   set this to the channel number whose annotations should define the window
+#'   boundaries. Annotations on the global channel (`0`) are always retained. The
+#'   returned windows still contain the signal for all channels. Default `NULL`
+#'   uses every annotation, which is correct for single-channel annotation files.
 #' @export
 window_by_rhythm <- function(
   object,
@@ -284,22 +300,31 @@ window_by_rhythm <- function(
   onset_criteria,
   offset_criteria,
   reference_criteria = NULL,
+  channel_criteria = NULL,
   adjust_sample_indices = TRUE,
   ...
 ) {
+  # Apply sensible, overridable defaults for sinus rhythm. Wave identity is
+  # recovered positionally (see label_waves()), so a P-onset -> T-offset beat
+  # with the QRS as reference can be windowed with just a guiding channel.
+  if (rhythm_type == "sinus") {
+    if (missing(onset_criteria)) {
+      onset_criteria <- list(type = "(", wave = "P")
+    }
+    if (missing(offset_criteria)) {
+      offset_criteria <- list(type = ")", wave = "T")
+    }
+    if (is.null(reference_criteria)) {
+      reference_criteria <- list(type = "N")
+    }
+  }
+
   # Validate required parameters
   if (missing(onset_criteria)) {
     stop("onset_criteria is required for rhythm-based windowing")
   }
   if (missing(offset_criteria)) {
     stop("offset_criteria is required for rhythm-based windowing")
-  }
-
-  # Verify rhythm-specific requirements
-  if (rhythm_type == "sinus" && is.null(reference_criteria)) {
-    stop(
-      "Sinus rhythm windowing requires reference_criteria (typically QRS complex)"
-    )
   }
 
   # Get signal, header, and annotation data
@@ -323,6 +348,31 @@ window_by_rhythm <- function(
     ann <- annotation_table()
   }
 
+  # Build a working copy used only for boundary detection. It carries an extra
+  # `wave` column (P/QRS/T) inferred positionally, and is optionally restricted
+  # to a single guiding channel. The pristine `ann` is left untouched so the
+  # annotations stored in returned windows keep the strict annotation_table
+  # column set.
+  ann_work <- label_waves(ann)
+
+  has_channel <- "channel" %in% colnames(ann_work)
+  if (!is.null(channel_criteria) && has_channel) {
+    # Use a local vector (not named `channel`) so data.table's non-standard
+    # evaluation of the `i` expression does not capture the `channel` column.
+    keep_channels <- c(as.integer(channel_criteria), 0L)
+    ann_work <- ann_work[ann_work$channel %in% keep_channels, ]
+  } else if (is.null(channel_criteria) && has_channel) {
+    leads <- unique(ann_work$channel[ann_work$channel != 0L])
+    if (length(leads) > 1) {
+      warning(
+        "Annotations span multiple channels (",
+        paste(sort(leads), collapse = ", "),
+        "); window boundaries may mix leads. ",
+        "Specify `channel_criteria` to select a guiding lead."
+      )
+    }
+  }
+
   # Helper function to filter annotations by criteria
   filter_annotations <- function(ann, criteria) {
     result <- ann
@@ -336,8 +386,8 @@ window_by_rhythm <- function(
   }
 
   # Get onset, offset, and reference points
-  onset_points <- filter_annotations(ann, onset_criteria)
-  offset_points <- filter_annotations(ann, offset_criteria)
+  onset_points <- filter_annotations(ann_work, onset_criteria)
+  offset_points <- filter_annotations(ann_work, offset_criteria)
 
   if (nrow(onset_points) == 0) {
     warning("No onset points found with specified criteria")
@@ -350,7 +400,7 @@ window_by_rhythm <- function(
   }
 
   if (!is.null(reference_criteria)) {
-    reference_points <- filter_annotations(ann, reference_criteria)
+    reference_points <- filter_annotations(ann_work, reference_criteria)
     if (nrow(reference_points) == 0) {
       warning("No reference points found with specified criteria")
       return(list())
@@ -444,7 +494,12 @@ window_by_rhythm <- function(
       number_of_channels = attributes(hea)$record_line$number_of_channels,
       frequency = attributes(hea)$record_line$frequency,
       samples = nrow(window_signal),
-      ADC_gain = hea$gain,
+      storage_format = hea$storage_format,
+      ADC_gain = hea$ADC_gain,
+      ADC_baseline = hea$ADC_baseline,
+      ADC_units = hea$ADC_units,
+      ADC_zero = hea$ADC_zero,
+      ADC_resolution = hea$ADC_resolution,
       label = hea$label,
       info_strings = c(attributes(hea)$info_strings, window_info = info_string)
     )
@@ -476,6 +531,74 @@ window_by_rhythm <- function(
 
   # Return list of windows
   windows
+}
+
+#' Label annotation waves positionally
+#'
+#' @description Adds a working `wave` column (one of `"P"`, `"QRS"`, `"T"`, or
+#'   `NA`) to an annotation table by recovering wave identity from the peak
+#'   symbol enclosed within each `(`/`)` waveform bracket. This is used by
+#'   [window_by_rhythm()] to isolate P-onset -> T-offset beats even when the
+#'   WFDB `number` column is unpopulated (e.g. `ecgpuwave` run per lead).
+#'
+#' @details Peaks are mapped directly by their `type` symbol (`p` -> `"P"`, `N`
+#'   -> `"QRS"`, `t` -> `"T"`). Brackets are labelled per channel, in sample
+#'   order: each onset `(` and its matching offset `)` inherit the wave of the
+#'   single peak that falls between them (the first peak if several are present,
+#'   `NA` if none). The returned table is a copy; the input is not modified.
+#'
+#' @param ann An `annotation_table` (or compatible `data.table`).
+#'
+#' @return A copy of `ann` with an additional `wave` column.
+#'
+#' @keywords internal
+label_waves <- function(ann) {
+  out <- data.table::as.data.table(data.table::copy(ann))
+  out$wave <- NA_character_
+
+  if (nrow(out) == 0 || !all(c("type", "sample") %in% colnames(out))) {
+    return(out)
+  }
+
+  # Direct symbol -> wave mapping for peak annotations
+  peak_map <- c(p = "P", N = "QRS", t = "T")
+  is_peak <- out$type %in% names(peak_map)
+  out$wave[is_peak] <- unname(peak_map[out$type[is_peak]])
+
+  # Channel grouping for bracket inference; treat missing channel as a single
+  # global group so single-channel files still work.
+  channels <- if ("channel" %in% colnames(out)) out$channel else rep(0L, nrow(out))
+
+  for (ch in unique(channels)) {
+    idx <- which(channels == ch)
+    idx <- idx[order(out$sample[idx])] # sample order within channel
+
+    open_pos <- NA_integer_ # row index (in idx space) of pending onset
+    enclosed_wave <- NA_character_ # wave of peak seen since the onset
+
+    for (k in seq_along(idx)) {
+      row <- idx[k]
+      sym <- out$type[row]
+
+      if (sym == "(") {
+        open_pos <- k
+        enclosed_wave <- NA_character_
+      } else if (sym %in% names(peak_map)) {
+        if (!is.na(open_pos) && is.na(enclosed_wave)) {
+          enclosed_wave <- unname(peak_map[sym])
+        }
+      } else if (sym == ")") {
+        if (!is.na(open_pos)) {
+          out$wave[idx[open_pos]] <- enclosed_wave
+          out$wave[row] <- enclosed_wave
+        }
+        open_pos <- NA_integer_
+        enclosed_wave <- NA_character_
+      }
+    }
+  }
+
+  out
 }
 
 # Standardization and normalization of windows ---------------------------------
@@ -518,16 +641,27 @@ window_by_rhythm <- function(
 #' @param align_feature Feature to align windows around, either a character
 #'   string matching an annotation type or a list of criteria for finding a
 #'   specific annotation. Default is NULL (no alignment).
+#' @param channel_criteria An optional channel that guides which lead's
+#'   annotation is used when locating `align_feature`. Multi-lead annotation
+#'   files (e.g. an `ecgpuwave`-style run per lead) carry one fiducial per lead
+#'   at slightly different samples, so a bare `align_feature = "N"` would center
+#'   on whichever lead sorts first. Set this to the channel number whose
+#'   annotations should drive alignment (annotations on the global channel `0`
+#'   are always retained). This mirrors the `channel_criteria` argument of
+#'   [window()]. Default `NULL` uses every annotation. Ignored when
+#'   `align_feature` is `NULL` or already specifies a `channel`.
 #' @param preserve_amplitude Logical. If TRUE (default), maintains original
 #'   amplitude range after resampling.
-#' @param preserve_class Logical. If TRUE, returns a `windowed` object with
-#'   standardized data frames. If FALSE (default), returns a plain list of data
-#'   frames.
+#' @param preserve_class Logical. If TRUE, returns a `windowed` object of
+#'   standardized `EGM` objects. If FALSE (default), returns a plain list of
+#'   `EGM` objects.
 #' @param ... Additional arguments passed to specific standardization methods.
 #'
-#' @return If `preserve_class=TRUE`, a `windowed` object containing standardized
-#'   data frames. If `preserve_class=FALSE`, a plain list of standardized data
-#'   frames.
+#' @return A list of standardized `EGM` objects, one per window. Each carries a
+#'   resampled `signal_table`, the window's own `header_table` (with `samples`
+#'   updated to the standardized length and the per-beat record/file name
+#'   preserved), and its annotations remapped onto the resampled time base. If
+#'   `preserve_class=TRUE`, the list is wrapped as a `windowed` object.
 #'
 #' @examples
 #' \dontrun{
@@ -575,6 +709,7 @@ standardize_windows <- function(
   target_ms = NULL,
   interpolation_method = c("linear", "spline", "step"),
   align_feature = NULL,
+  channel_criteria = NULL,
   preserve_amplitude = TRUE,
   preserve_class = FALSE,
   ...
@@ -599,6 +734,7 @@ standardize_windows <- function(
       target_ms = target_ms,
       interpolation_method = interpolation_method,
       align_feature = align_feature,
+      channel_criteria = channel_criteria,
       preserve_amplitude = preserve_amplitude,
       ...
     ),
@@ -626,6 +762,7 @@ time_normalize_windows <- function(
   target_ms = NULL,
   interpolation_method = "linear",
   align_feature = NULL,
+  channel_criteria = NULL,
   preserve_amplitude = TRUE,
   ...
 ) {
@@ -653,6 +790,11 @@ time_normalize_windows <- function(
     # Extract the signal data
     signal_data <- window$signal
 
+    # Collapse the (possibly multi-annotator) annotation list to a single
+    # working table, used both for feature alignment and for carrying the
+    # annotations forward into the standardized EGM.
+    window_ann <- .get_single_annotation(window)
+
     # Find the sample column index
     sample_col_idx <- which(names(signal_data) == "sample")
     signal_cols <- setdiff(1:ncol(signal_data), sample_col_idx)
@@ -660,14 +802,28 @@ time_normalize_windows <- function(
     # Create a data frame to store the resampled data
     resampled_data <- data.frame(sample = 1:target_samples)
 
-    # Feature alignment (if requested)
-    if (!is.null(align_feature) && !is.null(window$annotation)) {
+    # Feature alignment (if requested). Restrict the lead used to *locate* the
+    # alignment feature to the guiding channel, so multi-lead annotation files
+    # (one fiducial per lead, at slightly different samples) center on a single
+    # lead rather than whichever lead happens to sort first. The full
+    # `window_ann` is still carried forward into the standardized EGM below.
+    align_ann <- window_ann
+    if (
+      !is.null(channel_criteria) &&
+        "channel" %in% names(align_ann) &&
+        !(is.list(align_feature) && "channel" %in% names(align_feature))
+    ) {
+      keep_channels <- c(as.integer(channel_criteria), 0L)
+      align_ann <- align_ann[align_ann$channel %in% keep_channels, ]
+    }
+
+    if (!is.null(align_feature) && nrow(align_ann) > 0) {
       # Find the feature in the annotations
       feature_idx <- NULL
 
       if (is.list(align_feature)) {
         # Filter annotations by criteria
-        filtered_ann <- window$annotation
+        filtered_ann <- align_ann
         for (col_name in names(align_feature)) {
           if (col_name %in% names(filtered_ann)) {
             filtered_ann <- filtered_ann[
@@ -681,9 +837,9 @@ time_normalize_windows <- function(
         }
       } else if (is.character(align_feature)) {
         # Check for a specific annotation type
-        if ("type" %in% names(window$annotation)) {
-          type_match <- window$annotation[
-            window$annotation$type == align_feature,
+        if ("type" %in% names(align_ann)) {
+          type_match <- align_ann[
+            align_ann$type == align_feature,
           ]
           if (nrow(type_match) > 0) {
             feature_idx <- type_match$sample[1]
@@ -692,23 +848,16 @@ time_normalize_windows <- function(
       }
 
       if (!is.null(feature_idx)) {
-        # Normalize around the feature - center it in the window
+        # Center the feature at native resolution: each output sample maps to a
+        # single original sample, so output index `center_point` lands exactly
+        # on `feature_idx`. Positions that fall outside the window are clamped
+        # to the signal edges (rule = 2), padding rather than time-warping the
+        # beat. This keeps the fiducial's true morphology timing intact.
         center_point <- ceiling(target_samples / 2)
         original_samples <- nrow(signal_data)
-
-        # Calculate shift needed to center the feature
-        shift_samples <- center_point - feature_idx
-
-        # Create new sample indices that center the feature
         original_indices <- 1:original_samples
-        shifted_indices <- original_indices + shift_samples
 
-        # Create new sample sequence that's centered on the feature
-        new_samples <- seq(
-          shifted_indices[1],
-          shifted_indices[length(shifted_indices)],
-          length.out = target_samples
-        )
+        new_samples <- feature_idx + (seq_len(target_samples) - center_point)
 
         # Proceed with interpolation
         for (col in signal_cols) {
@@ -809,8 +958,41 @@ time_normalize_windows <- function(
       }
     }
 
-    # Return the resampled data frame
-    resampled_data
+    # Reassemble the resampled columns into a signal_table
+    std_signal <- do.call(signal_table, as.list(resampled_data))
+
+    # Carry the per-beat header forward, updating only the sample count to
+    # reflect the resampled length. The window's record_name/file_name stay
+    # intact, so each standardized beat round-trips to disk under its own name
+    # rather than inheriting the source record.
+    std_header <- data.table::copy(window$header)
+    record_line <- attributes(std_header)$record_line
+    record_line$samples <- target_samples
+    attr(std_header, "record_line") <- record_line
+
+    # Map annotation sample indices onto the resampled time base. `new_samples`
+    # holds the original positions sampled at each output index, so inverting it
+    # gives the new location of any annotation. This handles both the aligned
+    # and unaligned resampling paths.
+    if (nrow(window_ann) > 0) {
+      mapped <- stats::approx(
+        x = new_samples,
+        y = seq_len(target_samples),
+        xout = window_ann$sample,
+        rule = 2
+      )$y
+      window_ann <- data.table::copy(window_ann)
+      window_ann$sample <- as.integer(
+        pmin(pmax(round(mapped), 1L), target_samples)
+      )
+    }
+
+    # Return a fully-formed EGM for this beat
+    new_EGM(
+      signal = std_signal,
+      header = std_header,
+      annotation = window_ann
+    )
   })
 
   # Return the list of standardized windows

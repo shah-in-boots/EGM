@@ -18,6 +18,11 @@ Useful links:
 \author{
 \strong{Maintainer}: Anish S. Shah \email{shah.in.boots@gmail.com} (\href{https://orcid.org/0000-0002-9729-1558}{ORCID}) [copyright holder]
 
+Authors:
+\itemize{
+  \item Anish S. Shah \email{shah.in.boots@gmail.com} (\href{https://orcid.org/0000-0002-9729-1558}{ORCID}) [copyright holder]
+}
+
 Other contributors:
 \itemize{
   \item Darren Seaney \email{dseaney2@uic.edu} [contributor]

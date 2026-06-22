@@ -13,6 +13,7 @@ window_by_rhythm(
   onset_criteria,
   offset_criteria,
   reference_criteria = NULL,
+  channel_criteria = NULL,
   adjust_sample_indices = TRUE,
   ...
 )
@@ -33,14 +34,31 @@ Options include:
 "sinus"). Currently supported: "sinus" (requires reference check).}
 
 \item{onset_criteria}{A named list of criteria to identify onset points.
-Names should match column names in the annotation table.}
+Names should match column names in the annotation table, with the addition
+of a virtual \code{wave} field (\code{"P"}, \code{"QRS"}, or \code{"T"}) that is inferred
+positionally from the enclosed peak symbol (see \code{\link[=label_waves]{label_waves()}}). For
+\code{rhythm_type = "sinus"} this defaults to \code{list(type = "(", wave = "P")}
+(P-wave onset) when omitted.}
 
 \item{offset_criteria}{A named list of criteria to identify offset points.
-Names should match column names in the annotation table.}
+Supports the same fields as \code{onset_criteria}. For \code{rhythm_type = "sinus"}
+this defaults to \code{list(type = ")", wave = "T")} (T-wave offset) when
+omitted. Override either criterion for alternative segmentations (e.g.
+\code{offset_criteria = list(type = "(", wave = "P")} for P-onset to next
+P-onset).}
 
 \item{reference_criteria}{A named list of criteria to identify reference
 points that must exist between onset and offset. Set to NULL to skip
-reference validation.}
+reference validation. For \code{rhythm_type = "sinus"} this defaults to
+\code{list(type = "N")} (the QRS peak) when NULL.}
+
+\item{channel_criteria}{An optional channel that guides multi-lead windowing.
+When the annotation table spans multiple channels (e.g. an \code{ecgpuwave}-style
+file run per lead, where each lead is kept apart by the \code{channel} column),
+set this to the channel number whose annotations should define the window
+boundaries. Annotations on the global channel (\code{0}) are always retained. The
+returned windows still contain the signal for all channels. Default \code{NULL}
+uses every annotation, which is correct for single-channel annotation files.}
 
 \item{adjust_sample_indices}{Logical, whether to adjust annotation sample
 indices in the returned windows to be relative to the window start. Default

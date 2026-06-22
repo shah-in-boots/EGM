@@ -10,6 +10,7 @@ time_normalize_windows(
   target_ms = NULL,
   interpolation_method = "linear",
   align_feature = NULL,
+  channel_criteria = NULL,
   preserve_amplitude = TRUE,
   ...
 )

@@ -20,7 +20,7 @@ or \code{"light"} for a white canvas suited to dark traces.}
 }
 \value{
 A \code{ggm} object, with inheritance similar to
-\code{\link[ggplot2:ggtheme]{ggplot2::theme_minimal()}}
+\code{\link[ggplot2:theme_minimal]{ggplot2::theme_minimal()}}
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}

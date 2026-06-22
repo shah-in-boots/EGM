@@ -11,6 +11,7 @@ standardize_windows(
   target_ms = NULL,
   interpolation_method = c("linear", "spline", "step"),
   align_feature = NULL,
+  channel_criteria = NULL,
   preserve_amplitude = TRUE,
   preserve_class = FALSE,
   ...
@@ -37,19 +38,31 @@ resampling. Options are "linear" (default), "spline", or "step".}
 string matching an annotation type or a list of criteria for finding a
 specific annotation. Default is NULL (no alignment).}
 
+\item{channel_criteria}{An optional channel that guides which lead's
+annotation is used when locating \code{align_feature}. Multi-lead annotation
+files (e.g. an \code{ecgpuwave}-style run per lead) carry one fiducial per lead
+at slightly different samples, so a bare \code{align_feature = "N"} would center
+on whichever lead sorts first. Set this to the channel number whose
+annotations should drive alignment (annotations on the global channel \code{0}
+are always retained). This mirrors the \code{channel_criteria} argument of
+\code{\link[=window]{window()}}. Default \code{NULL} uses every annotation. Ignored when
+\code{align_feature} is \code{NULL} or already specifies a \code{channel}.}
+
 \item{preserve_amplitude}{Logical. If TRUE (default), maintains original
 amplitude range after resampling.}
 
-\item{preserve_class}{Logical. If TRUE, returns a \code{windowed} object with
-standardized data frames. If FALSE (default), returns a plain list of data
-frames.}
+\item{preserve_class}{Logical. If TRUE, returns a \code{windowed} object of
+standardized \code{EGM} objects. If FALSE (default), returns a plain list of
+\code{EGM} objects.}
 
 \item{...}{Additional arguments passed to specific standardization methods.}
 }
 \value{
-If \code{preserve_class=TRUE}, a \code{windowed} object containing standardized
-data frames. If \code{preserve_class=FALSE}, a plain list of standardized data
-frames.
+A list of standardized \code{EGM} objects, one per window. Each carries a
+resampled \code{signal_table}, the window's own \code{header_table} (with \code{samples}
+updated to the standardized length and the per-beat record/file name
+preserved), and its annotations remapped onto the resampled time base. If
+\code{preserve_class=TRUE}, the list is wrapped as a \code{windowed} object.
 }
 \description{
 Standardizes \code{windowed} objects by applying various

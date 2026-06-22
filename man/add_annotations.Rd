@@ -8,7 +8,7 @@ add_annotations(...)
 }
 \arguments{
 \item{...}{
-  Arguments passed on to \code{\link[=ggm]{ggm}}
+  Arguments passed on to \code{\link{ggm}}
   \describe{
     \item{\code{data}}{Data of the \code{EGM} class, which includes header (meta) and signal
 information together.}
