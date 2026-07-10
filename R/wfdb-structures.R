@@ -497,12 +497,15 @@ header_table <- function(
   # 	Signal line(s)
   # 	Info strings
 
-  # File name from record name
-  # Note: file_name will be expanded to match channel_count later
+  # Use the conventional record-based signal file name only when the caller
+  # did not provide one.  WFDB explicitly permits arbitrary signal file names,
+  # so replacing a parsed name here breaks imported records on read and write.
   if (length(record_name) == 0 || is.na(record_name[1])) {
     record_name <- NA_character_
-    file_name <- NA_character_
-  } else {
+    if (length(file_name) == 0) {
+      file_name <- NA_character_
+    }
+  } else if (length(file_name) == 0) {
     file_name <- paste0(record_name, '.dat')
   }
 

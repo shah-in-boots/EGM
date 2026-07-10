@@ -297,6 +297,11 @@ write_wfdb <- function(
   # for every field it expects.
   storage_format <- as.integer(header$storage_format)
   storage_format[is.na(storage_format)] <- 16L
+  if (length(unique(storage_format)) != 1L) {
+    stop(
+      "All signals in a WFDB signal group must use the same storage format"
+    )
+  }
   adc_gain <- as.numeric(header$ADC_gain)
   adc_baseline <- as.integer(header$ADC_baseline)
   adc_units <- as.character(header$ADC_units)
@@ -324,7 +329,11 @@ write_wfdb <- function(
     combined_info <- lapply(combined_info, as.character)
   }
 
-  data_path <- fs::path(record_dir, unique_files[[1]])
+  data_path <- if (fs::is_absolute_path(unique_files[[1]])) {
+    unique_files[[1]]
+  } else {
+    fs::path(record_dir, unique_files[[1]])
+  }
   header_path <- fs::path(record_dir, record_name, ext = "hea")
 
   # The heavy lifting happens inside the native writer, which handles the
@@ -502,12 +511,23 @@ read_signal <- function(
       "Multiple signal files per record are not currently supported"
     )
   }
+  if (length(unique(as.integer(header$storage_format))) != 1L) {
+    stop(
+      "All signals in a WFDB signal group must use the same storage format"
+    )
+  }
 
   # Delegate decoding of the binary signal file to the C++ implementation.
   # Channel indices are converted to zero-based offsets to match the WFDB
   # on-disk layout.
+  data_path <- if (fs::is_absolute_path(file_names[[1]])) {
+    file_names[[1]]
+  } else {
+    fs::path(record_dir, file_names[[1]])
+  }
+
   signal_list <- read_signal_native_cpp(
-    data_path = fs::path(record_dir, file_names),
+    data_path = data_path,
     number_of_channels = number_of_channels,
     total_samples = total_samples,
     storage_format = as.integer(header$storage_format),
@@ -566,7 +586,7 @@ read_header <- function(record, record_dir = ".", ...) {
     record_name <- record
   }
 
-  header_table(
+  header <- header_table(
     record_name = record_name,
     number_of_channels = header_info$number_of_channels,
     frequency = header_info$frequency,
@@ -585,4 +605,10 @@ read_header <- function(record, record_dir = ".", ...) {
     label = as.character(header_info$label),
     info_strings = info_strings
   )
+
+  # header_table() normalizes labels for data imported from EP systems, but a
+  # WFDB signal description is arbitrary text.  Restore its original case and
+  # spacing here while retaining unique column names for signal_table().
+  header$label <- make.unique(as.character(header_info$label), sep = "_")
+  header
 }

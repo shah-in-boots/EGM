@@ -168,7 +168,173 @@ test_that("format 212 records roundtrip correctly", {
   expect_equal(roundtrip$signal$II, signal$II)
 })
 
-test_that("mixed storage formats are supported", {
+test_that("format 212 supports one signal and an odd sample count", {
+  skip_if_not_installed("withr")
+
+  header <- header_table(
+    record_name = "single212",
+    number_of_channels = 1L,
+    frequency = 360,
+    samples = 5L,
+    storage_format = 212L,
+    label = "MLII"
+  )
+  signal <- signal_table(data.table::data.table(
+    sample = 0:4,
+    MLII = c(-2048L, -1L, 0L, 1L, 2047L)
+  ))
+
+  tmp <- withr::local_tempdir()
+  write_wfdb(signal, "single212", tmp, header)
+  roundtrip <- read_signal("single212", tmp)
+
+  expect_equal(roundtrip$MLII, signal$MLII)
+  expect_equal(as.numeric(fs::file_size(fs::path(tmp, "single212.dat"))), 9)
+})
+
+test_that("formats 61 and 160 roundtrip with C byte ordering", {
+  skip_if_not_installed("withr")
+
+  values <- c(-32768L, -100L, 0L, 100L, 32767L)
+  for (format in c(61L, 160L)) {
+    record <- paste0("format", format)
+    header <- header_table(
+      record_name = record,
+      number_of_channels = 1L,
+      frequency = 250,
+      samples = length(values),
+      storage_format = format,
+      label = "VALUE"
+    )
+    signal <- signal_table(data.table::data.table(
+      sample = seq_along(values) - 1L,
+      VALUE = values
+    ))
+
+    tmp <- withr::local_tempdir()
+    write_wfdb(signal, record, tmp, header)
+    expect_equal(read_signal(record, tmp)$VALUE, values)
+  }
+})
+
+test_that("format 8 uses the header initial value exactly once", {
+  skip_if_not_installed("withr")
+
+  signal <- signal_table(data.table::data.table(
+    sample = 0:5,
+    DIFF = c(50L, 55L, 45L, 60L, 61L, 40L)
+  ))
+  header <- header_table(
+    record_name = "diff8",
+    number_of_channels = 1L,
+    frequency = 250,
+    samples = nrow(signal),
+    storage_format = 8L,
+    label = "DIFF"
+  )
+
+  tmp <- withr::local_tempdir()
+  write_wfdb(signal, record = "diff8", record_dir = tmp, header = header)
+
+  roundtrip <- read_wfdb("diff8", tmp)
+  expect_equal(roundtrip$signal$DIFF, signal$DIFF)
+  expect_equal(roundtrip$header$initial_value, signal$DIFF[[1]])
+})
+
+test_that("writer computes C-compatible signal checksums", {
+  skip_if_not_installed("withr")
+
+  signal <- signal_table(data.table::data.table(
+    sample = 0:3,
+    I = c(32767L, 2L, -3L, -32768L),
+    II = c(-100L, 50L, 25L, 10L)
+  ))
+  header <- header_table(
+    record_name = "checksum",
+    number_of_channels = 2L,
+    frequency = 250,
+    samples = nrow(signal),
+    storage_format = c(16L, 16L),
+    checksum = c(123L, 456L),
+    label = c("I", "II")
+  )
+
+  tmp <- withr::local_tempdir()
+  write_wfdb(signal, record = "checksum", record_dir = tmp, header = header)
+  written_header <- read_header("checksum", tmp)
+
+  signed_checksum <- function(x) {
+    value <- sum(as.double(x)) %% 65536
+    if (value >= 32768) value <- value - 65536
+    as.integer(value)
+  }
+  expect_equal(
+    written_header$checksum,
+    c(signed_checksum(signal$I), signed_checksum(signal$II))
+  )
+})
+
+test_that("header reader preserves nonstandard signal file names and defaults", {
+  skip_if_not_installed("withr")
+
+  tmp <- withr::local_tempdir()
+  writeLines(
+    c(
+      "# provenance before record",
+      "custom 1",
+      "samples.bin 16 200 12 0 7 5 0 Mixed Case Lead"
+    ),
+    fs::path(tmp, "custom.hea")
+  )
+  writeBin(as.integer(c(7L, -2L)), fs::path(tmp, "samples.bin"),
+    size = 2L, endian = "little"
+  )
+
+  header <- read_header("custom", tmp)
+  signal <- read_signal("custom", tmp, header = header)
+
+  expect_equal(header$file_name, "samples.bin")
+  expect_equal(attr(header, "record_line")$frequency, 250)
+  expect_equal(header$ADC_gain, 200)
+  expect_equal(header$ADC_baseline, 0L)
+  expect_equal(header$label, "Mixed Case Lead")
+  expect_equal(attr(header, "info_strings")$provenance, c("before", "record"))
+  expect_equal(signal[[2]], c(7, -2))
+})
+
+test_that("signal reader honours absolute file names in headers", {
+  skip_if_not_installed("withr")
+
+  tmp <- withr::local_tempdir()
+  signal_path <- fs::path(tmp, "absolute.bin")
+  writeBin(as.integer(c(11L, -4L)), signal_path,
+    size = 2L, endian = "little"
+  )
+  writeLines(
+    c("absolute 1 250 2", paste(signal_path, "16")),
+    fs::path(tmp, "absolute.hea")
+  )
+
+  signal <- read_signal("absolute", tmp)
+  expect_equal(signal[[2]], c(11, -4))
+})
+
+test_that("unsupported header format modifiers fail instead of misdecoding", {
+  skip_if_not_installed("withr")
+
+  tmp <- withr::local_tempdir()
+  writeLines(
+    c("modified 1 250 2", "modified.dat 16x2:1+8"),
+    fs::path(tmp, "modified.hea")
+  )
+
+  expect_error(
+    read_header("modified", tmp),
+    "format modifiers are not currently supported"
+  )
+})
+
+test_that("mixed storage formats in one signal group are rejected", {
   skip_if_not_installed("withr")
 
   header <- header_table(
@@ -190,12 +356,10 @@ test_that("mixed storage formats are supported", {
   ))
 
   tmp <- withr::local_tempdir()
-  write_wfdb(signal, record = "mixed", record_dir = tmp, header = header)
-
-  roundtrip <- read_signal("mixed", tmp, units = "digital")
-  expect_equal(roundtrip$sample, signal$sample)
-  expect_equal(roundtrip$CH24, signal$CH24)
-  expect_equal(roundtrip$CH32, signal$CH32)
+  expect_error(
+    write_wfdb(signal, record = "mixed", record_dir = tmp, header = header),
+    "same storage format"
+  )
 })
 
 # Native annotation ---------------------------------------------------------
@@ -304,13 +468,13 @@ test_that("write_annotation emits rdann-compatible modifier records", {
 
   ann <- annotation_table(
     annotator = "ecgpuwave",
-    time = c("00:00:00.278", "00:00:00.556"),
-    sample = c(100L, 200L),
-    type = c("N", "N"),
-    subtype = c(0L, 0L),
-    channel = c(0L, 0L),
-    number = c(7L, 8L),
-    aux = c("", "")
+    time = c("00:00:00.278", "00:00:00.556", "00:00:00.833", "00:00:01.111"),
+    sample = c(100L, 200L, 300L, 400L),
+    type = c("N", "N", "N", "N"),
+    subtype = c(-1L, 0L, 0L, 0L),
+    channel = c(2L, 2L, 0L, 0L),
+    number = c(-7L, -7L, 0L, 0L),
+    aux = c("", "", "", "")
   )
   write_annotation(
     data = ann,
@@ -337,12 +501,21 @@ test_that("write_annotation emits rdann-compatible modifier records", {
     number = as.integer(vapply(tokens, `[[`, character(1), 6))
   )
 
-  expect_equal(nrow(parsed), 2L)
-  expect_equal(parsed$sample, c(100L, 200L))
-  expect_equal(parsed$type, c("N", "N"))
-  expect_equal(parsed$subtype, c(0L, 0L))
-  expect_equal(parsed$channel, c(0L, 0L))
-  expect_equal(parsed$number, c(7L, 8L))
+  expect_equal(nrow(parsed), 4L)
+  expect_equal(parsed$sample, c(100L, 200L, 300L, 400L))
+  expect_equal(parsed$type, rep("N", 4L))
+  expect_equal(parsed$subtype, c(-1L, 0L, 0L, 0L))
+  expect_equal(parsed$channel, c(2L, 2L, 0L, 0L))
+  expect_equal(parsed$number, c(-7L, -7L, 0L, 0L))
+
+  roundtrip <- read_annotation(
+    record = "toy",
+    annotator = "ecgpuwave",
+    record_dir = tmp_dir
+  )
+  expect_equal(as.integer(roundtrip$subtype), ann$subtype)
+  expect_equal(roundtrip$channel, ann$channel)
+  expect_equal(roundtrip$number, ann$number)
 })
 
 # Digital/Physical Units and Baseline Handling -----------------------------
