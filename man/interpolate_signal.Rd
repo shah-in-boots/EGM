@@ -5,7 +5,7 @@
 \title{Helper function to apply interpolation}
 \usage{
 interpolate_signal(
-  original_samples,
+  original_indices,
   original_values,
   new_samples,
   interpolation_method

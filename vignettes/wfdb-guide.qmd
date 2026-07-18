@@ -112,7 +112,7 @@ baseline <- lead_ii_row$ADC_baseline
 
 # Create a comparison table
 comparison <- data.frame(
-  sample = 1:10,
+  sample = 0:9,
   digital = digital_values,
   physical = round(physical_values, 3),
   calculated_physical = round((digital_values - baseline) / gain, 3)
@@ -192,7 +192,7 @@ find_peaks <- function(x,
 }
 
 # Create a signal dataset
-dat <- extract_signal(ecg)
+dat <- get_signal(ecg)
 
 # Find the peaks
 sig <- dat[["I"]]

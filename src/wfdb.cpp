@@ -826,7 +826,7 @@ cpp11::writable::list read_signal_native_cpp(const std::string &data_path,
         if (begin_sample > total_samples) {
                 begin_sample = total_samples;
         }
-        if (end_sample <= 0 || end_sample > total_samples) {
+        if (end_sample < 0 || end_sample > total_samples) {
                 end_sample = total_samples;
         }
         if (end_sample < begin_sample) {

@@ -160,10 +160,10 @@ is_EGM <- function(x) {
   inherits(x, "EGM")
 }
 
-#' @keywords internal
 #' Get a single annotation table from EGM object
 #' If multiple annotators exist, returns the first one with a message
-.get_single_annotation <- function(EGM_obj) {
+#' @keywords internal
+get_single_annotation <- function(EGM_obj) {
   ann <- EGM_obj$annotation
 
   # Handle empty list
@@ -190,12 +190,12 @@ is_EGM <- function(x) {
 
 # Helper functions -------------------------------------------------------------
 
-#' Extract raw signal data from an `EGM` object
+#' Get raw signal data from an `EGM` object
 #'
 #' @description Raw signal data may be all that is required, particularly when
 #' storing or manipulating data, or for example, feeding it into an analytical
 #' pipeline. This means the extraneous elements, such as the *meta* information,
-#' may be unnecessary. This function helps to strip away and extract just the
+#' may be unnecessary. This function retrieves just the
 #' signal data itself and channel names.
 #'
 #' @details The options to return the data vary based on need. The data can be
@@ -215,10 +215,10 @@ is_EGM <- function(x) {
 #'
 #' @param ... Additional arguments to be passed to the function
 #'
-#' @returns An object as described by the __format__ option
+#' @returns An object as described by the `data_format` option
 #'
 #' @export
-extract_signal <- function(
+get_signal <- function(
   object,
   data_format = c("data.frame", "matrix", "array"),
   ...

@@ -37,7 +37,7 @@ signal_table <- function(...) {
   if ('sample' %in% names(x)) {
     y <- x[c('sample', names(x)[which(names(x) != 'sample')])]
   } else {
-    x$sample <- 1:max(lengths(x))
+    x$sample <- seq_len(max(lengths(x))) - 1L
     y <- x[c('sample', names(x)[which(names(x) != 'sample')])]
   }
 

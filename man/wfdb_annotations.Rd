@@ -10,9 +10,10 @@ read_annotation(
   record,
   annotator,
   record_dir = ".",
-  begin = 0,
-  end = NA_real_,
-  header = NULL
+  begin = NULL,
+  end = NULL,
+  header = NULL,
+  interval = NULL
 )
 
 write_annotation(data, annotator, record, record_dir = ".")
@@ -31,10 +32,10 @@ writing, must be a single string serving as the file extension. See
 \item{record_dir}{File path of directory that should be used read and write
 files. Defaults to current directory.}
 
-\item{begin, end}{A \code{character} in the format of \emph{HH:MM:SS} that will be used
-to help parse the time of the annotation. These parameters together create
-the time range to extract. The default of \emph{0} is a shortcut for \emph{00:00:00}.
-The \emph{seconds} argument can include a decimal place.}
+\item{begin, end}{Times delimiting a half-open range. Time-only character
+values such as \code{"00:00:01.5"} are elapsed from the record start; dated
+strings and \code{POSIXt} values are absolute timestamps. A date is required for
+studies longer than one day. See \code{\link[=validate_time_parameters]{validate_time_parameters()}} for formats.}
 
 \item{header}{A header file is an optional named list of parameters that
 will be used to organize and describe the signal input from the \strong{data}
@@ -47,6 +48,10 @@ calculated):
 \item label = vector of names for each channel as \code{character}
 \item start_time = date/time object
 }}
+
+\item{interval}{A duration after \code{begin} that takes precedence over \code{end}.
+Numeric values are seconds; character shortcuts such as \code{"30s"},
+\code{"100 ms"}, and \code{"2 min"} are supported.}
 
 \item{data}{An \code{annotation_table} containing the 6 invariant columns required
 by the \code{\link[=annotation_table]{annotation_table()}} function}

@@ -93,7 +93,7 @@ test_that("standardize_windows centers align_feature on the guiding lead", {
   )
 
   target <- 300
-  center_point <- ceiling(target / 2)
+  center_point <- floor((target - 1L) / 2L)
 
   guided <- standardize_windows(
     windows,
@@ -107,7 +107,7 @@ test_that("standardize_windows centers align_feature on the guiding lead", {
   ch2_pos <- vapply(
     guided,
     function(w) {
-      a <- EGM:::.get_single_annotation(w)
+      a <- EGM:::get_single_annotation(w)
       n <- a$sample[a$type == "N" & a$channel == 2L]
       if (length(n) > 0) n[1] else NA_integer_
     },
@@ -115,6 +115,7 @@ test_that("standardize_windows centers align_feature on the guiding lead", {
   )
   expect_true(all(ch2_pos == center_point))
   expect_equal(nrow(guided[[1]]$signal), target)
+  expect_identical(guided[[1]]$signal$sample, 0:(target - 1L))
 
   # Without channel guidance the feature aligns on whichever lead sorts first,
   # so the guiding lead's peak is generally NOT centered.
@@ -126,7 +127,7 @@ test_that("standardize_windows centers align_feature on the guiding lead", {
   ch2_pos_unguided <- vapply(
     unguided,
     function(w) {
-      a <- EGM:::.get_single_annotation(w)
+      a <- EGM:::get_single_annotation(w)
       n <- a$sample[a$type == "N" & a$channel == 2L]
       if (length(n) > 0) n[1] else NA_integer_
     },

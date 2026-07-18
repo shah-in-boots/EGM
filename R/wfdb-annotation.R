@@ -63,20 +63,16 @@
 #' @param data An `annotation_table` containing the 6 invariant columns required
 #'   by the [annotation_table()] function
 #'
-#' @param begin,end A `character` in the format of *HH:MM:SS* that will be used
-#'   to help parse the time of the annotation. These parameters together create
-#'   the time range to extract. The default of *0* is a shortcut for *00:00:00*.
-#'   The *seconds* argument can include a decimal place.
-#'
 #' @name wfdb_annotations
 #' @export
 read_annotation <- function(
   record,
   annotator,
   record_dir = ".",
-  begin = 0,
-  end = NA_real_,
-  header = NULL
+  begin = NULL,
+  end = NULL,
+  header = NULL,
+  interval = NULL
 ) {
   stopifnot(
     "`record` must be a single character string" = is.character(
@@ -115,6 +111,7 @@ read_annotation <- function(
         record_dir = record_dir,
         begin = begin,
         end = end,
+        interval = interval,
         header = header
       )
     })
@@ -130,6 +127,7 @@ read_annotation <- function(
     record_dir = record_dir,
     begin = begin,
     end = end,
+    interval = interval,
     header = header
   )
 }
@@ -139,9 +137,10 @@ read_annotation_single <- function(
   record,
   annotator,
   record_dir = ".",
-  begin = 0,
-  end = NA_real_,
-  header = NULL
+  begin = NULL,
+  end = NULL,
+  header = NULL,
+  interval = NULL
 ) {
   if (is.null(header)) {
     header <- read_header(
@@ -151,9 +150,6 @@ read_annotation_single <- function(
   } else if (!inherits(header, "header_table")) {
     stop("`header` must be a `header_table` object")
   }
-
-  begin <- as.numeric(begin)[1]
-  end <- as.numeric(end)[1]
 
   annotation_path <- fs::path(record_dir, record, ext = annotator)
   if (!fs::file_exists(annotation_path)) {
@@ -172,6 +168,7 @@ read_annotation_single <- function(
     frequency <- NA_real_
   }
   frequency <- as.numeric(frequency)
+  start_time <- record_line$start_time
 
   # The native reader returns raw vectors extracted from the binary WFDB
   # annotation file. These are converted into the strongly-typed columns of
@@ -197,31 +194,18 @@ read_annotation_single <- function(
     return(annotation_table(annotator = annotator))
   }
 
-  if (!is.na(begin)) {
-    # Time bounds are converted into sample numbers so we can filter
-    # the annotations before constructing the table returned to R.
-    if (is.na(frequency) || frequency <= 0) {
-      stop(
-        "`begin` requires a positive sampling frequency in the header"
-      )
-    }
-    begin_sample <- as.integer(floor(begin * frequency))
-  } else {
-    begin_sample <- min(samples)
-  }
+  sample_range <- wfdb_sample_range(
+    begin = begin,
+    end = end,
+    interval = interval,
+    frequency = frequency,
+    total_samples = record_line$samples,
+    start_time = start_time
+  )
+  begin_sample <- sample_range$begin
+  end_sample <- sample_range$end
 
-  if (!is.na(end)) {
-    if (is.na(frequency) || frequency <= 0) {
-      stop(
-        "`end` requires a positive sampling frequency in the header"
-      )
-    }
-    end_sample <- as.integer(ceiling(end * frequency))
-  } else {
-    end_sample <- max(samples)
-  }
-
-  selection <- samples >= begin_sample & samples <= end_sample
+  selection <- samples >= begin_sample & samples < end_sample
   samples <- samples[selection]
   types <- types[selection]
   subtype <- subtype[selection]
@@ -685,13 +669,15 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
 
   if (nrow(annotation) > 0) {
     annotation_samples <- annotation$sample
-    invalid_samples <- annotation_samples[annotation_samples < 0 | annotation_samples > max_samples]
+    invalid_samples <- annotation_samples[
+      annotation_samples < 0 | annotation_samples >= max_samples
+    ]
 
     if (length(invalid_samples) > 0) {
       stop(
         "Annotation contains samples outside valid range [0, ",
         max_samples,
-        "]: ",
+        "): ",
         paste(head(invalid_samples, 5), collapse = ", "),
         if (length(invalid_samples) > 5) "..." else "",
         call. = FALSE

@@ -60,19 +60,19 @@ test_that('signal can be removed from EGM object', {
   expect_s3_class(object, 'EGM')
 
   # Default = data.frame
-  raw <- extract_signal(object)
+  raw <- get_signal(object)
   expect_s3_class(raw, 'data.frame')
   expect_length(raw, 13)
 
   # Matrix
-  raw <- extract_signal(object, data_format = 'matrix')
+  raw <- get_signal(object, data_format = 'matrix')
   expect_type(raw, 'double')
   expect_equal(class(raw)[1], 'matrix')
   expect_equal(dim(raw)[1], 5000)
   expect_equal(dim(raw)[2], 12)
 
   # Array
-  raw_array <- extract_signal(object, data_format = 'array')
+  raw_array <- get_signal(object, data_format = 'array')
   expect_equal(dim(raw_array), c(5000, 12))
   expect_identical(dimnames(raw_array)[[2]], names(object$signal)[-1])
 })

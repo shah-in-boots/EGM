@@ -60,9 +60,9 @@ boundaries. Annotations on the global channel (\code{0}) are always retained. Th
 returned windows still contain the signal for all channels. Default \code{NULL}
 uses every annotation, which is correct for single-channel annotation files.}
 
-\item{adjust_sample_indices}{Logical, whether to adjust annotation sample
-indices in the returned windows to be relative to the window start. Default
-is TRUE.}
+\item{adjust_sample_indices}{Logical, whether to adjust signal and annotation
+sample indices in the returned windows to be zero-based and relative to the
+window start. Default is TRUE.}
 }
 \value{
 A list of \code{EGM} objects, each representing a window of the original

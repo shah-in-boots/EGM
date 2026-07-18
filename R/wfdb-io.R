@@ -108,12 +108,14 @@ NULL
 #'
 #'   * start_time = date/time object
 #'
-#' @param begin,end,interval Timepoint as an `integer` (representing seconds),
-#'   which is converted to an index position based on sampling frequency. The
-#'   default is to start at the beginning of the record. If `end` or `interval`
-#'   are given, the earlier of the two will be returned. The `end` argument
-#'   gives a time index to read until. The `interval` argument is the length of
-#'   time past the start point.
+#' @param begin,end Times delimiting a half-open range. Time-only character
+#'   values such as `"00:00:01.5"` are elapsed from the record start; dated
+#'   strings and `POSIXt` values are absolute timestamps. A date is required for
+#'   studies longer than one day. See [validate_time_parameters()] for formats.
+#'
+#' @param interval A duration after `begin` that takes precedence over `end`.
+#'   Numeric values are seconds; character shortcuts such as `"30s"`,
+#'   `"100 ms"`, and `"2 min"` are supported.
 #'
 #' @param units A `character` string representing either *digital* (DEFAULT) or *physical*
 #'   units that should be used for signal values.
@@ -141,12 +143,11 @@ NULL
 #'   function (e.g. `signal_table()` will return an object of class).
 #'
 #' @details
-#' The `begin`, `end`, and `interval` arguments are converted into sample
-#' positions using the sampling frequency declared in the WFDB header. The
-#' reader first determines the starting sample from `begin`, then gives
-#' precedence to `interval` (when supplied) before falling back to `end`. Any
-#' request that extends beyond the recorded range is clamped so that the caller
-#' still receives all available data without a hard failure.
+#' The `begin`, `end`, and `interval` arguments are validated as time values and
+#' converted into sample positions using the sampling frequency declared in the
+#' WFDB header. `interval` takes precedence over `end`. The resulting range
+#' includes `begin` and excludes `end`; requests beyond the recorded duration
+#' are clamped to the final timestamp.
 #'
 #' @name wfdb_io
 NULL
@@ -237,6 +238,13 @@ write_wfdb <- function(
   # sample column followed by one column per channel in the same order as
   # the header entries.
   signal_dt <- data.table::as.data.table(signal)
+  expected_samples <- seq_len(nrow(signal_dt)) - 1L
+  if (!identical(as.integer(signal_dt$sample), expected_samples)) {
+    stop(
+      "Signal `sample` values must be contiguous zero-based indices in row order before writing WFDB data",
+      call. = FALSE
+    )
+  }
   header_labels <- as.character(header$label)
   header_labels[is.na(header_labels)] <- ""
   if (all(header_labels == "")) {
@@ -376,9 +384,9 @@ read_wfdb <- function(
   record,
   record_dir = ".",
   annotator = NULL,
-  begin = 0,
-  end = NA_integer_,
-  interval = NA_integer_,
+  begin = NULL,
+  end = NULL,
+  interval = NULL,
   units = c("digital", "physical"),
   channels = character(),
   ...
@@ -404,7 +412,10 @@ read_wfdb <- function(
       record = record,
       record_dir = record_dir,
       annotator = annotator,
-      header = header
+      header = header,
+      begin = begin,
+      end = end,
+      interval = interval
     )
     # read_annotation returns annotation_table for single, list for multiple
     # EGM() will convert to list format automatically
@@ -426,9 +437,9 @@ read_signal <- function(
   record,
   record_dir = ".",
   header = NULL,
-  begin = 0,
-  end = NA_integer_,
-  interval = NA_integer_,
+  begin = NULL,
+  end = NULL,
+  interval = NULL,
   units = c("digital", "physical"),
   channels = character(),
   ...
@@ -445,26 +456,18 @@ read_signal <- function(
   frequency <- record_line$frequency
   total_samples <- record_line$samples
   number_of_channels <- record_line$number_of_channels
+  start_time <- record_line$start_time
 
-  # Translate the requested time window into sample indices using the
-  # header frequency. Missing or negative inputs default to the start of
-  # the record so the native reader always receives a valid range.
-  begin_sample <- as.integer(round(begin * frequency))
-  if (is.na(begin_sample) || begin_sample < 0) {
-    begin_sample <- 0L
-  }
-
-  if (!is.na(interval)) {
-    end_sample <- begin_sample +
-      as.integer(round(interval * frequency))
-  } else if (!is.na(end)) {
-    end_sample <- as.integer(round(end * frequency))
-  } else {
-    end_sample <- total_samples
-  }
-  if (is.na(end_sample) || end_sample <= 0) {
-    end_sample <- total_samples
-  }
+  sample_range <- wfdb_sample_range(
+    begin = begin,
+    end = end,
+    interval = interval,
+    frequency = frequency,
+    total_samples = total_samples,
+    start_time = start_time
+  )
+  begin_sample <- sample_range$begin
+  end_sample <- sample_range$end
 
   # Determine which channels to retrieve by matching the caller's request
   # against the header labels. Matching is forgiving to case differences

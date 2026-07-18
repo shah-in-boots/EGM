@@ -2,6 +2,13 @@
 
 This release includes major improvements to WFDB functionality and package structure.
 
+* **Time-based WFDB ranges**: WFDB readers now accept time values for
+  `begin` and `end`, plus numeric or compact character durations for `interval`.
+  Read windows are consistently half-open and clamp at the end of the study.
+
+* **Consistent helper names**: `get_signal()` replaces `extract_signal()`, and
+  internal helpers no longer use a leading dot.
+
 * **Native WFDB implementation**: Added C++ implementation for reading and writing WFDB files, removing the system dependency on external WFDB libraries
 
 * **Annotation improvements**: Enhanced annotation handling with new helper functions and improved frequency handling

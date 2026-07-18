@@ -238,9 +238,9 @@ lapply.windowed <- function(X, FUN, ...) {
 #'   reference validation. For `rhythm_type = "sinus"` this defaults to
 #'   `list(type = "N")` (the QRS peak) when NULL.
 #'
-#' @param adjust_sample_indices Logical, whether to adjust annotation sample
-#'   indices in the returned windows to be relative to the window start. Default
-#'   is TRUE.
+#' @param adjust_sample_indices Logical, whether to adjust signal and annotation
+#'   sample indices in the returned windows to be zero-based and relative to the
+#'   window start. Default is TRUE.
 #'
 #' @param ... Additional arguments passed to specific windowing methods.
 #'
@@ -469,6 +469,20 @@ window_by_rhythm <- function(
     # Create window for this rhythm segment
     window_signal <- sig[sample >= onset & sample <= offset, ]
 
+    # A window is a new WFDB record, so its sample coordinate starts at zero.
+    # Callers can retain the source record's absolute indices by disabling this
+    # adjustment explicitly.
+    if (adjust_sample_indices) {
+      window_signal$sample <- window_signal$sample - onset
+    }
+
+    source_record <- attributes(hea)$record_line
+    window_start_time <- source_record$start_time
+    if (adjust_sample_indices && inherits(window_start_time, "POSIXt") &&
+        length(window_start_time) == 1L && !is.na(window_start_time)) {
+      window_start_time <- window_start_time + onset / source_record$frequency
+    }
+
     # Create header for this window
     info_string <- paste0(
       rhythm_type,
@@ -494,6 +508,7 @@ window_by_rhythm <- function(
       number_of_channels = attributes(hea)$record_line$number_of_channels,
       frequency = attributes(hea)$record_line$frequency,
       samples = nrow(window_signal),
+      start_time = window_start_time,
       storage_format = hea$storage_format,
       ADC_gain = hea$ADC_gain,
       ADC_baseline = hea$ADC_baseline,
@@ -509,7 +524,7 @@ window_by_rhythm <- function(
 
     # Adjust annotation sample indices to be relative to window start if requested
     if (adjust_sample_indices) {
-      window_annotation$sample <- window_annotation$sample - onset + 1
+      window_annotation$sample <- window_annotation$sample - onset
     }
 
     # Add to list of windows
@@ -793,14 +808,15 @@ time_normalize_windows <- function(
     # Collapse the (possibly multi-annotator) annotation list to a single
     # working table, used both for feature alignment and for carrying the
     # annotations forward into the standardized EGM.
-    window_ann <- .get_single_annotation(window)
+    window_ann <- get_single_annotation(window)
 
     # Find the sample column index
     sample_col_idx <- which(names(signal_data) == "sample")
     signal_cols <- setdiff(1:ncol(signal_data), sample_col_idx)
 
     # Create a data frame to store the resampled data
-    resampled_data <- data.frame(sample = 1:target_samples)
+    output_samples <- seq_len(target_samples) - 1L
+    resampled_data <- data.frame(sample = output_samples)
 
     # Feature alignment (if requested). Restrict the lead used to *locate* the
     # alignment feature to the guiding channel, so multi-lead annotation files
@@ -853,11 +869,11 @@ time_normalize_windows <- function(
         # on `feature_idx`. Positions that fall outside the window are clamped
         # to the signal edges (rule = 2), padding rather than time-warping the
         # beat. This keeps the fiducial's true morphology timing intact.
-        center_point <- ceiling(target_samples / 2)
+        center_point <- floor((target_samples - 1L) / 2L)
         original_samples <- nrow(signal_data)
-        original_indices <- 1:original_samples
+        original_indices <- signal_data$sample
 
-        new_samples <- feature_idx + (seq_len(target_samples) - center_point)
+        new_samples <- feature_idx + (output_samples - center_point)
 
         # Proceed with interpolation
         for (col in signal_cols) {
@@ -898,8 +914,12 @@ time_normalize_windows <- function(
         warning(
           "Specified alignment feature not found in annotations, using standard resampling"
         )
-        original_samples <- nrow(signal_data)
-        new_samples <- seq(1, original_samples, length.out = target_samples)
+        original_indices <- signal_data$sample
+        new_samples <- seq(
+          min(original_indices),
+          max(original_indices),
+          length.out = target_samples
+        )
 
         for (col in signal_cols) {
           col_name <- names(signal_data)[col]
@@ -907,7 +927,7 @@ time_normalize_windows <- function(
 
           # Apply interpolation method
           resampled_values <- interpolate_signal(
-            original_samples,
+            original_indices,
             original_values,
             new_samples,
             interpolation_method
@@ -919,8 +939,12 @@ time_normalize_windows <- function(
       }
     } else {
       # No feature alignment, standard resampling
-      original_samples <- nrow(signal_data)
-      new_samples <- seq(1, original_samples, length.out = target_samples)
+      original_indices <- signal_data$sample
+      new_samples <- seq(
+        min(original_indices),
+        max(original_indices),
+        length.out = target_samples
+      )
 
       for (col in signal_cols) {
         col_name <- names(signal_data)[col]
@@ -928,7 +952,7 @@ time_normalize_windows <- function(
 
         # Apply interpolation method
         resampled_values <- interpolate_signal(
-          original_samples,
+          original_indices,
           original_values,
           new_samples,
           interpolation_method
@@ -977,13 +1001,13 @@ time_normalize_windows <- function(
     if (nrow(window_ann) > 0) {
       mapped <- stats::approx(
         x = new_samples,
-        y = seq_len(target_samples),
+        y = output_samples,
         xout = window_ann$sample,
         rule = 2
       )$y
       window_ann <- data.table::copy(window_ann)
       window_ann$sample <- as.integer(
-        pmin(pmax(round(mapped), 1L), target_samples)
+        pmin(pmax(round(mapped), 0L), target_samples - 1L)
       )
     }
 
@@ -1002,13 +1026,11 @@ time_normalize_windows <- function(
 #' Helper function to apply interpolation
 #' @keywords internal
 interpolate_signal <- function(
-  original_samples,
+  original_indices,
   original_values,
   new_samples,
   interpolation_method
 ) {
-  original_indices <- 1:original_samples
-
   if (interpolation_method == "linear") {
     return(
       stats::approx(

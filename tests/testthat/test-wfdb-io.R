@@ -110,6 +110,78 @@ test_that("native signal reader returns a signal_table", {
   expect_equal(nrow(signal), attr(header, "record_line")$samples)
 })
 
+test_that("signal windows use clock times and duration intervals", {
+  data_dir <- testthat::test_path()
+  header <- read_header("ecg", record_dir = data_dir)
+  full <- read_signal("ecg", record_dir = data_dir, header = header)
+
+  by_character <- read_signal(
+    "ecg",
+    record_dir = data_dir,
+    header = header,
+    begin = "00:00:00.020",
+    end = "00:00:00.030"
+  )
+  expect_identical(by_character$sample, 10:14)
+  expect_equal(by_character[[2]], full[[2]][11:15])
+
+  by_elapsed_time <- read_signal(
+    "ecg",
+    record_dir = data_dir,
+    header = header,
+    begin = as.difftime(0.02, units = "secs"),
+    end = as.difftime(0.03, units = "secs")
+  )
+  expect_identical(by_elapsed_time$sample, 10:14)
+  expect_equal(by_elapsed_time[[2]], by_character[[2]])
+
+  by_duration <- read_signal(
+    "ecg",
+    record_dir = data_dir,
+    header = header,
+    begin = as.difftime(0.02, units = "secs"),
+    interval = "10 ms"
+  )
+  expect_identical(by_duration$sample, 10:14)
+
+  start_time <- attr(header, "record_line")$start_time
+  by_clock <- read_signal(
+    "ecg",
+    record_dir = data_dir,
+    header = header,
+    begin = start_time + 0.02,
+    end = start_time + 0.03
+  )
+  expect_identical(by_clock$sample, 10:14)
+
+  numeric_interval <- read_signal(
+    "ecg",
+    record_dir = data_dir,
+    header = header,
+    begin = as.difftime(1, units = "secs"),
+    interval = 1
+  )
+  expect_identical(numeric_interval$sample, 500:999)
+
+  clamped <- read_signal(
+    "ecg",
+    record_dir = data_dir,
+    header = header,
+    begin = "00:00:09.990",
+    interval = "30s"
+  )
+  expect_identical(clamped$sample, 4995:4999)
+
+  empty <- read_signal(
+    "ecg",
+    record_dir = data_dir,
+    header = header,
+    begin = "00:00:00",
+    end = "00:00:00"
+  )
+  expect_equal(nrow(empty), 0L)
+})
+
 test_that("native reader returns an EGM object", {
   fp <- system.file("extdata", "muse-sinus.dat", package = "EGM")
   dir <- fs::path_dir(fp)
@@ -136,6 +208,31 @@ test_that("native writer produces WFDB files", {
   roundtrip <- read_wfdb("native-test", tmp)
   expect_equal(nrow(roundtrip$signal), nrow(EGM_obj$signal))
   expect_equal(ncol(roundtrip$signal), ncol(EGM_obj$signal))
+})
+
+test_that("writer rejects sample indices that do not match WFDB row order", {
+  signal <- signal_table(data.table::data.table(
+    sample = c(0L, 2L),
+    I = c(1L, 2L)
+  ))
+  header <- header_table(
+    record_name = "gapped",
+    number_of_channels = 1L,
+    frequency = 250,
+    samples = 2L,
+    storage_format = 16L,
+    label = "I"
+  )
+
+  expect_error(
+    write_wfdb(
+      signal,
+      record = "gapped",
+      record_dir = withr::local_tempdir(),
+      header = header
+    ),
+    "contiguous zero-based indices"
+  )
 })
 
 test_that("format 212 records roundtrip correctly", {
@@ -400,17 +497,41 @@ test_that("read_annotation respects begin and end windows", {
     record = "ecg",
     annotator = "ecgpuwave",
     record_dir = data_dir,
-    begin = 0.25,
-    end = 0.75,
+    begin = "00:00:00.250",
+    end = "00:00:00.750",
     header = header
   )
 
   if (nrow(ann_window) > 0) {
-    expect_true(min(ann_window$sample) >= floor(0.25 * frequency))
-    expect_true(max(ann_window$sample) <= ceiling(0.75 * frequency))
+    expect_true(min(ann_window$sample) >= ceiling(0.25 * frequency))
+    expect_true(max(ann_window$sample) < ceiling(0.75 * frequency))
   } else {
     succeed()
   }
+
+  ann_clock <- read_annotation(
+    record = "ecg",
+    annotator = "ecgpuwave",
+    record_dir = data_dir,
+    begin = "00:00:00.710",
+    end = "00:00:00.850",
+    header = header
+  )
+  expect_identical(ann_clock$sample, c(355L, 374L, 406L))
+})
+
+test_that("read_wfdb applies the same sample window to annotations", {
+  data_dir <- testthat::test_path()
+  record <- read_wfdb(
+    record = "ecg",
+    record_dir = data_dir,
+    annotator = "ecgpuwave",
+    begin = "00:00:00.710",
+    end = "00:00:00.850"
+  )
+
+  expect_identical(record$signal$sample, 355:424)
+  expect_identical(record$annotation$ecgpuwave$sample, c(355L, 374L, 406L))
 })
 
 test_that("write_annotation produces round-trip compatible files", {
@@ -450,8 +571,8 @@ test_that("write_annotation emits rdann-compatible modifier records", {
   tmp_dir <- withr::local_tempdir()
 
   signal <- signal_table(data.table::data.table(
-    sample = 0:299,
-    II = as.integer(rep(0, 300))
+    sample = 0:499,
+    II = as.integer(rep(0, 500))
   ))
   header <- header_table(
     record_name = "toy",

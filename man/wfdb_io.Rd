@@ -22,9 +22,9 @@ read_wfdb(
   record,
   record_dir = ".",
   annotator = NULL,
-  begin = 0,
-  end = NA_integer_,
-  interval = NA_integer_,
+  begin = NULL,
+  end = NULL,
+  interval = NULL,
   units = c("digital", "physical"),
   channels = character(),
   ...
@@ -34,9 +34,9 @@ read_signal(
   record,
   record_dir = ".",
   header = NULL,
-  begin = 0,
-  end = NA_integer_,
-  interval = NA_integer_,
+  begin = NULL,
+  end = NULL,
+  interval = NULL,
   units = c("digital", "physical"),
   channels = character(),
   ...
@@ -96,12 +96,14 @@ annotation files simultaneously (e.g., \code{c("ecgpuwave", "atr")}). When
 writing, must be a single string serving as the file extension. See
 \code{\link[=read_annotation]{read_annotation()}} and \code{\link[=write_annotation]{write_annotation()}} for further details.}
 
-\item{begin, end, interval}{Timepoint as an \code{integer} (representing seconds),
-which is converted to an index position based on sampling frequency. The
-default is to start at the beginning of the record. If \code{end} or \code{interval}
-are given, the earlier of the two will be returned. The \code{end} argument
-gives a time index to read until. The \code{interval} argument is the length of
-time past the start point.}
+\item{begin, end}{Times delimiting a half-open range. Time-only character
+values such as \code{"00:00:01.5"} are elapsed from the record start; dated
+strings and \code{POSIXt} values are absolute timestamps. A date is required for
+studies longer than one day. See \code{\link[=validate_time_parameters]{validate_time_parameters()}} for formats.}
+
+\item{interval}{A duration after \code{begin} that takes precedence over \code{end}.
+Numeric values are seconds; character shortcuts such as \code{"30s"},
+\code{"100 ms"}, and \code{"2 min"} are supported.}
 
 \item{channels}{Either the signal/channel in a \code{character} vector as a name or number.
 Allows for duplication of signal or to re-order signal if needed. If
@@ -121,12 +123,11 @@ creation of both a \strong{dat} (signal) and \strong{hea} (header) file. These a
 required for reading in files as well.
 }
 \details{
-The \code{begin}, \code{end}, and \code{interval} arguments are converted into sample
-positions using the sampling frequency declared in the WFDB header. The
-reader first determines the starting sample from \code{begin}, then gives
-precedence to \code{interval} (when supplied) before falling back to \code{end}. Any
-request that extends beyond the recorded range is clamped so that the caller
-still receives all available data without a hard failure.
+The \code{begin}, \code{end}, and \code{interval} arguments are validated as time values and
+converted into sample positions using the sampling frequency declared in the
+WFDB header. \code{interval} takes precedence over \code{end}. The resulting range
+includes \code{begin} and excludes \code{end}; requests beyond the recorded duration
+are clamped to the final timestamp.
 }
 \section{Functions}{
 \itemize{

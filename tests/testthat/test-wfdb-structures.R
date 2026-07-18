@@ -8,13 +8,18 @@ test_that("signal table class can be made", {
   dat <- read_signal(
     record = "ecg",
     record_dir = test_path(),
-    begin = 0,
     units = "digital"
   )
 
   # ECG data should be 12 signal columns and 1 index column
   x <- dat[, -1]
   expect_equal(dim(x), c(5000, 12))
+})
+
+test_that("signal tables use zero-based sample indices", {
+  signal <- signal_table(value = c(10, 20, 30))
+
+  expect_identical(signal$sample, 0:2)
 })
 
 test_that("header_table can be made using LSPro data", {
