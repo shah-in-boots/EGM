@@ -2,6 +2,27 @@
 
 This release includes major improvements to WFDB functionality and package structure.
 
+* **Window management suite**: New functions for managing `windowed` signal
+  collections. `median_window()` collapses windowed beats into a single median
+  `EGM` template; `pad_window()` zero-pads windows to a common length, optionally
+  anchoring a fiducial such as the QRS peak; `resample_window()` (and a new
+  `resample_frequency` argument to `window()`) up- or down-samples windows to a
+  common rate while preserving duration; and `normalize_window()` stretches whole
+  windows onto a fixed length.
+
+* **Landmark templates**: New S7 `landmark` and `template` classes provide a
+  small, validated data model for fiducial templates. `learn_template()` learns
+  landmark phase positions from annotated EGM examples; manual templates are
+  constructed directly with positioned `landmark()` objects and `template()`.
+  `warp_window()` accepts a template and aligns all channels using explicit
+  missing, ambiguous, and crossed-landmark policies, strict channel precedence,
+  non-zero sample-coordinate support, and phase-warp provenance. This adds a
+  dependency on the `S7` package.
+
+* **Bug fix**: `print()`/`format()` for `windowed` objects now report the
+  window method correctly (previously read a non-existent attribute and printed
+  a blank).
+
 * **Time-based WFDB ranges**: WFDB readers now accept time values for
   `begin` and `end`, plus numeric or compact character durations for `interval`.
   Read windows are consistently half-open and clamp at the end of the study.

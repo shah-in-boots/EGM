@@ -5,7 +5,7 @@
 \alias{window_by_rhythm}
 \title{Window signal data based on different methods}
 \usage{
-window(object, window_method = c("rhythm"), ...)
+window(object, window_method = c("rhythm"), resample_frequency = NULL, ...)
 
 window_by_rhythm(
   object,
@@ -27,6 +27,12 @@ Options include:
 \itemize{
 \item \strong{rhythm} - Windows based on rhythm patterns (requires rhythm_type and criteria)
 }}
+
+\item{resample_frequency}{Optional target sampling rate in Hz. When supplied,
+each returned window is resampled to this frequency (up- or down-sampling as
+needed) while preserving its duration, harmonising records captured at
+different rates. \code{NULL} (default) accepts each record's native rate. This is
+the inline equivalent of calling \code{\link[=resample_window]{resample_window()}} on the result.}
 
 \item{...}{Additional arguments passed to specific windowing methods.}
 
