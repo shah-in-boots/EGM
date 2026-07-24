@@ -45,18 +45,15 @@ test_that("extract_f_waves handles invalid input", {
   )
 })
 
-test_that("upsample_signal works correctly", {
+test_that("upsampling a bare lead works correctly", {
   signal <- sin(seq(0, 10, length.out = 100))
-  upsampled <- upsample_signal(
-    signal,
-    original_frequency = 10,
-    new_frequency = 100
-  )
-  expect_length(upsampled, 1000)
+  upsampled <- change_frequency(signal, from = 10, to = 100)
 
-  # The last beat may be off due to being stationary
-  # Checks for "smoothness" of the signal
-  expect_true(all(abs(diff(upsampled[1:length(upsampled) - 1])) < 0.1))
+  # Endpoints are anchored, so (n - 1) source steps become (n - 1) * 10
+  expect_length(upsampled, 991)
+
+  # Checks for "smoothness" of the interpolated signal
+  expect_true(all(abs(diff(upsampled)) < 0.1))
 })
 
 test_that("detect_QRS finds peaks", {

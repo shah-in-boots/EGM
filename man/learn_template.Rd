@@ -19,7 +19,7 @@ learn_template(
 )
 }
 \arguments{
-\item{x}{An annotated \code{EGM}, list of \code{EGM} objects, or \code{windowed} object.}
+\item{x}{An annotated \code{EGM}, list of \code{EGM} objects, or \code{windows} object.}
 
 \item{landmarks}{A named list of concise landmark specifications or a list of
 unfitted \link{landmark} objects. A concise specification may be a type string or

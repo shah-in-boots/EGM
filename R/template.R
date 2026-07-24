@@ -267,7 +267,7 @@ resolve_channel_spec <- function(egm, channel) {
 #' manual templates, construct positioned [landmark] objects and pass them to
 #' [template()] directly.
 #'
-#' @param x An annotated `EGM`, list of `EGM` objects, or `windowed` object.
+#' @param x An annotated `EGM`, list of `EGM` objects, or `windows` object.
 #' @param landmarks A named list of concise landmark specifications or a list of
 #'   unfitted [landmark] objects. A concise specification may be a type string or
 #'   a named criteria list with optional `channel` and `required` fields.

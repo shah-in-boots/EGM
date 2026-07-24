@@ -1,11 +1,9 @@
 # Shared fixture: ragged sinus P-to-T beats guided by lead 2.
 template_sinus_windows <- function() {
   object <- read_wfdb("ecg-sinus", test_path(), "ann")
-  suppressMessages(window(
+  suppressMessages(get_windows(
     object,
-    window_method = "rhythm",
-    rhythm_type = "sinus",
-    channel_criteria = 2
+    by = by_rhythm(channel = 2)
   ))
 }
 
@@ -133,7 +131,7 @@ test_that("warp_window aligns beats to a learned template", {
   learned <- learn_template(windows, channel_criteria = 2, target_samples = 500)
   warped <- warp_window(windows, learned)
 
-  expect_s3_class(warped, "windowed")
+  expect_s3_class(warped, "windows")
   expect_true(all(vapply(
     warped,
     function(x) nrow(x$signal) == 500L,

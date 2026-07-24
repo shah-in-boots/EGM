@@ -1,3 +1,75 @@
+# EGM (development version)
+
+* **`window()` is now `get_windows()`** (**breaking**). The old name masked
+  `stats::window()`, which is a real S3 generic, so attaching EGM broke
+  `window()` for every `ts` object in the session. Extending that generic was not
+  an option: `stats::window()` returns one subset of a series, whereas this
+  returns a collection of segments matching a search. The class `windowed` is
+  likewise now `windows`, with `is_windowed()` becoming `is_window_set()` (named
+  to avoid confusion with the common operating-system predicate `is_windows()`)
+  and the constructor `windowed()` becoming `new_windows()` (**not** `windows()`,
+  which would mask `grDevices::windows()` on Windows builds of R).
+
+* **Windowing strategies**: How to find windows is now described by a strategy
+  object rather than by arguments on the entry point. `by_rhythm()` replaces
+  `window_by_rhythm()` and takes the rhythm arguments under shorter names
+  (`onset`, `offset`, `reference`, `channel`), validating them at construction.
+  Previously these travelled through `...` and a misspelled argument was silently
+  discarded; it is now an error. Strategies are values, so one specification can
+  be reused across every record in a study:
+
+  ```r
+  get_windows(ecg, by = "rhythm")               # defaults
+  get_windows(ecg, by = by_rhythm(channel = 2)) # explicit
+
+  woi <- by_rhythm(channel = 2)
+  lapply(records, get_windows, by = woi)
+  ```
+
+  Adding a strategy no longer widens a shared argument list; each gets its own
+  constructor and its own help page.
+
+* **`standardize_windows()` has been removed**, merged into `normalize_window()`,
+  which gains its `align_feature` and `channel_criteria` arguments. The two were
+  the same engine with alignment switched on or off. Callers moving across should
+  note that `normalize_window()`'s defaults win: `preserve_amplitude = FALSE`
+  (was `TRUE`) and `preserve_class = TRUE` (was `FALSE`).
+
+* **`lapply.windowed()` has been removed.** It was never reachable — `base::lapply`
+  is not an S3 generic, so the method could not dispatch. New `map_windows()`
+  does what it was meant to: applies a function across a collection, rebuilding a
+  `windows` object when every result is an `EGM` and returning a plain list
+  otherwise.
+
+* **Window provenance survives the pipeline.** The `window_method` attribute was
+  overwritten by every transform, so a padded collection no longer knew it came
+  from rhythm windowing. It is replaced by `method` (the extraction strategy, set
+  once) and `history` (every step applied, in order, e.g.
+  `c("rhythm", "padded", "normalized")`). The redundant `window_count` attribute
+  is gone; it was always `length(x)`. `print()` now shows the history chain.
+
+* **Internal**: the 2000-line `R/window.R` is split into `R/windows-class.R`,
+  `R/windows-extract.R`, `R/windows-transform.R`, and `R/features.R` (the
+  annotation-criteria helpers shared with the template code).
+
+* **Resampling is now a pipe stage**: New `change_frequency()` converts an `EGM`,
+  a `windows` collection, a list of `EGM` objects, or a bare numeric lead from
+  one sampling frequency to another, preserving duration and moving every
+  annotator onto the new grid. Both `from` and `to` must be stated; for objects
+  carrying a header, the declared `from` is checked against the recorded rate.
+  Four methods are offered - `linear` (default), `spline`, `step`, and
+  anti-aliased `polyphase` - and down-sampling with an interpolating method now
+  low-pass filters first (`anti_alias = TRUE`) so that content above the new
+  Nyquist frequency is not folded back into the band. New `frequency()` methods
+  report the sampling rate of an `EGM` or `windows` object.
+
+  This replaces `resample_window()` and the `resample_frequency` argument of
+  `window()` (now `get_windows()`), both of which have been **removed**, along
+  with the internal `upsample_signal()` used by the f-wave pipeline. Rate changes
+  are now expressed
+  as their own step, for example
+  `read_wfdb(...) |> change_frequency(from = 250, to = 500) |> get_windows()`.
+
 # EGM 0.2.0
 
 This release includes major improvements to WFDB functionality and package structure.

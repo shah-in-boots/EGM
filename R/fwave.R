@@ -160,9 +160,10 @@ process_single_lead <- function(object, lead, qrs_method, f_characteristics) {
   signal <- object$signal[[lead]]
   hz <- attributes(object$header)$record_line$frequency
 
-  # Preprocess signal and apply band pass filter
+  # Preprocess signal and apply band pass filter. The analysis downstream is
+  # written against a 1000 Hz grid, so the lead is brought onto that rate first.
   upsampled_signal <-
-    upsample_signal(signal, original_frequency = hz, new_frequency = 1000) |>
+    change_frequency(signal, from = hz, to = 1000) |>
     filter_bandpass(signal = _, frequency = 1000)
 
   # Ventricular signal removal (QRST cancellation)
@@ -180,30 +181,6 @@ process_single_lead <- function(object, lead, qrs_method, f_characteristics) {
 
   # Returns a list of features
   features
-}
-
-#' Upsampling signal approach
-#' @noRd
-upsample_signal <- function(signal, original_frequency, new_frequency) {
-  # Increase sampling rate if necessary (e.g., from 500 Hz to 1000 Hz)
-  if (original_frequency < new_frequency) {
-    original_length <- length(signal)
-    t <- seq(
-      0,
-      (original_length - 1) / original_frequency,
-      length.out = original_length
-    )
-    t_new <- seq(
-      0,
-      (original_length - 1) / original_frequency,
-      length.out = original_length * (new_frequency / original_frequency)
-    )
-    upsampled <- stats::approx(t, signal, xout = t_new, method = "linear")$y
-    frequency <- new_frequency
-  }
-
-  # Return new upsampled signal
-  upsampled
 }
 
 #' Apply bandpass filter (0.5-30 Hz is the default)
