@@ -86,10 +86,10 @@ test_that("extract_f_waves handles invalid input", {
 
   mock_af <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
 
-  expect_error(extract_f_waves("not an egm object"), "must be of class 'EGM'")
+  expect_error(extract_f_waves("not an egm object"), "class <EGM> or <ECG>")
   expect_error(
     extract_f_waves(mock_af, lead = "non_existent_lead"),
-    "Specified lead not found"
+    "Not a surface ECG lead"
   )
   expect_error(
     extract_f_waves(mock_af, f_characteristics = "invalid_characteristic"),
@@ -553,17 +553,6 @@ test_that("entropy is decimated before it is computed", {
 })
 
 # Utilities ----
-
-test_that("surface lead matching handles separators", {
-  obj <- structure(list(), class = c("EGM", "list"))
-  expect_equal(
-    EGM:::surface_leads(c("V 1", "V_1", "V-1", "II"), obj),
-    c("V 1", "V_1", "V-1", "II")
-  )
-  # `[_\\s-]` in the default engine matches the letter "s", not whitespace, so
-  # this used to be accepted by stripping a character out of the name
-  expect_equal(EGM:::surface_leads(c("Vs1", "XYZ", "V1"), obj), "V1")
-})
 
 test_that("upsampling a bare lead works correctly", {
   signal <- sin(seq(0, 10, length.out = 100))

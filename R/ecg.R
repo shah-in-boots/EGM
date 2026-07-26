@@ -1,21 +1,37 @@
 ### Class Definitions ----
 
+# The `ECG` class exists to carry one guarantee: every channel it holds is a
+# recognised surface ECG lead. Several analyses in this package are defined only
+# on the body-surface potential, and applied to an intracardiac channel they
+# return a number rather than an error. `require_ECG()` is the single gate those
+# functions pass through, so the check is written once rather than re-derived at
+# each call site.
+
 #' Electrocardiogram data class for 12-lead ECG studies
 #'
-#' @description This class serves as a specialized extension of the `EGM` class
-#'   specifically for standard 12-lead electrocardiogram data. It inherits all
-#'   functionality from `EGM` while providing additional validation and methods
-#'   specific to 12-lead ECG analysis.
+#' @description A specialization of the [EGM] class for the standard 12-lead
+#'   surface electrocardiogram. It carries the same three components - signal,
+#'   header, and annotation - and adds the guarantee that every channel is a
+#'   recognised surface ECG lead, named canonically.
 #'
-#' @details The `ECG` object contains the same three components as `EGM`:
-#'   * signal data in multiple channels (specifically 12 standard ECG leads)
-#'   * header information
-#'   * annotation labels at specified time points
+#' @details An electrophysiology study records surface and intracardiac channels
+#'   side by side, so the 12-lead ECG is often a subset of a larger record.
+#'   [as_ECG()] extracts that subset: it keeps the surface leads, renames them to
+#'   their canonical form (`I`, `II`, `III`, `AVF`, `AVL`, `AVR`, `V1` ... `V6`),
+#'   and discards every other channel. This is the intended route from a study to
+#'   an ECG analysis.
 #'
-#'   The primary difference is that this class enforces validation to ensure
-#'   the data represents a standard 12-lead ECG with appropriate lead names.
+#'   Functions that are only defined on the surface ECG - [extract_f_waves()],
+#'   [vectorcardiogram()], [atrial_vectorcardiogram()] - coerce their input
+#'   through that same path and then check that the leads each one needs are
+#'   actually present. A record carrying only intracardiac channels is an error
+#'   rather than a silent result.
 #'
-#' @returns An object of class `ECG` (which inherits from `EGM`) containing
+#'   Construction is otherwise identical to [EGM()]. A record with a lead set
+#'   that is not the standard twelve is accepted with a warning, since partial
+#'   surface sets are common and several analyses tolerate them.
+#'
+#' @returns An object of class `ECG`, which inherits from `EGM`, containing
 #'   signal, header, and annotation components.
 #'
 #' @param x An `ECG` object to be used with support functions
@@ -30,6 +46,9 @@
 #'   [annotation_table()] function
 #'
 #' @param ... Additional arguments to be passed to the function
+#'
+#' @seealso [as_ECG()] to extract the surface leads from a study, [EGM()] for the
+#'   general class.
 #'
 #' @name ECG
 #' @export
@@ -127,23 +146,6 @@ validate_ecg_data <- function(signal, header) {
   # Get lead names (exclude sample column)
   lead_names <- names(signal)[-1]
 
-  # Standard ECG lead names (case-insensitive matching)
-  std_leads <- c(
-    "I",
-    "II",
-    "III",
-    "AVR",
-    "AVL",
-    "AVF",
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6"
-  )
-
-  # Check if we have 12 leads
   if (length(lead_names) != 12) {
     warning(
       "ECG should contain 12 leads, found ",
@@ -153,15 +155,11 @@ validate_ecg_data <- function(signal, header) {
     return(TRUE)
   }
 
-  # Check lead names (allowing for some variation in naming)
-  normalized_leads <- toupper(gsub("[_\\s-]", "", lead_names))
-  std_leads_norm <- toupper(gsub("[_\\s-]", "", std_leads))
-
-  if (!all(normalized_leads %in% std_leads_norm)) {
-    non_std <- lead_names[!normalized_leads %in% std_leads_norm]
+  non_standard <- lead_names[is.na(canonical_lead(lead_names))]
+  if (length(non_standard) > 0) {
     warning(
       "Non-standard ECG lead names detected: ",
-      paste(non_std, collapse = ", "),
+      paste(non_standard, collapse = ", "),
       ". Converting to ECG class anyway."
     )
   }
@@ -175,7 +173,8 @@ format.ECG <- function(x, ...) {
   NextMethod()
 
   # Add ECG-specific information
-  cat('Type: Standard 12-lead ECG\n')
+  n <- length(surface_leads(names(x$signal)[-1]))
+  cat('Type: ', n, ' of 12 surface ECG leads\n', sep = '')
 
   # Return invisibly for chaining
   invisible(x)
@@ -192,19 +191,235 @@ is_ECG <- function(x) {
   inherits(x, "ECG")
 }
 
+# Surface leads ----------------------------------------------------------------
+
+#' Canonical name of a surface ECG lead
+#'
+#' @description Resolves channel labels to the canonical lead names held in
+#'   `.leads$ECG`, returning `NA` for any channel that is not a surface ECG lead.
+#'   Matching ignores case, spaces, underscores and hyphens, so `aVR`, `av r` and
+#'   `AV-R` all resolve to `AVR`.
+#'
+#' @param x A `character` vector of channel labels.
+#'
+#' @return A `character` vector the same length as `x`.
+#'
+#' @keywords internal
+canonical_lead <- function(x) {
+  standard <- as.character(.leads$ECG)
+
+  # `[[:space:]]` rather than `\\s`: in R's default TRE engine a backslash
+  # inside a bracket expression is literal, so `[_\\s-]` matches the letter "s"
+  # and silently mangles lead names.
+  key <- function(y) toupper(gsub("[_[:space:]-]", "", y))
+
+  standard[match(key(x), key(standard))]
+}
+
+#' Surface ECG leads present among a set of channels
+#'
+#' @description Selects the surface ECG leads from a set of channel labels,
+#'   keeping the order in which they were given. The result is named by canonical
+#'   lead name and valued by the label as supplied, so it doubles as the lookup
+#'   from "lead II" to whichever channel actually holds it.
+#'
+#' @param x A `character` vector of channel labels.
+#'
+#' @return A named `character` vector, possibly of length zero.
+#'
+#' @keywords internal
+surface_leads <- function(x) {
+  canonical <- canonical_lead(x)
+  keep <- !is.na(canonical)
+  setNames(x[keep], canonical[keep])
+}
+
+#' Rebuild a record around a chosen set of channels
+#'
+#' @description Keeps the named channels, renames them canonically, and brings
+#'   the header rows and record line along with them.
+#'
+#' @param object An `EGM` object.
+#' @param leads A named `character` vector as returned by [surface_leads()].
+#'
+#' @return An `ECG` object.
+#'
+#' @keywords internal
+select_channels <- function(object, leads) {
+  sig <- object$signal
+  hea <- object$header
+  rl <- attributes(hea)$record_line
+
+  # Header rows are parallel to signal columns, so channels are matched by
+  # position. Matching on the header `label` instead would break on records whose
+  # duplicate labels were made unique when the header was built.
+  rows <- match(unname(leads), names(sig)[-1])
+
+  columns <- c(
+    list(sample = sig$sample),
+    setNames(lapply(unname(leads), function(l) sig[[l]]), names(leads))
+  )
+
+  header <- header_table(
+    record_name = rl$record_name,
+    number_of_channels = length(leads),
+    frequency = rl$frequency,
+    samples = rl$samples,
+    start_time = rl$start_time,
+    ADC_saturation = rl$ADC_saturation,
+    storage_format = hea$storage_format[rows],
+    ADC_gain = hea$ADC_gain[rows],
+    ADC_baseline = hea$ADC_baseline[rows],
+    ADC_units = hea$ADC_units[rows],
+    ADC_zero = hea$ADC_zero[rows],
+    ADC_resolution = hea$ADC_resolution[rows],
+    label = names(leads),
+    info_strings = attributes(hea)$info_strings
+  )
+
+  new_ECG(
+    signal = do.call(signal_table, columns),
+    header = header,
+    annotation = object$annotation
+  )
+}
+
 #' Convert an EGM object to an ECG object
 #'
-#' @description Converts a general `EGM` object to a specialized `ECG` object
-#'   for 12-lead ECG analysis.
+#' @description Extracts the surface ECG from a record. Recognised surface leads
+#'   are kept and renamed to their canonical form; every other channel is
+#'   discarded. On a 12-lead recording this is a relabelling; on an
+#'   electrophysiology study it is the step that separates the body-surface leads
+#'   from the intracardiac ones.
+#'
+#' @details Channels are matched case-insensitively and ignoring separators, so
+#'   `aVR`, `av r` and `AV-R` all resolve to `AVR`. A record with no surface
+#'   leads at all is an error: an intracardiac channel cannot stand in for a
+#'   surface lead, and the analyses gated on this class would otherwise return a
+#'   number that looks reasonable and is not.
+#'
+#'   Annotation `channel` indices refer to positions in the original record. When
+#'   channels are dropped those indices no longer address the leads they name, so
+#'   a warning is raised if any channel-specific annotation is carried across.
 #'
 #' @param x An object of class `EGM`
 #' @param ... Additional arguments
+#'
 #' @return An object of class `ECG`
+#'
+#' @seealso [ECG()] for the class, [extract_f_waves()] and [vectorcardiogram()]
+#'   for analyses that require it.
+#'
 #' @export
 as_ECG <- function(x, ...) {
   if (!is_EGM(x)) {
-    stop("Input must be of class 'EGM'")
+    stop("Input must be of class 'EGM'", call. = FALSE)
   }
 
-  ECG(signal = x$signal, header = x$header, annotation = x$annotation)
+  channels <- names(x$signal)[-1]
+  leads <- surface_leads(channels)
+
+  if (length(leads) == 0) {
+    stop(
+      "No surface ECG leads found among the channels (",
+      paste(channels, collapse = ", "),
+      "). An <ECG> is the body-surface record; an intracardiac channel cannot ",
+      "stand in for one.",
+      call. = FALSE
+    )
+  }
+
+  duplicated_leads <- unique(names(leads)[duplicated(names(leads))])
+  if (length(duplicated_leads) > 0) {
+    stop(
+      "Several channels resolve to the same surface lead (",
+      paste(duplicated_leads, collapse = ", "),
+      "); which one is meant cannot be decided here.",
+      call. = FALSE
+    )
+  }
+
+  # The record is already exactly a surface ECG, canonically named. Rebuilding it
+  # would regenerate the header and lose the fields - checksums, initial values,
+  # channel colours - that only the original carries.
+  if (identical(channels, names(leads))) {
+    if (is_ECG(x)) {
+      return(x)
+    }
+    return(new_ECG(x$signal, header = x$header, annotation = x$annotation))
+  }
+
+  dropped <- setdiff(channels, unname(leads))
+  if (length(dropped) > 0) {
+    message(
+      "Keeping ",
+      length(leads),
+      " surface ECG lead(s) and dropping ",
+      length(dropped),
+      " other channel(s): ",
+      paste(dropped, collapse = ", ")
+    )
+
+    annotated_channels <- unlist(lapply(x$annotation, function(a) {
+      if (is.null(a$channel)) integer() else unique(a$channel[a$channel != 0L])
+    }))
+    if (length(annotated_channels) > 0) {
+      warning(
+        "Annotation `channel` indices refer to the original record and are not ",
+        "renumbered when channels are dropped",
+        call. = FALSE
+      )
+    }
+  }
+
+  select_channels(x, leads)
+}
+
+#' Require a record to be a surface 12-lead ECG
+#'
+#' @description The gate for analyses defined only on the body-surface potential.
+#'   It coerces an `EGM` to an [ECG] with [as_ECG()], then checks that the leads
+#'   the analysis needs are present. Every ECG-only function opens with this call,
+#'   so the contract lives in one place.
+#'
+#' @details Two levels of strictness are supported. With `leads = NULL` any
+#'   non-empty surface lead set is accepted, which suits analyses that degrade
+#'   gracefully - fibrillatory wave extraction reads each lead more or less
+#'   independently and works, less precisely, on fewer of them. Naming `leads`
+#'   makes them mandatory, which suits analyses that are undefined without a
+#'   specific set - the Kors transform is a fixed linear combination of eight
+#'   leads and cannot be evaluated when one is missing.
+#'
+#'   Reporting belongs to [as_ECG()], which says what it discarded, and to the
+#'   `ECG` constructor, which warns on an incomplete lead set. This function only
+#'   enforces.
+#'
+#' @param object An `EGM` or `ECG` object.
+#' @param leads Optional `character` vector of canonical lead names that must be
+#'   present. If `NULL` (default), any non-empty surface lead set is accepted.
+#' @param what A `character` naming the analysis, used in error messages.
+#'
+#' @return An `ECG` object holding only surface leads.
+#'
+#' @keywords internal
+require_ECG <- function(object, leads = NULL, what = "This analysis") {
+  if (!is_EGM(object)) {
+    stop(what, " requires an object of class <EGM> or <ECG>", call. = FALSE)
+  }
+
+  object <- as_ECG(object)
+
+  missing_leads <- setdiff(leads, names(surface_leads(names(object$signal)[-1])))
+  if (length(missing_leads) > 0) {
+    stop(
+      what,
+      " requires the surface leads ",
+      paste(leads, collapse = ", "),
+      "; missing ",
+      paste(missing_leads, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  object
 }

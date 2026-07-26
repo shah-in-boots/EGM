@@ -39,7 +39,10 @@
 #' is inferred from the RR series and a warning is issued if the record does not
 #' look like atrial fibrillation.
 #'
-#' @param object An object of class `EGM` or of subclass `ECG`
+#' @param object An object of class `EGM` or of subclass [ECG]. An `EGM` from an
+#'   electrophysiology study is reduced to its surface leads first (see
+#'   [as_ECG()]); a record with no surface leads is an error, since a
+#'   fibrillatory wave cannot be read from an intracardiac channel.
 #'
 #' @param lead Optional. A character vector of leads to analyse. If `NULL`
 #'   (default), all available surface leads are processed. Cancellation always
@@ -102,9 +105,6 @@
 #'   across a large batch is expensive.
 #'
 #' @param verbose Logical. If `TRUE` (default), report which leads are analysed.
-#'
-#' @param .force_all Logical. If `FALSE` (default), only surface ECG leads are
-#'   processed. Ignored when the object is of class `ECG`.
 #'
 #' @param ... Additional arguments passed to the cancellation and analysis
 #'   routines.
@@ -178,12 +178,12 @@ extract_f_waves <- function(
   tol = 0.15,
   keep_signal = FALSE,
   verbose = TRUE,
-  .force_all = FALSE,
   ...
 ) {
-  if (!inherits(object, "EGM")) {
-    stop("Input must be of class 'EGM'")
-  }
+  # Surface leads only, and at least one of them. Cancellation and every feature
+  # below assume a body-surface potential; on an intracardiac channel they return
+  # a number rather than an error, which is the failure worth preventing.
+  object <- require_ECG(object, what = "Fibrillatory wave extraction")
 
   cancel_method <- match.arg(cancel_method)
   amplitude_window <- match.arg(amplitude_window)
@@ -223,29 +223,31 @@ extract_f_waves <- function(
     )
   }
 
-  available_leads <- names(object$signal)[-1]
-
   # Leads that carry the cancellation. The spatiotemporal fit draws on every
   # surface lead available, which is separate from the leads the caller wants
   # features for.
-  cancel_leads <- surface_leads(available_leads, object, .force_all)
-  if (length(cancel_leads) == 0) {
-    warning("No surface leads found in the signal data")
-    return(empty_f_wave_analysis())
-  }
+  cancel_leads <- names(object$signal)[-1]
 
   if (!is.null(lead)) {
-    missing_leads <- setdiff(lead, available_leads)
+    # Requested leads are resolved canonically, so "aVR" and "AVR" both name the
+    # column that `require_ECG()` produced.
+    requested <- surface_leads(lead)
+    unusable <- setdiff(lead, unname(requested))
+    if (length(unusable) > 0) {
+      stop(
+        "Not a surface ECG lead: ",
+        paste(unusable, collapse = ", "),
+        ". Fibrillatory waves cannot be read from an intracardiac channel."
+      )
+    }
+    missing_leads <- setdiff(names(requested), cancel_leads)
     if (length(missing_leads) > 0) {
       stop(
         "Specified lead not found in the signal data: ",
         paste(missing_leads, collapse = ", ")
       )
     }
-    report_leads <- lead
-    # A requested lead that is not a recognised surface lead still needs to be
-    # cancelled, so it joins the stack.
-    cancel_leads <- union(cancel_leads, lead)
+    report_leads <- names(requested)
   } else {
     report_leads <- cancel_leads
   }
@@ -412,35 +414,6 @@ print.f_wave_analysis <- function(x, ...) {
   }
   print(x$features)
   invisible(x)
-}
-
-#' @noRd
-empty_f_wave_analysis <- function() {
-  out <- list(
-    features = data.table::data.table(),
-    record = data.table::data.table(),
-    signal = NULL
-  )
-  class(out) <- c("f_wave_analysis", "list")
-  out
-}
-
-#' Identify surface ECG leads
-#' @noRd
-surface_leads <- function(available_leads, object, .force_all = FALSE) {
-  if (inherits(object, "ECG") || .force_all) {
-    return(available_leads)
-  }
-
-  std_leads <- as.character(.leads$ECG)
-
-  # `[[:space:]]` rather than `\\s`: in R's default TRE engine a backslash
-  # inside a bracket expression is literal, so `[_\\s-]` matches the letter "s"
-  # and silently mangles lead names.
-  normalize_name <- function(x) toupper(gsub("[_[:space:]-]", "", x))
-
-  matched <- normalize_name(available_leads) %in% normalize_name(std_leads)
-  available_leads[matched]
 }
 
 #' Apply bandpass filter (0.5-30 Hz by default)

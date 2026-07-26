@@ -160,7 +160,7 @@ test_that("format and print methods work correctly", {
 
   # Check print output
   expect_output(print(ecg_obj), "Electrogram")
-  expect_output(print(ecg_obj), "Type: Standard 12-lead ECG")
+  expect_output(print(ecg_obj), "Type: 12 of 12 surface ECG leads")
 })
 
 test_that("as_ECG conversion works", {
@@ -212,6 +212,136 @@ test_that("as_ECG conversion rejects non-egm objects", {
 
   # Should error
   expect_error(as_ECG(not_egm), "must be of class 'EGM'")
+})
+
+test_that("surface lead matching handles separators", {
+  expect_equal(
+    EGM:::surface_leads(c("V 1", "V_1", "V-1", "II")),
+    c(V1 = "V 1", V1 = "V_1", V1 = "V-1", II = "II")
+  )
+
+  # `[_\\s-]` in the default engine matches the letter "s", not whitespace, so
+  # this used to be accepted by stripping a character out of the name
+  expect_equal(EGM:::surface_leads(c("Vs1", "XYZ", "V1")), c(V1 = "V1"))
+
+  # Order follows the record, not the canonical list
+  expect_named(EGM:::surface_leads(c("V6", "I")), c("V6", "I"))
+})
+
+test_that("as_ECG extracts the surface leads from an EP study", {
+  study <- read_wfdb("egm", test_path())
+
+  expect_message(
+    ecg_obj <- suppressWarnings(as_ECG(study)),
+    "dropping 11 other channel"
+  )
+
+  expect_s3_class(ecg_obj, "ECG")
+  expect_equal(names(ecg_obj$signal), c("sample", "I", "III", "V1"))
+  expect_equal(as.character(ecg_obj$header$label), c("I", "III", "V1"))
+  expect_equal(
+    attributes(ecg_obj$header)$record_line$number_of_channels,
+    3
+  )
+
+  # Signal itself is untouched by the selection
+  expect_equal(ecg_obj$signal$V1, study$signal$V1)
+})
+
+test_that("as_ECG refuses a record with no surface leads", {
+  study <- read_wfdb("egm", test_path())
+  intracardiac <- study
+  intracardiac$signal <- study$signal[, !c("I", "III", "V1"), with = FALSE]
+
+  expect_error(as_ECG(intracardiac), "No surface ECG leads")
+})
+
+test_that("as_ECG refuses channels that resolve to the same lead", {
+  labels <- c("V1", "V 1", "II")
+  data <- as.data.frame(matrix(rnorm(30), nrow = 10))
+  colnames(data) <- labels
+
+  object <- EGM(
+    signal = signal_table(data),
+    header = header_table(
+      record_name = "ambiguous",
+      number_of_channels = 3,
+      frequency = 500,
+      samples = 10,
+      label = labels
+    )
+  )
+
+  expect_error(as_ECG(object), "resolve to the same surface lead")
+})
+
+test_that("as_ECG renames leads canonically", {
+  labels <- c("i", "ii", "V 1")
+  data <- as.data.frame(matrix(rnorm(30), nrow = 10))
+  colnames(data) <- labels
+
+  object <- EGM(
+    signal = signal_table(data),
+    header = header_table(
+      record_name = "aliased",
+      number_of_channels = 3,
+      frequency = 500,
+      samples = 10,
+      label = labels
+    )
+  )
+
+  ecg_obj <- suppressWarnings(as_ECG(object))
+  expect_equal(names(ecg_obj$signal), c("sample", "I", "II", "V1"))
+  expect_equal(ecg_obj$signal$V1, object$signal$`V 1`)
+})
+
+test_that("as_ECG flags annotation channels it cannot renumber", {
+  study <- read_wfdb("egm", test_path())
+  study$annotation <- list(
+    manual = annotation_table(
+      annotator = "manual",
+      time = "00:00:00.100",
+      sample = 100L,
+      type = "N",
+      channel = 5L
+    )
+  )
+
+  # The incomplete lead set also warns, so the warnings are collected rather
+  # than matched one at a time
+  raised <- character()
+  withCallingHandlers(
+    suppressMessages(as_ECG(study)),
+    warning = function(w) {
+      raised <<- c(raised, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+
+  expect_true(any(grepl("refer to the original record", raised)))
+})
+
+test_that("require_ECG enforces the leads an analysis needs", {
+  study <- suppressWarnings(suppressMessages(
+    as_ECG(read_wfdb("egm", test_path()))
+  ))
+
+  # A partial surface set is fine when no specific leads are demanded
+  expect_s3_class(EGM:::require_ECG(study), "ECG")
+
+  expect_error(
+    EGM:::require_ECG(study, leads = c("I", "II"), what = "Test"),
+    "Test requires the surface leads I, II; missing II"
+  )
+  expect_error(EGM:::require_ECG("not an EGM"), "class <EGM> or <ECG>")
+
+  # An ECG that already satisfies the contract passes through untouched
+  ecg_obj <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"))
+  expect_equal(
+    EGM:::require_ECG(ecg_obj, leads = "V6")$signal,
+    ecg_obj$signal
+  )
 })
 
 test_that("read_muse returns ECG object", {

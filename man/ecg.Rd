@@ -29,23 +29,34 @@ function}
 \item{x}{An \code{ECG} object to be used with support functions}
 }
 \value{
-An object of class \code{ECG} (which inherits from \code{EGM}) containing
+An object of class \code{ECG}, which inherits from \code{EGM}, containing
 signal, header, and annotation components.
 }
 \description{
-This class serves as a specialized extension of the \code{EGM} class
-specifically for standard 12-lead electrocardiogram data. It inherits all
-functionality from \code{EGM} while providing additional validation and methods
-specific to 12-lead ECG analysis.
+A specialization of the \link{EGM} class for the standard 12-lead
+surface electrocardiogram. It carries the same three components - signal,
+header, and annotation - and adds the guarantee that every channel is a
+recognised surface ECG lead, named canonically.
 }
 \details{
-The \code{ECG} object contains the same three components as \code{EGM}:
-\itemize{
-\item signal data in multiple channels (specifically 12 standard ECG leads)
-\item header information
-\item annotation labels at specified time points
-}
+An electrophysiology study records surface and intracardiac channels
+side by side, so the 12-lead ECG is often a subset of a larger record.
+\code{\link[=as_ECG]{as_ECG()}} extracts that subset: it keeps the surface leads, renames them to
+their canonical form (\code{I}, \code{II}, \code{III}, \code{AVF}, \code{AVL}, \code{AVR}, \code{V1} ... \code{V6}),
+and discards every other channel. This is the intended route from a study to
+an ECG analysis.
 
-The primary difference is that this class enforces validation to ensure
-the data represents a standard 12-lead ECG with appropriate lead names.
+Functions that are only defined on the surface ECG - \code{\link[=extract_f_waves]{extract_f_waves()}},
+\code{\link[=vectorcardiogram]{vectorcardiogram()}}, \code{\link[=atrial_vectorcardiogram]{atrial_vectorcardiogram()}} - coerce their input
+through that same path and then check that the leads each one needs are
+actually present. A record carrying only intracardiac channels is an error
+rather than a silent result.
+
+Construction is otherwise identical to \code{\link[=EGM]{EGM()}}. A record with a lead set
+that is not the standard twelve is accepted with a warning, since partial
+surface sets are common and several analyses tolerate them.
+}
+\seealso{
+\code{\link[=as_ECG]{as_ECG()}} to extract the surface leads from a study, \code{\link[=EGM]{EGM()}} for the
+general class.
 }

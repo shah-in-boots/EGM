@@ -15,6 +15,24 @@ as_ECG(x, ...)
 An object of class \code{ECG}
 }
 \description{
-Converts a general \code{EGM} object to a specialized \code{ECG} object
-for 12-lead ECG analysis.
+Extracts the surface ECG from a record. Recognised surface leads
+are kept and renamed to their canonical form; every other channel is
+discarded. On a 12-lead recording this is a relabelling; on an
+electrophysiology study it is the step that separates the body-surface leads
+from the intracardiac ones.
+}
+\details{
+Channels are matched case-insensitively and ignoring separators, so
+\code{aVR}, \verb{av r} and \code{AV-R} all resolve to \code{AVR}. A record with no surface
+leads at all is an error: an intracardiac channel cannot stand in for a
+surface lead, and the analyses gated on this class would otherwise return a
+number that looks reasonable and is not.
+
+Annotation \code{channel} indices refer to positions in the original record. When
+channels are dropped those indices no longer address the leads they name, so
+a warning is raised if any channel-specific annotation is carried across.
+}
+\seealso{
+\code{\link[=ECG]{ECG()}} for the class, \code{\link[=extract_f_waves]{extract_f_waves()}} and \code{\link[=vectorcardiogram]{vectorcardiogram()}}
+for analyses that require it.
 }

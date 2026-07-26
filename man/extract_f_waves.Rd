@@ -20,12 +20,14 @@ extract_f_waves(
   tol = 0.15,
   keep_signal = FALSE,
   verbose = TRUE,
-  .force_all = FALSE,
   ...
 )
 }
 \arguments{
-\item{object}{An object of class \code{EGM} or of subclass \code{ECG}}
+\item{object}{An object of class \code{EGM} or of subclass \link{ECG}. An \code{EGM} from an
+electrophysiology study is reduced to its surface leads first (see
+\code{\link[=as_ECG]{as_ECG()}}); a record with no surface leads is an error, since a
+fibrillatory wave cannot be read from an intracardiac channel.}
 
 \item{lead}{Optional. A character vector of leads to analyse. If \code{NULL}
 (default), all available surface leads are processed. Cancellation always
@@ -88,9 +90,6 @@ returned alongside the features. Default \code{FALSE}, since retaining them
 across a large batch is expensive.}
 
 \item{verbose}{Logical. If \code{TRUE} (default), report which leads are analysed.}
-
-\item{.force_all}{Logical. If \code{FALSE} (default), only surface ECG leads are
-processed. Ignored when the object is of class \code{ECG}.}
 
 \item{...}{Additional arguments passed to the cancellation and analysis
 routines.}

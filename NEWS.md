@@ -1,5 +1,52 @@
 # EGM (development version)
 
+## Vectorcardiography
+
+* **`vectorcardiogram()` and `atrial_vectorcardiogram()` are new.** Both
+  reconstruct the orthogonal X, Y, Z leads from the 12-lead ECG with the Kors
+  regression transformation (Kors et al., 1990) and cut the result at the
+  annotated wave boundaries: the ventricular (QRS) loop and the atrial (P) loop
+  respectively. Kors' matrix is preferred to the inverse Dower matrix, which
+  reproduces the recorded Frank leads less closely and yields derived measures
+  with less prognostic power (Man et al., 2011; Kück et al., 2018).
+
+  Each returns the loop as a `data.table` of `beat`, `sample`, `X`, `Y`, `Z`
+  alongside its standard descriptors — peak and mean spatial vector magnitude,
+  azimuth and elevation of the peak vector, enclosed planar area, and planarity.
+  `beats = "median"` gives the signal-averaged loop used to characterise atrial
+  conduction (Havmöller et al., 2007); `beats = "all"` gives one loop per beat
+  and preserves the beat-to-beat variability that a signal average removes
+  (Tachmatzidis et al., 2022).
+
+  Segmentation reuses `get_windows()` and `median_window()`, so wave boundaries
+  come from the record's own delineation annotations. A record without them is an
+  error rather than a guess, as is a record whose annotations span several
+  channels without a guiding `channel`.
+
+## The ECG class
+
+* **`as_ECG()` now extracts the surface ECG rather than relabelling the whole
+  record** (**breaking**). An electrophysiology study records surface and
+  intracardiac channels side by side; `as_ECG()` keeps the recognised surface
+  leads, renames them canonically, and reports the channels it dropped. A record
+  with no surface leads is an error: an intracardiac channel cannot stand in for
+  a surface lead, and the analyses gated on this class would otherwise return a
+  number that looks reasonable and is not.
+
+* **Surface-only analyses share one gate.** `extract_f_waves()`,
+  `vectorcardiogram()` and `atrial_vectorcardiogram()` all coerce their input
+  through `as_ECG()` and then check the leads they need. Fibrillatory wave
+  extraction accepts any surface lead set, since it reads each lead more or less
+  independently; the vectorcardiograms require all eight leads of the Kors
+  transformation, which is a fixed linear combination with no substitute for a
+  missing one.
+
+* **`extract_f_waves()` loses its `.force_all` argument** (**breaking**). It
+  existed to analyse intracardiac channels, which is the result the class now
+  exists to prevent. A requested `lead` is resolved canonically, so `"aVR"` and
+  `"AVR"` both name the same channel, and an intracardiac one is rejected by
+  name.
+
 ## Fibrillatory wave analysis
 
 * **`extract_f_waves()` now cancels the ventricular signal spatiotemporally**
