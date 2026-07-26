@@ -54,24 +54,43 @@
 #'
 #' # Reconstruction
 #'
-#' The transformation is linear, so it commutes with the segmentation: the
-#' record is transformed once and cut afterwards, which is the same signal as
-#' cutting first and transforming each beat. It does not commute with the
-#' median, which is not a linear operator, so `beats = "median"` returns the
-#' median of the beats' *loops* rather than the loop of the median beat. This is
-#' the order used for signal-averaged orthogonal P-wave analysis (Havmöller et
-#' al. 2007).
+#' The transformation is linear, so it commutes with the segmentation: a beat
+#' cut from the transformed record and a beat transformed after cutting are the
+#' same signal, and it makes no difference that each beat is transformed
+#' separately here.
+#'
+#' It does not commute with the median, which is not a linear operator. The
+#' median is taken lead by lead, by [median_window()], so `beats = "median"`
+#' returns the loop of the median beat rather than the median of the beats'
+#' loops.
 #'
 #' # Segmentation
 #'
-#' Wave boundaries come from the record's own delineation annotations, since
-#' neither loop can be delimited without them; a record without them is an error
-#' rather than a guess. Beats are anchored on the wave peak - the QRS peak for
-#' the ventricular loop, the P peak for the atrial one - and for
-#' `beats = "median"` every beat is placed on a common grid at that anchor and
-#' reduced sample by sample. The median beat's own boundaries are the medians of
-#' the individual ones, so it has a duration rather than the union of all
-#' durations.
+#' The unit of analysis is one beat. Wave boundaries come from the record's own
+#' delineation annotations, since neither loop can be delimited without them; a
+#' record without them is an error rather than a guess.
+#'
+#' Both functions accept a whole record, a single windowed beat, or a median
+#' beat, because both routes go through [get_windows()] and [median_window()] and
+#' an object that already holds one beat passes through each unchanged. So
+#'
+#' ```r
+#' vectorcardiogram(ecg)
+#' ```
+#'
+#' and
+#'
+#' ```r
+#' ecg |>
+#'   get_windows() |>
+#'   median_window(align_feature = "N") |>
+#'   vectorcardiogram()
+#' ```
+#'
+#' describe the same beat, the first taking `beats = "median"` from its default
+#' and the second building the beat itself. Reach for the second when the
+#' windowing or the alignment needs to be something other than the default;
+#' `map_windows()` will run either function over every window of a collection.
 #'
 #' # Components
 #'
@@ -93,22 +112,25 @@
 #' organised atrial rhythm; in atrial fibrillation the atrial signal is
 #' characterised by [extract_f_waves()] instead.
 #'
-#' @param object An object of class `EGM` or of subclass [ECG]. An `EGM` from an
-#'   electrophysiology study is reduced to its surface leads first (see
-#'   [as_ECG()]). All eight leads of the [kors] transformation must be present.
+#' @param object An [ECG]: a whole record, a single windowed beat, or a median
+#'   beat. An `EGM` is reduced to its surface leads first (see [as_ECG()]), which
+#'   is how a 12-lead record read straight off disk, or the surface leads of an
+#'   electrophysiology study, become usable. All eight leads of the [kors]
+#'   transformation must be present.
 #'
-#' @param beats Which beats to trace. `"median"` (default) returns a single
+#' @param beats Which beats to trace when the object holds more than one.
+#'   `"median"` (default) reduces them with [median_window()] and returns a single
 #'   loop; `"all"` returns one loop per beat, preserving the beat-to-beat
 #'   variability a signal average is designed to remove (Tachmatzidis et al.
-#'   2022).
+#'   2022). An object that already holds one beat is unaffected by either.
 #'
 #' @param channel An optional annotation channel guiding the wave delineation.
 #'   Required when the annotations span more than one channel, as they do when
 #'   an annotator has been run per lead.
 #'
 #' @param baseline Logical. If `TRUE` (default), each beat is referenced to its
-#'   own onset, taken as the median of the first 10 ms. Orientation is measured
-#'   from the origin, so an offset baseline rotates every angle.
+#'   own onset, taken as the median of the 10 ms following it. Orientation is
+#'   measured from the origin, so an offset baseline rotates every angle.
 #'
 #' @return A `list` of two `data.table`s:
 #'
@@ -159,8 +181,9 @@
 #' *Diagnostics*. 2022;12(4):830. \doi{10.3390/diagnostics12040830}
 #'
 #' @seealso [kors] for the transformation itself, [as_ECG()] for the surface
-#'   lead contract, [extract_f_waves()] for the atrial signal when there is no P
-#'   wave to trace.
+#'   lead contract, [get_windows()] and [median_window()] for building a beat by
+#'   hand, [extract_f_waves()] for the atrial signal when there is no P wave to
+#'   trace.
 #'
 #' @examples
 #' \dontrun{
@@ -169,6 +192,12 @@
 #'
 #' vectorcardiogram(ecg)$components
 #' atrial_vectorcardiogram(ecg, beats = "all")$components
+#'
+#' # The same loop, with the windowing and alignment chosen explicitly
+#' ecg |>
+#'   get_windows(by = by_rhythm(channel = 2)) |>
+#'   median_window(align_feature = "N", channel_criteria = 2) |>
+#'   vectorcardiogram()
 #' }
 #'
 #' @name vectorcardiogram
@@ -274,16 +303,19 @@ atrial_vectorcardiogram <- function(
 #'
 #' @description Shared engine behind [vectorcardiogram()] and
 #'   [atrial_vectorcardiogram()]. Gates the record on the surface lead contract,
-#'   transforms it once, and cuts it at the annotated boundaries of the requested
-#'   waves.
+#'   cuts it into beats, and transforms each one.
 #'
-#' @details The first wave in `waves` anchors the beat; any others are attached
-#'   to the beat whose anchor they follow. Each returned beat holds `xyz`, the
-#'   orthogonal signal spanning the whole beat, and `mark`, the onset/offset
-#'   positions of each wave within it, plus `segment`, those slices taken.
+#' @details A beat runs from the onset of the first wave in `waves` to the offset
+#'   of the last, so every wave the components are read from travels with it.
+#'   Windowing is [get_windows()] and reduction is [median_window()], so an object
+#'   that already holds a single beat passes through both unchanged - which is
+#'   what lets a windowed beat, or a median beat, be handed straight in.
+#'
+#'   Each returned beat holds `xyz`, the orthogonal signal over the whole span,
+#'   and `segment`, that span cut into the individual waves.
 #'
 #' @inheritParams vectorcardiogram
-#' @param waves A `character` vector of waves to cut, anchor first.
+#' @param waves A `character` vector of waves to cut, in order.
 #' @param what A `character` naming the caller, used in error messages.
 #'
 #' @return A `list` of `frequency` and `beats`.
@@ -292,6 +324,7 @@ atrial_vectorcardiogram <- function(
 trace_loops <- function(object, waves, beats, channel, baseline, what) {
   object <- require_ECG(object, leads = colnames(kors), what = what)
   frequency <- attributes(object$header)$record_line$frequency
+  peaks <- c(P = "p", QRS = "N", T = "t")
 
   ann <- get_single_annotation(object)
   if (nrow(ann) == 0) {
@@ -303,13 +336,12 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
       call. = FALSE
     )
   }
-  ann <- label_waves(ann)
 
   # Per-lead annotators leave one set of boundaries per channel, and interleaved
   # those do not describe beats
-  if ("channel" %in% names(ann)) {
+  if (is.null(channel) && !is.null(ann$channel)) {
     spread <- unique(ann$channel[ann$channel != 0L])
-    if (is.null(channel) && length(spread) > 1) {
+    if (length(spread) > 1) {
       stop(
         what,
         " needs a guiding `channel`: annotations span channels ",
@@ -317,111 +349,92 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
         call. = FALSE
       )
     }
-    if (!is.null(channel)) {
-      ann <- ann[ann$channel %in% c(as.integer(channel), 0L), ]
-    }
   }
 
-  # Whole record in orthogonal leads. Kors is linear, so cutting after is the
-  # same signal as cutting first and transforming each beat.
-  leads <- colnames(kors)
-  signal <- as.data.frame(object$signal)[, leads, drop = FALSE]
-  xyz <- as.matrix(signal) %*% t(kors)
-
-  # Bracket pairs, one row per delineated wave: each onset takes the next offset
-  # and the peak enclosed between them
-  delineated <- lapply(waves, function(w) {
-    onset <- sort(ann$sample[ann$type == "(" & ann$wave %in% w])
-    offset <- sort(ann$sample[ann$type == ")" & ann$wave %in% w])
-    peaks <- sort(ann$sample[ann$type %in% c("p", "N", "t") & ann$wave %in% w])
-
-    matched <- offset[findInterval(onset, offset) + 1L]
-    onset <- onset[!is.na(matched)]
-    matched <- matched[!is.na(matched)]
-    enclosed <- vapply(seq_along(onset), function(i) {
-      inside <- peaks[peaks > onset[i] & peaks < matched[i]]
-      if (length(inside) > 0) inside[1] else NA_integer_
-    }, integer(1))
-
-    # A bracket with nothing recognisable inside it is not a wave
-    complete <- !is.na(enclosed)
-    data.table::data.table(
-      onset = onset[complete],
-      offset = matched[complete],
-      peak = enclosed[complete]
-    )
-  })
-  names(delineated) <- waves
-
-  anchor <- delineated[[waves[1]]]
-  if (nrow(anchor) == 0) {
+  # A beat runs to the last wave the record actually delineates. Without a T
+  # wave the ventricular loop still stands; its GEH components come back NA.
+  labelled <- label_waves(ann)
+  closed <- waves[vapply(waves, function(v) {
+    any(labelled$type == ")" & labelled$wave %in% v)
+  }, logical(1))]
+  if (length(closed) == 0 || closed[1] != waves[1]) {
     stop("No complete ", waves[1], " waves could be delineated", call. = FALSE)
   }
 
-  # Sample offsets of every boundary from the anchor peak, one row per beat.
-  # Waves other than the anchor belong to the beat whose anchor they follow.
-  bounds <- lapply(waves, function(w) {
-    it <- delineated[[w]]
-    if (w != waves[1]) {
-      it <- it[match(seq_len(nrow(anchor)), findInterval(it$onset, anchor$onset))]
-    }
-    cbind(it$onset, it$offset) - anchor$peak
-  })
-  names(bounds) <- waves
-
-  if (beats == "median") {
-    # One representative beat: the median shape, on a grid anchored at the peak
-    bounds <- lapply(bounds, function(b) {
-      matrix(round(apply(b, 2, stats::median, na.rm = TRUE)), nrow = 1)
-    })
+  windows <- get_windows(
+    object,
+    by = by_rhythm(
+      rhythm = "sinus",
+      onset = list(type = "(", wave = waves[1]),
+      offset = list(type = ")", wave = closed[length(closed)]),
+      reference = list(type = peaks[[waves[1]]]),
+      channel = channel
+    )
+  )
+  if (length(windows) == 0) {
+    stop("No complete ", waves[1], " waves could be delineated", call. = FALSE)
   }
 
-  # A beat runs from the earliest onset to the latest offset across its waves
-  onsets <- do.call(pmin, c(lapply(bounds, function(b) b[, 1]), na.rm = TRUE))
-  offsets <- do.call(pmax, c(lapply(bounds, function(b) b[, 2]), na.rm = TRUE))
+  # A median beat is a beat, and it carries the fiducials that produced it, so
+  # both paths converge here. An object that was already one beat is left alone.
+  if (beats == "median" && length(windows) > 1) {
+    windows <- list(median_window(
+      windows,
+      align_feature = peaks[[waves[1]]],
+      channel_criteria = channel
+    ))
+  }
 
-  # Baselining is per beat and before any median, so that beat-to-beat wander is
-  # removed rather than averaged in. Samples off the ends of the record are NA.
-  cut_beat <- function(peak, from, to) {
-    rows <- peak + seq(from, to) + 1L
-    rows[rows < 1 | rows > nrow(xyz)] <- NA_integer_
-    beat <- xyz[rows, , drop = FALSE]
+  traced <- lapply(windows, function(w) {
+    fiducials <- label_waves(get_single_annotation(w))
+    if (!is.null(channel) && !is.null(fiducials$channel)) {
+      fiducials <- fiducials[fiducials$channel %in% c(as.integer(channel), 0L), ]
+    }
+
+    # Row range of each wave within the beat
+    mark <- lapply(waves, function(v) {
+      onset <- fiducials$sample[fiducials$type == "(" & fiducials$wave %in% v]
+      offset <- fiducials$sample[fiducials$type == ")" & fiducials$wave %in% v]
+      if (length(onset) == 0 || length(offset) == 0) {
+        NULL
+      } else {
+        c(min(onset), max(offset)) + 1L
+      }
+    })
+    names(mark) <- waves
+    if (is.null(mark[[waves[1]]])) {
+      stop("No complete ", waves[1], " wave in this beat", call. = FALSE)
+    }
+
+    xyz <- as.matrix(
+      as.data.frame(w$signal)[, colnames(kors), drop = FALSE]
+    ) %*% t(kors)
 
     if (baseline) {
-      lead_in <- seq_len(min(nrow(beat), max(1, round(frequency * 0.01))))
-      onset <- apply(beat[lead_in, , drop = FALSE], 2, stats::median)
-      beat <- sweep(beat, 2, onset)
+      # The onset of the first wave, over 10 ms so that one noisy sample cannot
+      # displace the loop. A median beat may carry padding before that onset,
+      # which is why the lead-in starts there rather than at the window edge.
+      from <- mark[[waves[1]]][1]
+      lead_in <- from + seq_len(min(
+        nrow(xyz) - from + 1L,
+        max(1, round(frequency * 0.01))
+      )) - 1L
+      onset <- apply(xyz[lead_in, , drop = FALSE], 2, stats::median)
+      xyz <- sweep(xyz, 2, onset)
     }
 
-    beat
-  }
-
-  if (beats == "median") {
-    # Every beat on the median grid, then the row-wise median across them
-    stack <- vapply(
-      anchor$peak,
-      cut_beat,
-      matrix(0, offsets - onsets + 1L, 3L),
-      from = onsets,
-      to = offsets
+    # The span the components are read over, ignoring any padding outside it
+    delineated <- Filter(Negate(is.null), mark)
+    span <- mark[[waves[1]]][1]:max(
+      vapply(delineated, function(m) m[2], numeric(1))
     )
-    loops <- list(apply(stack, c(1, 2), stats::median, na.rm = TRUE))
-    # vapply took its dimensions from the template, which carries no lead names
-    colnames(loops[[1]]) <- colnames(xyz)
-  } else {
-    loops <- lapply(seq_along(anchor$peak), function(i) {
-      cut_beat(anchor$peak[i], onsets[i], offsets[i])
-    })
-  }
 
-  # Boundaries become 1-based positions within the beat, so a caller can slice
-  # each wave straight out of it
-  traced <- lapply(seq_along(loops), function(i) {
-    mark <- lapply(bounds, function(b) as.integer(b[i, ] - onsets[i] + 1L))
-    segment <- lapply(mark, function(m) {
-      if (anyNA(m)) NULL else loops[[i]][m[1]:m[2], , drop = FALSE]
-    })
-    list(xyz = loops[[i]], mark = mark, segment = segment)
+    list(
+      xyz = xyz[span, , drop = FALSE],
+      segment = lapply(mark, function(m) {
+        if (is.null(m)) NULL else xyz[m[1]:m[2], , drop = FALSE]
+      })
+    )
   })
 
   list(frequency = frequency, beats = traced)

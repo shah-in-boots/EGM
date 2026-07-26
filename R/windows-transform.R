@@ -208,6 +208,10 @@ pad_window <- function(
     )
   })
 
+  # Tagged here rather than only in `rewrap_windows()`, so that callers asking
+  # for a bare list - `median_window()` among them - still get their class back
+  padded <- lapply(padded, keep_ECG, windows = windows)
+
   if (preserve_class) {
     return(rewrap_windows(padded, x, "padded"))
   }
@@ -351,10 +355,13 @@ median_window <- function(
     ))
   )
 
-  new_EGM(
-    signal = median_signal,
-    header = median_header,
-    annotation = median_annotations(windows, rl$frequency)
+  keep_ECG(
+    new_EGM(
+      signal = median_signal,
+      header = median_header,
+      annotation = median_annotations(windows, rl$frequency)
+    ),
+    windows = windows
   )
 }
 

@@ -25,6 +25,15 @@
   so need the T wave delineated as well; where it is not, they are `NA` rather
   than absent.
 
+  The unit of analysis is one beat, so both accept a whole record, a single
+  windowed beat, or a median beat — windowing is `get_windows()` and reduction
+  is `median_window()`, and an object that already holds one beat passes through
+  each unchanged:
+
+  ```r
+  ecg |> get_windows() |> median_window(align_feature = "N") |> vectorcardiogram()
+  ```
+
   Wave boundaries come from the record's own delineation annotations. A record
   without them is an error rather than a guess, as is a record whose annotations
   span several channels without a guiding `channel`.
@@ -159,6 +168,13 @@
   most windows do not carry is dropped. The header gains a `median_info` string
   recording how many windows went into the beat, and loses the `window_info`
   string naming the single source window it is no longer from.
+
+* **Windows cut from an `ECG` are `ECG`s.** The class was previously lost at
+  extraction, so a windowed beat could not satisfy an analysis gated on it.
+  `get_windows()`, `pad_window()`, `normalize_window()`, `warp_window()` and
+  `median_window()` now carry it, which is what lets a beat be piped into
+  `vectorcardiogram()`. Windows of a record that is not a surface ECG are
+  unaffected.
 
 * **`window()` is now `get_windows()`** (**breaking**). The old name masked
   `stats::window()`, which is a real S3 generic, so attaching EGM broke

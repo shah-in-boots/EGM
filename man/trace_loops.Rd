@@ -7,24 +7,27 @@
 trace_loops(object, waves, beats, channel, baseline, what)
 }
 \arguments{
-\item{object}{An object of class \code{EGM} or of subclass \link{ECG}. An \code{EGM} from an
-electrophysiology study is reduced to its surface leads first (see
-\code{\link[=as_ECG]{as_ECG()}}). All eight leads of the \link{kors} transformation must be present.}
+\item{object}{An \link{ECG}: a whole record, a single windowed beat, or a median
+beat. An \code{EGM} is reduced to its surface leads first (see \code{\link[=as_ECG]{as_ECG()}}), which
+is how a 12-lead record read straight off disk, or the surface leads of an
+electrophysiology study, become usable. All eight leads of the \link{kors}
+transformation must be present.}
 
-\item{waves}{A \code{character} vector of waves to cut, anchor first.}
+\item{waves}{A \code{character} vector of waves to cut, in order.}
 
-\item{beats}{Which beats to trace. \code{"median"} (default) returns a single
+\item{beats}{Which beats to trace when the object holds more than one.
+\code{"median"} (default) reduces them with \code{\link[=median_window]{median_window()}} and returns a single
 loop; \code{"all"} returns one loop per beat, preserving the beat-to-beat
 variability a signal average is designed to remove (Tachmatzidis et al.
-2022).}
+2022). An object that already holds one beat is unaffected by either.}
 
 \item{channel}{An optional annotation channel guiding the wave delineation.
 Required when the annotations span more than one channel, as they do when
 an annotator has been run per lead.}
 
 \item{baseline}{Logical. If \code{TRUE} (default), each beat is referenced to its
-own onset, taken as the median of the first 10 ms. Orientation is measured
-from the origin, so an offset baseline rotates every angle.}
+own onset, taken as the median of the 10 ms following it. Orientation is
+measured from the origin, so an offset baseline rotates every angle.}
 
 \item{what}{A \code{character} naming the caller, used in error messages.}
 }
@@ -34,13 +37,16 @@ A \code{list} of \code{frequency} and \code{beats}.
 \description{
 Shared engine behind \code{\link[=vectorcardiogram]{vectorcardiogram()}} and
 \code{\link[=atrial_vectorcardiogram]{atrial_vectorcardiogram()}}. Gates the record on the surface lead contract,
-transforms it once, and cuts it at the annotated boundaries of the requested
-waves.
+cuts it into beats, and transforms each one.
 }
 \details{
-The first wave in \code{waves} anchors the beat; any others are attached
-to the beat whose anchor they follow. Each returned beat holds \code{xyz}, the
-orthogonal signal spanning the whole beat, and \code{mark}, the onset/offset
-positions of each wave within it, plus \code{segment}, those slices taken.
+A beat runs from the onset of the first wave in \code{waves} to the offset
+of the last, so every wave the components are read from travels with it.
+Windowing is \code{\link[=get_windows]{get_windows()}} and reduction is \code{\link[=median_window]{median_window()}}, so an object
+that already holds a single beat passes through both unchanged - which is
+what lets a windowed beat, or a median beat, be handed straight in.
+
+Each returned beat holds \code{xyz}, the orthogonal signal over the whole span,
+and \code{segment}, that span cut into the individual waves.
 }
 \keyword{internal}

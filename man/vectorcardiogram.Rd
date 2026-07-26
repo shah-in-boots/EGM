@@ -20,22 +20,25 @@ atrial_vectorcardiogram(
 )
 }
 \arguments{
-\item{object}{An object of class \code{EGM} or of subclass \link{ECG}. An \code{EGM} from an
-electrophysiology study is reduced to its surface leads first (see
-\code{\link[=as_ECG]{as_ECG()}}). All eight leads of the \link{kors} transformation must be present.}
+\item{object}{An \link{ECG}: a whole record, a single windowed beat, or a median
+beat. An \code{EGM} is reduced to its surface leads first (see \code{\link[=as_ECG]{as_ECG()}}), which
+is how a 12-lead record read straight off disk, or the surface leads of an
+electrophysiology study, become usable. All eight leads of the \link{kors}
+transformation must be present.}
 
-\item{beats}{Which beats to trace. \code{"median"} (default) returns a single
+\item{beats}{Which beats to trace when the object holds more than one.
+\code{"median"} (default) reduces them with \code{\link[=median_window]{median_window()}} and returns a single
 loop; \code{"all"} returns one loop per beat, preserving the beat-to-beat
 variability a signal average is designed to remove (Tachmatzidis et al.
-2022).}
+2022). An object that already holds one beat is unaffected by either.}
 
 \item{channel}{An optional annotation channel guiding the wave delineation.
 Required when the annotations span more than one channel, as they do when
 an annotator has been run per lead.}
 
 \item{baseline}{Logical. If \code{TRUE} (default), each beat is referenced to its
-own onset, taken as the median of the first 10 ms. Orientation is measured
-from the origin, so an offset baseline rotates every angle.}
+own onset, taken as the median of the 10 ms following it. Orientation is
+measured from the origin, so an offset baseline rotates every angle.}
 }
 \value{
 A \code{list} of two \code{data.table}s:
@@ -64,24 +67,41 @@ wave boundaries. Each returns the orthogonal X, Y, Z signal together with
 the components extracted from it.
 }
 \section{Reconstruction}{
-The transformation is linear, so it commutes with the segmentation: the
-record is transformed once and cut afterwards, which is the same signal as
-cutting first and transforming each beat. It does not commute with the
-median, which is not a linear operator, so \code{beats = "median"} returns the
-median of the beats' \emph{loops} rather than the loop of the median beat. This is
-the order used for signal-averaged orthogonal P-wave analysis (Havmöller et
-al. 2007).
+The transformation is linear, so it commutes with the segmentation: a beat
+cut from the transformed record and a beat transformed after cutting are the
+same signal, and it makes no difference that each beat is transformed
+separately here.
+
+It does not commute with the median, which is not a linear operator. The
+median is taken lead by lead, by \code{\link[=median_window]{median_window()}}, so \code{beats = "median"}
+returns the loop of the median beat rather than the median of the beats'
+loops.
 }
 
 \section{Segmentation}{
-Wave boundaries come from the record's own delineation annotations, since
-neither loop can be delimited without them; a record without them is an error
-rather than a guess. Beats are anchored on the wave peak - the QRS peak for
-the ventricular loop, the P peak for the atrial one - and for
-\code{beats = "median"} every beat is placed on a common grid at that anchor and
-reduced sample by sample. The median beat's own boundaries are the medians of
-the individual ones, so it has a duration rather than the union of all
-durations.
+The unit of analysis is one beat. Wave boundaries come from the record's own
+delineation annotations, since neither loop can be delimited without them; a
+record without them is an error rather than a guess.
+
+Both functions accept a whole record, a single windowed beat, or a median
+beat, because both routes go through \code{\link[=get_windows]{get_windows()}} and \code{\link[=median_window]{median_window()}} and
+an object that already holds one beat passes through each unchanged. So
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{vectorcardiogram(ecg)
+}\if{html}{\out{</div>}}
+
+and
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ecg |>
+  get_windows() |>
+  median_window(align_feature = "N") |>
+  vectorcardiogram()
+}\if{html}{\out{</div>}}
+
+describe the same beat, the first taking \code{beats = "median"} from its default
+and the second building the beat itself. Reach for the second when the
+windowing or the alignment needs to be something other than the default;
+\code{map_windows()} will run either function over every window of a collection.
 }
 
 \section{Components}{
@@ -111,6 +131,12 @@ ecg <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"),
 
 vectorcardiogram(ecg)$components
 atrial_vectorcardiogram(ecg, beats = "all")$components
+
+# The same loop, with the windowing and alignment chosen explicitly
+ecg |>
+  get_windows(by = by_rhythm(channel = 2)) |>
+  median_window(align_feature = "N", channel_criteria = 2) |>
+  vectorcardiogram()
 }
 
 }
@@ -145,6 +171,7 @@ analysis to predict atrial fibrillation recurrence after catheter ablation.
 }
 \seealso{
 \link{kors} for the transformation itself, \code{\link[=as_ECG]{as_ECG()}} for the surface
-lead contract, \code{\link[=extract_f_waves]{extract_f_waves()}} for the atrial signal when there is no P
-wave to trace.
+lead contract, \code{\link[=get_windows]{get_windows()}} and \code{\link[=median_window]{median_window()}} for building a beat by
+hand, \code{\link[=extract_f_waves]{extract_f_waves()}} for the atrial signal when there is no P wave to
+trace.
 }

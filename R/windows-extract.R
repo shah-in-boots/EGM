@@ -341,7 +341,7 @@ get_windows <- function(object, by = "rhythm") {
     }
 
   new_windows(
-    windows,
+    lapply(windows, keep_ECG, windows = list(object)),
     method = strategy@method,
     source_record = source_record
   )

@@ -200,6 +200,76 @@ test_that("the median beat sits among the beats it summarises", {
   )
 })
 
+test_that("a windowed beat can be handed straight in", {
+  object <- as_ECG(sinus_ecg())
+  windows <- get_windows(object, by = by_rhythm())
+
+  # The window is still an ECG, so it satisfies the contract on its own
+  expect_s3_class(windows[[3]], "ECG")
+
+  from_window <- vectorcardiogram(windows[[3]])
+  from_record <- vectorcardiogram(object, beats = "all")
+
+  # One beat in, one loop out, matching that beat of the whole record
+  expect_equal(nrow(from_window$components), 1L)
+  expect_equal(
+    from_window$components$magnitude_peak,
+    from_record$components$magnitude_peak[3]
+  )
+  expect_equal(
+    from_window$components$qrst_angle_peak,
+    from_record$components$qrst_angle_peak[3]
+  )
+})
+
+test_that("a median beat can be piped in", {
+  object <- as_ECG(sinus_ecg())
+
+  piped <- object |>
+    get_windows() |>
+    median_window(align_feature = "N") |>
+    vectorcardiogram()
+
+  expect_equal(nrow(piped$components), 1L)
+
+  # Built by hand or taken from `beats = "median"`, it is the same beat: the
+  # windowing differs (P-onset to T-offset rather than QRS-onset to T-offset)
+  # but the median across beats does not
+  internal <- vectorcardiogram(object)
+  expect_equal(
+    piped$components$magnitude_peak,
+    internal$components$magnitude_peak,
+    tolerance = 0.01
+  )
+  expect_equal(
+    piped$components$qrst_angle_peak,
+    internal$components$qrst_angle_peak,
+    tolerance = 0.01
+  )
+
+  # Reducing an object that is already one beat is a no-op, not a second median
+  expect_equal(
+    vectorcardiogram(median_window(get_windows(object), align_feature = "N")),
+    piped
+  )
+})
+
+test_that("windows carry the ECG class through the transforms", {
+  object <- as_ECG(sinus_ecg())
+  windows <- get_windows(object, by = by_rhythm())
+
+  expect_true(all(vapply(windows, is_ECG, logical(1))))
+  expect_s3_class(pad_window(windows, align = "feature")[[1]], "ECG")
+  expect_s3_class(normalize_window(windows, target_samples = 400)[[1]], "ECG")
+  expect_s3_class(median_window(windows, align_feature = "N"), "ECG")
+
+  # An EGM that is not a surface ECG stays an EGM
+  study <- read_wfdb("ecg-sinus", test_path(), "ann")
+  plain <- get_windows(study, by = by_rhythm(channel = 2))
+  expect_false(is_ECG(plain[[1]]))
+  expect_false(is_ECG(median_window(plain, align_feature = "N", channel_criteria = 2)))
+})
+
 # Global electric heterogeneity ----
 
 test_that("GEH components come back with the ventricular loop", {

@@ -321,11 +321,39 @@ window_method <- function(x) {
 #' @keywords internal
 rewrap_windows <- function(result, source, step) {
   new_windows(
-    result,
+    lapply(result, keep_ECG, windows = source),
     method = window_method(source),
     source_record = window_source_record(source),
     history = c(window_history(source), step)
   )
+}
+
+#' Carry the ECG class onto a derived beat
+#'
+#' @description A window cut from an [ECG], and a beat derived from such windows,
+#'   holds the same leads and so is still an `ECG`. Without this the class would
+#'   be lost at the first transform, and analyses gated on it - notably
+#'   [vectorcardiogram()] - could not be handed a windowed beat.
+#'
+#' @details The class is set directly rather than through [ECG()], which would
+#'   re-validate a lead set already known to be good and warn once per window.
+#'
+#' @param x The derived `EGM` object.
+#' @param windows The windows it came from; the class is carried only when every
+#'   one of them is an `ECG`.
+#'
+#' @return `x`, classed as an `ECG` where that is warranted.
+#'
+#' @keywords internal
+keep_ECG <- function(x, windows) {
+  inherited <- length(windows) > 0 &&
+    all(vapply(windows, is_ECG, logical(1)))
+
+  if (!inherited || is_ECG(x)) {
+    return(x)
+  }
+
+  structure(x, class = union("ECG", class(x)))
 }
 
 #' Recover the transform history from a window collection
