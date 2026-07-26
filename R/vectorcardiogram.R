@@ -85,8 +85,6 @@ colnames(.kors) <- c("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")
 #'   own onset, taken as the median of the first 10 ms. Loop orientation is
 #'   measured from the origin, so an offset baseline rotates every angle.
 #'
-#' @param ... Additional arguments passed to [median_window()].
-#'
 #' @return An object of class `vectorcardiogram`, a list with:
 #'
 #'   \describe{
@@ -159,10 +157,9 @@ vectorcardiogram <- function(
   object,
   beats = c("median", "all"),
   channel = NULL,
-  baseline = TRUE,
-  ...
+  baseline = TRUE
 ) {
-  vcg_from_wave(object, "QRS", match.arg(beats), channel, baseline, ...)
+  vcg_from_wave(object, "QRS", match.arg(beats), channel, baseline)
 }
 
 #' @rdname vectorcardiogram
@@ -171,10 +168,9 @@ atrial_vectorcardiogram <- function(
   object,
   beats = c("median", "all"),
   channel = NULL,
-  baseline = TRUE,
-  ...
+  baseline = TRUE
 ) {
-  vcg_from_wave(object, "P", match.arg(beats), channel, baseline, ...)
+  vcg_from_wave(object, "P", match.arg(beats), channel, baseline)
 }
 
 #' Trace the loop of a single wave
@@ -189,7 +185,7 @@ atrial_vectorcardiogram <- function(
 #' @return A `vectorcardiogram` object.
 #'
 #' @keywords internal
-vcg_from_wave <- function(object, wave, beats, channel, baseline, ...) {
+vcg_from_wave <- function(object, wave, beats, channel, baseline) {
   what <- paste0("The ", wave, " vectorcardiogram")
   object <- require_ECG(object, leads = colnames(.kors), what = what)
 
@@ -244,8 +240,7 @@ vcg_from_wave <- function(object, wave, beats, channel, baseline, ...) {
     windows <- list(median_window(
       windows,
       align_feature = peak,
-      channel_criteria = channel,
-      ...
+      channel_criteria = channel
     ))
   }
 
@@ -353,7 +348,6 @@ vcg_loop_metrics <- function(xyz, frequency) {
   }
 
   data.table::data.table(
-    samples = nrow(xyz),
     duration = nrow(xyz) / frequency,
     magnitude_peak = magnitude[peak],
     magnitude_mean = mean(magnitude),

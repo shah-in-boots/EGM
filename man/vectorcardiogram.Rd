@@ -9,16 +9,14 @@ vectorcardiogram(
   object,
   beats = c("median", "all"),
   channel = NULL,
-  baseline = TRUE,
-  ...
+  baseline = TRUE
 )
 
 atrial_vectorcardiogram(
   object,
   beats = c("median", "all"),
   channel = NULL,
-  baseline = TRUE,
-  ...
+  baseline = TRUE
 )
 }
 \arguments{
@@ -36,8 +34,6 @@ channel, as they do when an annotator has been run per lead.}
 \item{baseline}{Logical. If \code{TRUE} (default), each loop is referenced to its
 own onset, taken as the median of the first 10 ms. Loop orientation is
 measured from the origin, so an offset baseline rotates every angle.}
-
-\item{...}{Additional arguments passed to \code{\link[=median_window]{median_window()}}.}
 }
 \value{
 An object of class \code{vectorcardiogram}, a list with:

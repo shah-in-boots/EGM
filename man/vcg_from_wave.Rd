@@ -4,7 +4,7 @@
 \alias{vcg_from_wave}
 \title{Trace the loop of a single wave}
 \usage{
-vcg_from_wave(object, wave, beats, channel, baseline, ...)
+vcg_from_wave(object, wave, beats, channel, baseline)
 }
 \arguments{
 \item{object}{An object of class \code{EGM} or of subclass \link{ECG}. An \code{EGM} from an
@@ -23,8 +23,6 @@ channel, as they do when an annotator has been run per lead.}
 \item{baseline}{Logical. If \code{TRUE} (default), each loop is referenced to its
 own onset, taken as the median of the first 10 ms. Loop orientation is
 measured from the origin, so an offset baseline rotates every angle.}
-
-\item{...}{Additional arguments passed to \code{\link[=median_window]{median_window()}}.}
 }
 \value{
 A \code{vectorcardiogram} object.
