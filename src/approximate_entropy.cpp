@@ -3,7 +3,7 @@
 using namespace cpp11;
 
 [[cpp11::register]]
-double calculate_approximate_entropy_cpp(cpp11::writable::doubles x, int m = 3, double r = -1.0) {
+double calculate_approximate_entropy_cpp(cpp11::writable::doubles x, int m = 2, double r = -1.0) {
  	// Determine the length of the input time series.
  	int N = x.size();
 
@@ -12,7 +12,10 @@ double calculate_approximate_entropy_cpp(cpp11::writable::doubles x, int m = 3, 
  		stop("Time series is too short for the given embedding dimension.");
  	}
 
- 	// If r is negative, compute the tolerance as 3.5 times the standard deviation of x.
+ 	// If r is negative, compute the tolerance as 0.2 times the standard
+ 	// deviation of x. This is the conventional choice; the tolerance the
+ 	// function shipped with previously (3.5 SD) admitted nearly every pair of
+ 	// vectors as a match, which drove the statistic to ~0 regardless of input.
  	if (r < 0) {
  		double sum = 0.0;
  		// Calculate the sum of all elements to compute the mean.
@@ -28,8 +31,8 @@ double calculate_approximate_entropy_cpp(cpp11::writable::doubles x, int m = 3, 
  			var += diff * diff;
  		}
  		var /= (N - 1); // Use sample variance (dividing by N-1).
- 		// Calculate r as 3.5 times the standard deviation.
- 		r = 3.5 * std::sqrt(var);
+ 		// Calculate r as 0.2 times the standard deviation.
+ 		r = 0.2 * std::sqrt(var);
  	}
 
  	// Define a lambda function to compute the phi statistic for a given embedding dimension.

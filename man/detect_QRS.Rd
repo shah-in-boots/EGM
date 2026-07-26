@@ -29,33 +29,23 @@ The Pan-Tompkins algorithm is a widely-used method for QRS detection
 in ECG signals. This implementation follows these steps:
 \enumerate{
 \item Bandpass filtering (5-15 Hz) to reduce noise and emphasize QRS complexes
-\item Differentiation to highlight the steep slopes of QRS complexes 3. Squaring
-to amplify high-frequency components 4. Moving window integration to consider
-the overall QRS morphology 5. Adaptive thresholding to identify peaks 6.
-Application of a refractory period to prevent multiple detections of the same
-QRS complex
+\item Differentiation to highlight the steep slopes of QRS complexes
+\item Squaring to amplify high-frequency components
+\item Moving window integration to consider the overall QRS morphology
+\item Adaptive thresholding to identify peaks
+\item Application of a refractory period to prevent multiple detections of the
+same QRS complex
 }
 
-The function is designed to work with single-lead ECG signals, typically
-sampled at 250-1000 Hz.
+Positions are reported at the peak of the integration window, which lags the
+true R peak. Where beat alignment matters, refine them against the raw signal
+before use.
 }
 \examples{
 \dontrun{
-# Load ECG data
-ecg_data <- read_muse(system.file("extdata", "muse-sinus.xml", package = "EGM"))
-
-# Extract lead II signal
-signal <- ecg_data$signal$II
-
-# Get sampling frequency from header
+ecg_data <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
 freq <- attributes(ecg_data$header)$record_line$frequency
-
-# Detect QRS complexes
-qrs_locations <- detect_QRS(signal, freq)
-
-# Plot ECG with detected QRS complexes
-plot(signal, type = "l", xlab = "Sample", ylab = "Amplitude")
-points(qrs_locations, signal[qrs_locations], col = "red", pch = 19)
+qrs_locations <- detect_QRS(ecg_data$signal$II, freq)
 }
 
 }

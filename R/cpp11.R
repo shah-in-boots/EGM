@@ -8,6 +8,10 @@ fun <- function() {
   invisible(.Call(`_EGM_fun`))
 }
 
+calculate_sample_entropy_cpp <- function(x, m, r) {
+  .Call(`_EGM_calculate_sample_entropy_cpp`, x, m, r)
+}
+
 read_header_native_cpp <- function(header_path) {
   .Call(`_EGM_read_header_native_cpp`, header_path)
 }

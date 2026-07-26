@@ -2,22 +2,33 @@
 % Please edit documentation in R/fwave.R
 \name{calculate_dominant_frequency}
 \alias{calculate_dominant_frequency}
-\title{Calculate Dominant Frequency of a time series}
+\title{Calculate the dominant frequency of a time series}
 \usage{
-calculate_dominant_frequency(x, frequency, f_min = 4, f_max = 9)
+calculate_dominant_frequency(x, frequency, f_min = 4, f_max = 10, ...)
 }
 \arguments{
 \item{x}{Numeric vector of the time series}
 
-\item{frequency}{Sampling frequency of the signal}
+\item{frequency}{Sampling frequency of the signal in Hz}
 
-\item{f_min}{Minimum frequency to consider (default 4 Hz)}
+\item{f_min}{Lower edge of the search band in Hz. Default 4.}
 
-\item{f_max}{Maximum frequency to consider (default 9 Hz)}
+\item{f_max}{Upper edge of the search band in Hz. Default 10. Sustained
+atrial fibrillation is usually quoted at 4-10 Hz; typical atrial flutter is
+4-5.5 Hz and slow or drug-modified flutter falls below 4 Hz, so widen the
+band when flutter is expected.}
+
+\item{...}{Passed to \code{\link[=calculate_welch_spectrum]{calculate_welch_spectrum()}}}
 }
 \value{
-Dominant Frequency in Hz
+Dominant frequency in Hz. \code{NA} when the band holds no finite power.
 }
 \description{
-Calculate Dominant Frequency of a time series
+Returns the frequency carrying the most power within a search
+band, estimated from a Welch-averaged periodogram.
+}
+\examples{
+x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / 500)) + rnorm(5001, sd = 0.1)
+calculate_dominant_frequency(x, frequency = 500)
+
 }

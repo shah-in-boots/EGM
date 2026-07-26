@@ -2,59 +2,48 @@
 % Please edit documentation in R/fwave.R
 \name{calculate_approximate_entropy}
 \alias{calculate_approximate_entropy}
-\title{Calculate Approximate Entropy (Ap_en) of a time series}
+\title{Calculate Approximate Entropy (ApEn) of a time series}
 \usage{
-calculate_approximate_entropy(x, m = 3, r = NULL, implementation = "C++")
+calculate_approximate_entropy(x, m = 2, r = NULL, implementation = "C++")
 }
 \arguments{
 \item{x}{Numeric vector of the time series}
 
-\item{m}{Embedding dimension (sample size), default is 3}
+\item{m}{Embedding dimension. Default 2.}
 
-\item{r}{Tolerance (threshold), default is 3.5 * sd(x)}
+\item{r}{Tolerance. Default \code{NULL}, which uses 0.2 times the standard
+deviation of \code{x}.}
 
-\item{implementation}{Method to use for calculation, default is "C++", but can
-also be done in "R". The C++ implementation is faster.}
+\item{implementation}{Either \code{"C++"} (default, faster) or \code{"R"}}
 }
 \value{
-Approximate Entropy value
+Approximate entropy value
 }
 \description{
-This function computes the approximate entropy (Ap_en) of a time series using
-the method described by Pincus (1991). Ap_en is a measure of the regularity
-and complexity of the time series. It is calculated by comparing vectors
-derived from the time series in an m-dimensional embedded space and in an
-(m+1)-dimensional space. The basic steps are:
-\enumerate{
-\item \strong{Embedding:} The time series is embedded into vectors of length m (and
-m+1) by taking successive elements. For a time series of length N, this
-produces (N - m + 1) (or (N - m) for m+1) vectors.
-\item \strong{Distance Calculation:} For each pair of embedded vectors, the Chebyshev
-distance (i.e., the maximum absolute difference among corresponding elements)
-is computed. If the distance between two vectors is less than or equal to a
-tolerance r, they are considered "similar."
-\item \strong{Counting and Averaging:} For each embedded vector, the function counts
-the number of similar vectors (including itself) and takes the natural
-logarithm of the ratio of this count to the total number of vectors. These
-log-values are then averaged to yield a statistic phi.
-\item \strong{Ap_en Calculation:} The approximate entropy is the difference between
-the phi computed for dimension m and the phi computed for dimension m+1,
-i.e., Ap_en = phi(m) - phi(m+1).
+Computes approximate entropy by the method of Pincus (1991),
+comparing vectors embedded in \code{m} and \code{m + 1} dimensions and taking the
+difference of the resulting correlation integrals.
 }
+\details{
+Approximate entropy counts self-matches, which biases it toward
+regularity and makes it dependent on record length.
+\code{\link[=calculate_sample_entropy]{calculate_sample_entropy()}} avoids both and is generally preferable.
 
-The tolerance r is typically chosen as a multiple of the standard deviation
-of the time series (commonly 3.5 * sd(x)). If r is not provided (or is
-negative), it is calculated automatically.
+The tolerance \code{r} defaults to 0.2 times the standard deviation of \code{x}. Note
+that this default changed: earlier versions used 3.5 times the standard
+deviation, which admitted nearly every pair of vectors as a match and drove
+the statistic toward zero regardless of the input.
+
+The calculation is O(n^2). Decimate to a rate matched to the analysis band
+before calling.
 }
 \examples{
-# Example: Calculate approximate entropy for a random time series
 set.seed(123)
-x <- rnorm(1000)
-calculate_approximate_entropy(x, m = 3, r = -1, implementation = "R")
+calculate_approximate_entropy(rnorm(500), implementation = "R")
 
 }
 \references{
-Pincus, S. M. (1991). Approximate entropy as a measure of system
-complexity. Proceedings of the National Academy of Sciences, 88(6),
-2297-2301.
+Pincus SM. Approximate entropy as a measure of system complexity.
+\emph{Proceedings of the National Academy of Sciences of the USA}.
+1991;88(6):2297-2301. \doi{10.1073/pnas.88.6.2297}
 }

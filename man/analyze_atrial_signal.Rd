@@ -2,27 +2,51 @@
 % Please edit documentation in R/fwave.R
 \name{analyze_atrial_signal}
 \alias{analyze_atrial_signal}
-\title{Analyze F waves in atrial fibrillation ECG}
+\title{Analyse an isolated atrial signal}
 \usage{
 analyze_atrial_signal(
   atrial_signal,
   frequency,
-  characteristics = c("amplitude", "approximate_entropy", "dominant_frequency"),
+  characteristics = c("amplitude", "dominant_frequency", "organization",
+    "sample_entropy"),
+  original_signal = NULL,
+  qrs_loc = NULL,
+  annotation = NULL,
+  amplitude_window = c("tq", "all"),
+  band = c(4, 10),
+  entropy_rate = 50,
+  tol = 0.15,
   ...
 )
 }
 \arguments{
-\item{atrial_signal}{Numeric vector of the atrial signal}
+\item{atrial_signal}{Numeric vector of the cancelled (atrial) signal}
 
-\item{frequency}{Sampling frequency of the signal}
+\item{frequency}{Sampling frequency in Hz}
 
-\item{characteristics}{Vector of characteristics to analyze}
+\item{characteristics}{Character vector of features to compute}
 
-\item{...}{Additional parameters for specific analyses}
+\item{original_signal}{The uncancelled, filtered signal for the same lead.
+Needed for the QRS excursion used in amplitude normalisation and for the
+cancellation residual.}
+
+\item{qrs_loc}{Integer vector of QRS positions}
+
+\item{annotation}{Optional annotation table used to locate TQ segments}
+
+\item{amplitude_window}{Either \code{"tq"} or \code{"all"}}
+
+\item{band}{Numeric length-2 frequency band in Hz}
+
+\item{entropy_rate}{Rate in Hz to decimate to before computing entropy}
+
+\item{tol}{Tolerance for the harmonic test}
+
+\item{...}{Unused}
 }
 \value{
-A list containing the results of the requested analyses
+A named list of features
 }
 \description{
-Analyze F waves in atrial fibrillation ECG
+Analyse an isolated atrial signal
 }

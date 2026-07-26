@@ -20,6 +20,13 @@ extern "C" SEXP _EGM_fun() {
     return R_NilValue;
   END_CPP11
 }
+// sample_entropy.cpp
+double calculate_sample_entropy_cpp(cpp11::writable::doubles x, int m, double r);
+extern "C" SEXP _EGM_calculate_sample_entropy_cpp(SEXP x, SEXP m, SEXP r) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(calculate_sample_entropy_cpp(cpp11::as_cpp<cpp11::decay_t<cpp11::writable::doubles>>(x), cpp11::as_cpp<cpp11::decay_t<int>>(m), cpp11::as_cpp<cpp11::decay_t<double>>(r)));
+  END_CPP11
+}
 // wfdb.cpp
 cpp11::writable::list read_header_native_cpp(const std::string & header_path);
 extern "C" SEXP _EGM_read_header_native_cpp(SEXP header_path) {
@@ -61,6 +68,7 @@ extern "C" SEXP _EGM_write_annotation_native_cpp(SEXP annotation_path, SEXP samp
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
     {"_EGM_calculate_approximate_entropy_cpp", (DL_FUNC) &_EGM_calculate_approximate_entropy_cpp,  3},
+    {"_EGM_calculate_sample_entropy_cpp",      (DL_FUNC) &_EGM_calculate_sample_entropy_cpp,       3},
     {"_EGM_fun",                               (DL_FUNC) &_EGM_fun,                                0},
     {"_EGM_read_annotation_native_cpp",        (DL_FUNC) &_EGM_read_annotation_native_cpp,         1},
     {"_EGM_read_header_native_cpp",            (DL_FUNC) &_EGM_read_header_native_cpp,             1},

@@ -2,13 +2,23 @@
 % Please edit documentation in R/fwave.R
 \name{extract_f_waves}
 \alias{extract_f_waves}
-\title{Extract F wave features from ECG}
+\title{Extract fibrillatory wave features from a surface ECG}
 \usage{
 extract_f_waves(
   object,
   lead = NULL,
-  qrs_method = "adaptive_svd",
-  f_characteristics = "amplitude",
+  qrs_loc = NULL,
+  cancel_method = c("spatiotemporal", "average_beat", "adaptive_svd"),
+  f_characteristics = c("amplitude", "dominant_frequency", "organization",
+    "sample_entropy"),
+  amplitude_window = c("tq", "all"),
+  normalize = c("none", "qrs"),
+  band = c(4, 10),
+  entropy_rate = 50,
+  pooled_spectrum = TRUE,
+  rhythm = NULL,
+  tol = 0.15,
+  keep_signal = FALSE,
   verbose = TRUE,
   .force_all = FALSE,
   ...
@@ -17,41 +27,159 @@ extract_f_waves(
 \arguments{
 \item{object}{An object of class \code{EGM} or of subclass \code{ECG}}
 
-\item{lead}{Optional. A character string specifying the lead to analyze. If
-NULL (default), all available surface leads will be processed.}
+\item{lead}{Optional. A character vector of leads to analyse. If \code{NULL}
+(default), all available surface leads are processed. Cancellation always
+uses every available surface lead regardless of this argument, since the
+spatiotemporal fit draws on all of them.}
 
-\item{qrs_method}{Method for ventricular signal removal. Default is
-"adaptive_svd" for adaptive singular value decomposition.}
+\item{qrs_loc}{Optional integer vector of QRS sample positions, at the
+record's own sampling frequency. If \code{NULL} (default), positions are taken
+from the object's annotation table when one is attached, and otherwise
+detected from a multi-lead composite.}
 
-\item{f_characteristics}{Vector of characteristics to analyze from ECG
-signal. Options: "amplitude", "approximate_entropy", "dominant_frequency".
-Please see \code{\link[=calculate_approximate_entropy]{calculate_approximate_entropy()}} and
-\code{\link[=calculate_dominant_frequency]{calculate_dominant_frequency()}} for more details.}
+\item{cancel_method}{Ventricular cancellation method. One of
+\code{"spatiotemporal"} (default), \code{"average_beat"}, or \code{"adaptive_svd"}.}
 
-\item{verbose}{Logical. If TRUE, print information about which leads will be
-analyzed. Default is TRUE.}
+\item{f_characteristics}{Character vector of features to compute. Any of
+\code{"amplitude"}, \code{"dominant_frequency"}, \code{"organization"}, \code{"sample_entropy"},
+\code{"approximate_entropy"}.}
 
-\item{.force_all}{Logical. If FALSE (default), only process surface ECG leads.
-If TRUE, process all available leads. This parameter is ignored if the object
-is of class 'ECG', in which case all leads are processed.}
+\item{amplitude_window}{Where amplitude is measured. \code{"tq"} (default)
+restricts measurement to the TQ segments, where the ventricles are
+electrically silent. \code{"all"} uses the whole record, which confounds
+fibrillatory amplitude with cancellation error, since whatever cancellation
+fails to remove is concentrated at the QRS.}
 
-\item{...}{Additional arguments passed to methods}
+\item{normalize}{Amplitude normalisation. \code{"none"} (default) returns raw
+signal units. \code{"qrs"} additionally divides by the QRS excursion in the same
+lead, which cancels the thoracic transfer function to first order and makes
+amplitudes comparable \emph{between} patients. Both are always returned; this
+argument only sets which one \code{f_amplitude} refers to.}
+
+\item{band}{Numeric length-2 vector giving the frequency band searched for the
+dominant fibrillatory frequency, in Hz. Default \code{c(4, 10)}. Sustained atrial
+fibrillation is usually quoted at 4-10 Hz. Typical atrial flutter is
+4-5.5 Hz, and slow or drug-modified flutter falls below 4 Hz, so widen this
+when flutter is expected.}
+
+\item{entropy_rate}{Sampling rate in Hz to which the atrial signal is
+decimated before entropy is computed. Default 50. Entropy is O(n^2) and the
+fibrillatory band is below 10 Hz, so computing it at the raw rate is both
+enormously slower and dominated by the smoothness of the interpolation
+between neighbouring samples rather than by the organisation of the rhythm.}
+
+\item{pooled_spectrum}{Logical. If \code{TRUE} (default), the dominant frequency is
+taken from a spectrum pooled across all analysed leads, each normalised to
+unit power in 2.5-15 Hz before averaging. A ten second record yields only
+about four Welch segments per lead; twelve leads give roughly forty-eight,
+which is the difference between a usable and an unusable variance.
+Normalising before pooling stops one high-amplitude lead dictating the peak.}
+
+\item{rhythm}{Optional character string naming the rhythm, e.g. \code{"af"},
+\code{"flutter"}, \code{"sinus"}. Used only to decide whether to warn. If \code{NULL}
+(default), rhythm is inferred from RR irregularity.}
+
+\item{tol}{Numeric tolerance for the harmonic test. A peak is flagged
+\code{on_harmonic} when its harmonic index falls within \code{tol} of an integer.
+Default 0.15.}
+
+\item{keep_signal}{Logical. If \code{TRUE}, the cancelled atrial signals are
+returned alongside the features. Default \code{FALSE}, since retaining them
+across a large batch is expensive.}
+
+\item{verbose}{Logical. If \code{TRUE} (default), report which leads are analysed.}
+
+\item{.force_all}{Logical. If \code{FALSE} (default), only surface ECG leads are
+processed. Ignored when the object is of class \code{ECG}.}
+
+\item{...}{Additional arguments passed to the cancellation and analysis
+routines.}
 }
 \value{
-A list containing F wave features for each processed lead
+An object of class \code{f_wave_analysis}, a list with:
+
+\describe{
+\item{\code{features}}{A \code{data.table} with one row per lead, holding
+\code{f_amplitude_p2p}, \code{f_amplitude_rms}, \code{qrs_amplitude}, \code{f_ratio},
+\code{dominant_rate}, \code{organization_index}, \code{sample_entropy}, and the
+per-lead diagnostics \code{harmonic_index}, \code{on_harmonic},
+\code{cancellation_residual}, and \code{tq_fraction}.}
+\item{\code{record}}{A one-row \code{data.table} of record-level values, including
+\code{n_beats_cancelled}, \code{n_beats_skipped}, \code{n_beats_aberrant},
+\code{spatial_dispersion}, \code{heart_rate}, \code{rr_cv}, and \code{af_like}.}
+\item{\code{signal}}{The cancelled atrial signals, when \code{keep_signal = TRUE}.}
+}
 }
 \description{
-This function analyzes F waves in an ECG signal, extracting various
-characteristics.
+\code{extract_f_waves()} isolates atrial activity from a surface ECG
+by cancelling the ventricular (QRST) contribution, then summarises the
+residual fibrillatory signal in each lead.
+}
+\section{Cancellation}{
+The default \code{cancel_method = "spatiotemporal"} implements the approach of
+Stridh and Sornmo (2001). A single set of QRS positions is shared by every
+lead, and a template beat is formed for each lead by taking the \emph{median}
+across beats. Each individual beat, in each lead, is then fitted by least
+squares to a linear combination of the templates from \emph{all} leads plus an
+intercept, and the fit is subtracted.
+
+The extra degrees of freedom matter. A single-lead template cannot absorb the
+beat-to-beat rotation of the heart's electrical axis caused by respiration and
+by varying ventricular filling, which is the dominant reason a template fails
+to fit its own beat. What it leaves behind is periodic at the heart rate, so
+it deposits energy on heart-rate harmonics -- inside the very band this
+function reads. Use \link{f_wave_diagnostics} to check whether that has happened.
+}
+
+\section{Interpretation}{
+Every spectral feature is returned alongside \code{on_harmonic}. A contaminated
+dominant frequency is not noisy, it is precise and wrong, and it is highly
+reproducible because heart rate is highly reproducible within a patient.
+\code{dominant_rate} must not be used without conditioning on \code{on_harmonic}.
+
+Ten seconds is a short record for this measurement. Even with correct
+cancellation a material fraction of atrial fibrillation records will carry a
+contaminated rate.
+
+The output is meaningful only in atrial fibrillation or flutter. In sinus
+rhythm there is no fibrillatory wave to find, so the estimator returns
+whatever is largest in the band. When \code{rhythm} is not supplied, irregularity
+is inferred from the RR series and a warning is issued if the record does not
+look like atrial fibrillation.
+}
+
+\examples{
+\dontrun{
+af <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
+res <- extract_f_waves(af)
+
+# Never read the rate without the diagnostic beside it
+res$features[, .(lead, dominant_rate, on_harmonic, cancellation_residual)]
+}
+
 }
 \references{
-Park, Junbeom, Chungkeun Lee, Eran Leshem, Ira Blau, Sungsoo Kim, Jung Myung
-Lee, Jung-A Hwang, Byung-il Choi, Moon-Hyoung Lee, and Hye Jin Hwang. "Early
-Differentiation of Long-Standing Persistent Atrial Fibrillation Using the
-Characteristics of Fibrillatory Waves in Surface ECG Multi-Leads." Scientific
-Reports 9 (February 26, 2019): 2746.
-https://doi.org/10.1038/s41598-019-38928-6.
+Stridh M, Sornmo L. Spatiotemporal QRST cancellation techniques for analysis
+of atrial fibrillation. \emph{IEEE Transactions on Biomedical Engineering}.
+2001;48(1):105-111. \doi{10.1109/10.900266}
 
-Hyvarinen, A., and Oja, E. (2000). Independent component analysis: algorithms
-and applications. \emph{Neural Networks}, 13(4-5), 411-430.
+Slocum J, Sahakian A, Swiryn S. Diagnosis of atrial fibrillation from surface
+electrocardiograms based on computer-detected atrial activity. \emph{Journal of
+Electrocardiology}. 1992;25(1):1-8. \doi{10.1016/0022-0736(92)90123-h}
+
+Bollmann A, Husser D, Mainardi L, et al. Analysis of surface
+electrocardiograms in atrial fibrillation: techniques, research, and clinical
+applications. \emph{Europace}. 2006;8(11):911-926. \doi{10.1093/europace/eul113}
+
+Ng J, Goldberger JJ. Understanding and interpreting dominant frequency
+analysis of AF electrograms. \emph{Journal of Cardiovascular Electrophysiology}.
+2007;18(6):680-685. \doi{10.1111/j.1540-8167.2007.00832.x}
+
+Lankveld TAR, Zeemering S, Crijns HJGM, Schotten U. The ECG as a tool to
+determine atrial fibrillation complexity. \emph{Heart}. 2014;100(14):1077-1084.
+\doi{10.1136/heartjnl-2013-305149}
+}
+\seealso{
+\code{\link[=cancel_ventricular_signal]{cancel_ventricular_signal()}}, \code{\link[=calculate_dominant_frequency]{calculate_dominant_frequency()}},
+\code{\link[=calculate_sample_entropy]{calculate_sample_entropy()}}, \code{\link[=calculate_organization_index]{calculate_organization_index()}}
 }

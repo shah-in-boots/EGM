@@ -1,5 +1,97 @@
 # EGM (development version)
 
+## Fibrillatory wave analysis
+
+* **`extract_f_waves()` now cancels the ventricular signal spatiotemporally**
+  (**breaking**). Cancellation previously ran one lead at a time, re-detecting
+  QRS positions in each lead and rebuilding every beat from a low-rank SVD of
+  that lead's own beats. A single-lead template cannot absorb the beat-to-beat
+  rotation of the heart's electrical axis, so what it left behind was periodic
+  at the heart rate and deposited energy on heart-rate harmonics — inside the
+  4–9 Hz band the analysis reads. All leads now share one set of QRS positions,
+  and each beat is fitted by least squares to a combination of the median
+  templates from every lead (Stridh & Sörnmo, 2001).
+
+  On the bundled `muse-af` record the old method returned a dominant rate of
+  262 fpm with all 12 leads sitting on a heart-rate harmonic; the new one
+  returns 443 fpm with none.
+
+* **Every spectral feature now arrives with a contamination diagnostic.**
+  `harmonic_index`, `on_harmonic`, and `cancellation_residual` are returned per
+  lead. `dominant_rate` must not be used without conditioning on `on_harmonic`:
+  a contaminated estimate is not noisy but precise, wrong, and highly
+  reproducible, so validating the feature by test–retest reliability selects the
+  artifact. See `?f_wave_diagnostics`.
+
+* **Aberrant beats are identified by QRS morphology, not RR interval**
+  (**breaking**). The previous rule flagged a beat when its RR interval deviated
+  by more than 40% from the median. In atrial fibrillation the RR interval is
+  irregular by definition, so it fired on normally conducted beats in the exact
+  rhythm the function targets — 21% of beats on the bundled AF record. Beats are
+  now scored by correlation against the median template.
+
+* **Beat groups are never subtracted to zero.** A group small enough for a
+  low-rank model to reconstruct exactly was subtracted to an identically zero
+  residual, and a lone aberrant beat had its window replaced by linear
+  interpolation across 377 ms. Both deleted the atrial signal outright, and both
+  were silent. The model rank is now capped below the group size, a minimum
+  group size is enforced, and no window is ever blanked or interpolated across.
+
+* **Entropy is computed on a decimated signal, and sample entropy is available.**
+  Approximate entropy is O(n²) and ran at 1000 Hz, taking about 18 s per lead —
+  over 99% of the runtime, and roughly 216 s for a 12-lead ECG. The atrial
+  signal is now decimated to `entropy_rate` (default 50 Hz) first. A full
+  12-lead analysis takes about 0.2 s. `calculate_sample_entropy()` is new and
+  preferred: approximate entropy counts self-matches, which biases it toward
+  regularity and makes it depend on record length.
+
+* **The default entropy tolerance changed from 3.5 to 0.2 standard deviations**
+  (**breaking**). At 3.5 SD nearly every pair of vectors counts as a match, which
+  drove the statistic toward zero regardless of input — 0.0024 on the bundled AF
+  record, against 1.01 at the conventional tolerance. `m` now defaults to 2.
+
+* **Dominant frequency is estimated from a Welch periodogram**, optionally
+  pooled across leads. A single raw periodogram is an inconsistent estimator: its
+  variance does not fall as the record lengthens, so the argmax over a several-Hz
+  band is unstable on a 10 s record. `calculate_welch_spectrum()` is exported.
+
+* **Amplitude is measured in the TQ segments**, where the ventricles are
+  electrically silent, rather than over the whole record. Whatever cancellation
+  fails to remove is concentrated at the QRS, so a whole-record RMS scored
+  records with poor cancellation as having large f waves. TQ boundaries come from
+  an `ecgpuwave`-style annotation when one is attached, and from a fixed
+  exclusion window otherwise. `f_ratio` normalises by the QRS excursion in the
+  same lead, which cancels the thoracic transfer function to first order and
+  makes amplitudes comparable between patients.
+
+* **New features and arguments.** `calculate_organization_index()` reports the
+  share of 2.5–15 Hz power at the dominant frequency and its first harmonic.
+  `spatial_dispersion` gives the coefficient of variation of f-wave amplitude
+  across leads. The search band is exposed through `band` (default `c(4, 10)`);
+  the previous 4–9 Hz window excluded slow and drug-modified flutter.
+  `cancel_ventricular_signal()` is exported for use on a bare multi-lead list.
+
+* **`extract_f_waves()` returns an `f_wave_analysis` object** (**breaking**),
+  holding a `features` table with one row per lead and a one-row `record` table,
+  rather than a nested list. Its `...` is now actually forwarded; it was
+  previously declared and silently discarded, so no argument could reach any
+  analysis function.
+
+* `extract_f_waves()` warns when the record does not look like atrial
+  fibrillation. In sinus rhythm there is no fibrillatory wave to find, so the
+  estimator returns whatever is largest in the band.
+
+* Internal `remove_ventricular_signal()` now requires `frequency` rather than
+  defaulting to 1000 Hz, which silently produced QRS detection filters designed
+  for the wrong Nyquist at any other sampling rate. Analysis runs at the record's
+  native rate; the previous upsample to 1000 Hz added no information.
+
+* Surface lead matching no longer strips the letter `s` from lead names. The
+  pattern `[_\s-]` matched a literal `s` rather than whitespace in R's default
+  regex engine.
+
+## Windowing
+
 * **`window()` is now `get_windows()`** (**breaking**). The old name masked
   `stats::window()`, which is a real S3 generic, so attaching EGM broke
   `window()` for every `ts` object in the session. Extending that generic was not
