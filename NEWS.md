@@ -149,6 +149,17 @@
 
 ## Windowing
 
+* **`median_window()` returns the fiducials that produced the beat**
+  (**breaking**). It previously discarded them on the grounds that a median of
+  many beats has no single set — but it does, in the same sense the signal does:
+  each fiducial's position is the median of its positions across the aligned
+  windows. Annotations are matched between windows by channel, type, and rank
+  within that pair, so the first QRS onset of one beat lines up with the first of
+  every other rather than with whichever bracket sorts alongside it. A fiducial
+  most windows do not carry is dropped. The header gains a `median_info` string
+  recording how many windows went into the beat, and loses the `window_info`
+  string naming the single source window it is no longer from.
+
 * **`window()` is now `get_windows()`** (**breaking**). The old name masked
   `stats::window()`, which is a real S3 generic, so attaching EGM broke
   `window()` for every `ts` object in the session. Extending that generic was not

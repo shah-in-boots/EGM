@@ -236,9 +236,16 @@ pad_window <- function(
 #'   via [pad_window()] before the median is taken. If the windows differ in
 #'   length and no `align_feature` is given, an error is raised pointing to
 #'   [pad_window()] or [normalize_window()] so the caller chooses the alignment
-#'   explicitly. The returned beat carries an empty annotation table - a median
-#'   of many beats has no single set of fiducials - and a header named
-#'   `<source>_median`.
+#'   explicitly.
+#'
+#'   The returned beat carries the fiducials that produced it, each placed at the
+#'   median of its own positions across the aligned windows. Annotations are
+#'   matched between windows by channel, type, and how many of that pair came
+#'   before them in their own window, so the first QRS onset of one beat lines up
+#'   with the first of every other. A fiducial that most windows do not carry is
+#'   dropped, since it is not part of what the median describes. The header is
+#'   named `<source>_median` and carries an info string recording how many
+#'   windows it came from.
 #'
 #' @param x A `windows` object (or list of `EGM` objects) to reduce.
 #' @param align_feature Optional feature used to pad-align windows of unequal
@@ -324,8 +331,7 @@ median_window <- function(
   }
   median_signal <- do.call(signal_table, as.list(median_data))
 
-  # Header from the first window, renamed and re-sized. A median beat has no
-  # single true fiducial set, so annotations are intentionally left empty.
+  # Header from the first window, renamed and re-sized
   median_header <- data.table::copy(windows[[1]]$header)
   rl <- attributes(median_header)$record_line
   rl$samples <- n
@@ -334,10 +340,82 @@ median_window <- function(
   rl$record_name <- paste0(base_name, "_median")
   attr(median_header, "record_line") <- rl
 
+  # `window_info` names a single source window, which this no longer is
+  info <- attributes(median_header)$info_strings
+  info$window_info <- NULL
+  attr(median_header, "info_strings") <- c(
+    info,
+    list(median_info = paste0(
+      "median beat of ", length(windows), " windows; ",
+      "each annotation is the median position of that fiducial"
+    ))
+  )
+
   new_EGM(
     signal = median_signal,
     header = median_header,
-    annotation = annotation_table()
+    annotation = median_annotations(windows, rl$frequency)
+  )
+}
+
+#' Fiducials of a median beat
+#'
+#' @description Collapses the annotations of a set of aligned windows the same
+#'   way the signal itself is collapsed: each fiducial is placed at the median of
+#'   its positions.
+#'
+#' @details Annotations are matched between windows by channel, type, and how
+#'   many of that pair came before them within their own window, so the first QRS
+#'   onset of one beat lines up with the first of every other rather than with
+#'   whichever bracket happens to sort alongside it. A fiducial carried by no more
+#'   than half the windows is dropped; it is not part of what the median beat
+#'   describes.
+#'
+#' @param windows A list of aligned `EGM` objects sharing a common length.
+#' @param frequency Sampling frequency in Hz, used to fill annotation times.
+#'
+#' @return An `annotation_table`, empty when the windows carry no annotations.
+#'
+#' @keywords internal
+median_annotations <- function(windows, frequency) {
+  fiducials <- data.table::rbindlist(lapply(windows, function(w) {
+    ann <- as.data.frame(get_single_annotation(w))
+    if (nrow(ann) == 0) {
+      return(NULL)
+    }
+    ann <- ann[order(ann$sample), , drop = FALSE]
+
+    # Key: the channel and type, plus the rank of this annotation among others
+    # of that pair in the same window
+    pair <- paste(ann$channel, ann$type)
+    ann$key <- paste(pair, stats::ave(seq_along(pair), pair, FUN = seq_along))
+    ann
+  }))
+
+  if (nrow(fiducials) == 0) {
+    return(annotation_table())
+  }
+
+  carried <- table(fiducials$key)
+  kept <- fiducials[
+    fiducials$key %in% names(carried)[carried > length(windows) / 2],
+  ]
+  positions <- tapply(kept$sample, kept$key, stats::median)
+
+  # One row per fiducial, taking the non-positional fields from its first window
+  beat <- kept[!duplicated(kept$key), ]
+  beat$sample <- as.integer(round(positions[beat$key]))
+  beat <- beat[order(beat$sample), ]
+
+  annotation_table(
+    annotator = attr(get_single_annotation(windows[[1]]), "annotator"),
+    sample = beat$sample,
+    frequency = frequency,
+    type = beat$type,
+    subtype = beat$subtype,
+    channel = beat$channel,
+    number = beat$number,
+    aux = beat$aux
   )
 }
 

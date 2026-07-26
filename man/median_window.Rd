@@ -49,7 +49,14 @@ the windows differ in length, they are padded and anchored on that feature
 via \code{\link[=pad_window]{pad_window()}} before the median is taken. If the windows differ in
 length and no \code{align_feature} is given, an error is raised pointing to
 \code{\link[=pad_window]{pad_window()}} or \code{\link[=normalize_window]{normalize_window()}} so the caller chooses the alignment
-explicitly. The returned beat carries an empty annotation table - a median
-of many beats has no single set of fiducials - and a header named
-\verb{<source>_median}.
+explicitly.
+
+The returned beat carries the fiducials that produced it, each placed at the
+median of its own positions across the aligned windows. Annotations are
+matched between windows by channel, type, and how many of that pair came
+before them in their own window, so the first QRS onset of one beat lines up
+with the first of every other. A fiducial that most windows do not carry is
+dropped, since it is not part of what the median describes. The header is
+named \verb{<source>_median} and carries an info string recording how many
+windows it came from.
 }

@@ -79,6 +79,98 @@ test_that("median_window collapses windows to a single beat", {
   expect_true(all(beat2$signal$II <= apply(mat, 1, max) + 1e-8))
 })
 
+test_that("the median beat carries the fiducials that produced it", {
+
+  windows <- make_sinus_windows()
+  aligned <- pad_window(
+    windows, align = "feature", align_feature = "N", channel_criteria = 2
+  )
+  beat <- median_window(aligned)
+  fiducials <- EGM:::get_single_annotation(beat)
+
+  expect_s3_class(fiducials, "annotation_table")
+  expect_gt(nrow(fiducials), 0)
+  expect_named(beat$annotation, "ann")
+
+  # Sample order is preserved, and every fiducial lands inside the beat
+  expect_false(is.unsorted(fiducials$sample))
+  expect_true(all(fiducials$sample >= 0 & fiducials$sample < nrow(beat$signal)))
+
+  # Alignment put the QRS at one index in every window, so the median is that
+  # same index rather than something near it
+  aligned_qrs <- vapply(aligned, function(w) {
+    a <- EGM:::get_single_annotation(w)
+    a$sample[a$type == "N" & a$channel == 2L][1]
+  }, integer(1))
+  median_qrs <- fiducials$sample[fiducials$type == "N" & fiducials$channel == 2L]
+  expect_equal(median_qrs, unique(aligned_qrs))
+
+  # A fiducial that does vary is placed at the median of where it fell
+  p_onsets <- vapply(aligned, function(w) {
+    a <- EGM:::label_waves(EGM:::get_single_annotation(w))
+    a$sample[a$type == "(" & a$wave == "P" & a$channel == 2L][1]
+  }, integer(1))
+  labelled <- EGM:::label_waves(fiducials)
+  expect_equal(
+    labelled$sample[
+      labelled$type == "(" & labelled$wave == "P" & labelled$channel == 2L
+    ],
+    as.integer(stats::median(p_onsets))
+  )
+
+  # Repeated symbols are matched by their order within the window, so the beat
+  # keeps a full P/QRS/T bracket structure rather than one collapsed onset
+  lead_two <- fiducials[fiducials$channel == 2L, ]
+  expect_equal(sum(lead_two$type == "("), 3L)
+  expect_equal(sum(lead_two$type == ")"), 3L)
+  expect_equal(lead_two$type, c("(", "p", ")", "(", "N", ")", "(", "t", ")"))
+})
+
+test_that("the median beat says in its header what it is", {
+
+  windows <- make_sinus_windows()
+  beat <- median_window(windows, align_feature = "N", channel_criteria = 2)
+  info <- attributes(beat$header)$info_strings
+
+  expect_match(info$median_info, "median beat of 8 windows")
+
+  # The source window's own info names a single window, which this is not
+  expect_true(!is.null(attributes(windows[[1]]$header)$info_strings$window_info))
+  expect_null(info$window_info)
+})
+
+test_that("a median of unannotated windows has no fiducials to report", {
+
+  windows <- pad_window(
+    make_sinus_windows(),
+    align = "feature", align_feature = "N", channel_criteria = 2
+  )
+  bare <- lapply(windows, function(w) {
+    w$annotation <- list(annotation_table())
+    w
+  })
+
+  fiducials <- EGM:::get_single_annotation(median_window(bare))
+  expect_s3_class(fiducials, "annotation_table")
+  expect_equal(nrow(fiducials), 0)
+})
+
+test_that("a fiducial most windows lack is not part of their median", {
+
+  windows <- pad_window(
+    make_sinus_windows(),
+    align = "feature", align_feature = "N", channel_criteria = 2
+  )
+
+  # One window alone carries an annotation of type "A"
+  annotation <- EGM:::get_single_annotation(windows[[1]])
+  annotation$type[1] <- "A"
+  windows[[1]]$annotation <- list(ann = annotation)
+
+  fiducials <- EGM:::get_single_annotation(median_window(windows))
+  expect_false("A" %in% fiducials$type)
+})
+
 test_that("normalize_window stretches every window to a fixed length", {
 
   windows <- make_sinus_windows()
