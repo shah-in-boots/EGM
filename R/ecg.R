@@ -155,7 +155,7 @@ validate_ecg_data <- function(signal, header) {
     return(TRUE)
   }
 
-  non_standard <- lead_names[is.na(canonical_lead(lead_names))]
+  non_standard <- setdiff(lead_names, unname(surface_leads(lead_names)))
   if (length(non_standard) > 0) {
     warning(
       "Non-standard ECG lead names detected: ",
@@ -193,29 +193,6 @@ is_ECG <- function(x) {
 
 # Surface leads ----------------------------------------------------------------
 
-#' Canonical name of a surface ECG lead
-#'
-#' @description Resolves channel labels to the canonical lead names held in
-#'   `.leads$ECG`, returning `NA` for any channel that is not a surface ECG lead.
-#'   Matching ignores case, spaces, underscores and hyphens, so `aVR`, `av r` and
-#'   `AV-R` all resolve to `AVR`.
-#'
-#' @param x A `character` vector of channel labels.
-#'
-#' @return A `character` vector the same length as `x`.
-#'
-#' @keywords internal
-canonical_lead <- function(x) {
-  standard <- as.character(.leads$ECG)
-
-  # `[[:space:]]` rather than `\\s`: in R's default TRE engine a backslash
-  # inside a bracket expression is literal, so `[_\\s-]` matches the letter "s"
-  # and silently mangles lead names.
-  key <- function(y) toupper(gsub("[_[:space:]-]", "", y))
-
-  standard[match(key(x), key(standard))]
-}
-
 #' Surface ECG leads present among a set of channels
 #'
 #' @description Selects the surface ECG leads from a set of channel labels,
@@ -223,65 +200,26 @@ canonical_lead <- function(x) {
 #'   lead name and valued by the label as supplied, so it doubles as the lookup
 #'   from "lead II" to whichever channel actually holds it.
 #'
+#' @details Matching ignores case, spaces, underscores and hyphens, so `aVR`,
+#'   `av r` and `AV-R` all resolve to `AVR`.
+#'
 #' @param x A `character` vector of channel labels.
 #'
 #' @return A named `character` vector, possibly of length zero.
 #'
 #' @keywords internal
 surface_leads <- function(x) {
-  canonical <- canonical_lead(x)
-  keep <- !is.na(canonical)
-  setNames(x[keep], canonical[keep])
-}
+  standard <- as.character(.leads$ECG)
 
-#' Rebuild a record around a chosen set of channels
-#'
-#' @description Keeps the named channels, renames them canonically, and brings
-#'   the header rows and record line along with them.
-#'
-#' @param object An `EGM` object.
-#' @param leads A named `character` vector as returned by [surface_leads()].
-#'
-#' @return An `ECG` object.
-#'
-#' @keywords internal
-select_channels <- function(object, leads) {
-  sig <- object$signal
-  hea <- object$header
-  rl <- attributes(hea)$record_line
+  # `[[:space:]]` rather than `\\s`: in R's default TRE engine a backslash inside
+  # a bracket expression is literal, so `[_\\s-]` matches the letter "s" and
+  # silently mangles lead names
+  key <- function(y) toupper(gsub("[_[:space:]-]", "", y))
 
-  # Header rows are parallel to signal columns, so channels are matched by
-  # position. Matching on the header `label` instead would break on records whose
-  # duplicate labels were made unique when the header was built.
-  rows <- match(unname(leads), names(sig)[-1])
+  canonical <- standard[match(key(x), key(standard))]
+  found <- !is.na(canonical)
 
-  columns <- c(
-    list(sample = sig$sample),
-    setNames(lapply(unname(leads), function(l) sig[[l]]), names(leads))
-  )
-
-  header <- header_table(
-    record_name = rl$record_name,
-    number_of_channels = length(leads),
-    frequency = rl$frequency,
-    samples = rl$samples,
-    start_time = rl$start_time,
-    ADC_saturation = rl$ADC_saturation,
-    storage_format = hea$storage_format[rows],
-    ADC_gain = hea$ADC_gain[rows],
-    ADC_baseline = hea$ADC_baseline[rows],
-    ADC_units = hea$ADC_units[rows],
-    ADC_zero = hea$ADC_zero[rows],
-    ADC_resolution = hea$ADC_resolution[rows],
-    label = names(leads),
-    info_strings = attributes(hea)$info_strings
-  )
-
-  new_ECG(
-    signal = do.call(signal_table, columns),
-    header = header,
-    annotation = object$annotation
-  )
+  setNames(x[found], canonical[found])
 }
 
 #' Convert an EGM object to an ECG object
@@ -372,7 +310,40 @@ as_ECG <- function(x, ...) {
     }
   }
 
-  select_channels(x, leads)
+  # Header rows are parallel to signal columns, so channels are kept by position.
+  # Matching on the header `label` would break on records whose duplicate labels
+  # were made unique when the header was built.
+  signal <- x$signal
+  header <- x$header
+  record <- attributes(header)$record_line
+  rows <- match(unname(leads), channels)
+
+  new_ECG(
+    signal = do.call(
+      signal_table,
+      c(
+        list(sample = signal$sample),
+        setNames(lapply(unname(leads), function(l) signal[[l]]), names(leads))
+      )
+    ),
+    header = header_table(
+      record_name = record$record_name,
+      number_of_channels = length(leads),
+      frequency = record$frequency,
+      samples = record$samples,
+      start_time = record$start_time,
+      ADC_saturation = record$ADC_saturation,
+      storage_format = header$storage_format[rows],
+      ADC_gain = header$ADC_gain[rows],
+      ADC_baseline = header$ADC_baseline[rows],
+      ADC_units = header$ADC_units[rows],
+      ADC_zero = header$ADC_zero[rows],
+      ADC_resolution = header$ADC_resolution[rows],
+      label = names(leads),
+      info_strings = attributes(header)$info_strings
+    ),
+    annotation = x$annotation
+  )
 }
 
 #' Require a record to be a surface 12-lead ECG

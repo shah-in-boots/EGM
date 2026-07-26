@@ -1,3 +1,7 @@
+# `kors` is package data, resolved at run time from the lazy-load database rather
+# than from the namespace that R CMD check walks
+utils::globalVariables("kors")
+
 # nocov start
 
 .onLoad <- function(libname, pkgname) {

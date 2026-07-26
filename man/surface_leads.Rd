@@ -18,4 +18,8 @@ keeping the order in which they were given. The result is named by canonical
 lead name and valued by the label as supplied, so it doubles as the lookup
 from "lead II" to whichever channel actually holds it.
 }
+\details{
+Matching ignores case, spaces, underscores and hyphens, so \code{aVR},
+\verb{av r} and \code{AV-R} all resolve to \code{AVR}.
+}
 \keyword{internal}

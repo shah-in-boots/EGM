@@ -1,105 +1,22 @@
 # Vectorcardiography -----------------------------------------------------------
 
-# A vectorcardiogram is the heart's dipole traced through three orthogonal leads.
-# Frank's electrode array records it directly and is essentially never placed;
-# what is recorded is the 12-lead ECG, from which the orthogonal leads are
-# reconstructed by a fixed linear map. Kors' regression matrix is that map.
-#
-# Only eight leads enter it. III, aVR, aVL and aVF are exact linear combinations
-# of I and II, so a matrix that used all twelve would be rank deficient and the
-# extra columns would carry no information.
-#
-# Rows are X (left), Y (inferior), Z (posterior); columns are the source leads.
-.kors <- rbind(
-  X = c(0.38, -0.07, -0.13, 0.05, -0.01, 0.14, 0.06, 0.54),
-  Y = c(-0.07, 0.93, 0.06, -0.02, -0.05, 0.06, -0.17, 0.13),
-  Z = c(0.11, -0.23, -0.43, -0.06, -0.14, -0.20, -0.11, 0.31)
-)
-colnames(.kors) <- c("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")
-
-#' Reconstruct a vectorcardiogram from the 12-lead ECG
+#' Kors regression transformation matrix
 #'
-#' @description `vectorcardiogram()` traces the ventricular (QRS) loop and
-#'   `atrial_vectorcardiogram()` the atrial (P) loop, both by applying the Kors
-#'   regression transformation to the surface ECG and cutting the result at the
-#'   annotated wave boundaries. Each returns the orthogonal X, Y, Z signal
-#'   together with the standard descriptors of the loop it traces.
+#' @description The linear map from the 12-lead ECG to the orthogonal X, Y, Z
+#'   leads of the Frank vectorcardiographic system, used by
+#'   [vectorcardiogram()] and [atrial_vectorcardiogram()].
 #'
-#' @details
+#' @details Only eight leads enter the transformation. III, aVR, aVL and aVF are
+#'   exact linear combinations of I and II, so a matrix over all twelve would be
+#'   rank deficient and the extra columns would carry nothing.
 #'
-#' # Reconstruction
+#'   Kors' matrix is preferred to the inverse Dower matrix: it reproduces the
+#'   recorded Frank leads more closely, and measures derived from it carry more
+#'   prognostic information (Man et al. 2011; Kück et al. 2018).
 #'
-#' The Kors regression matrix (Kors et al. 1990) maps eight leads - I, II and
-#' V1-V6 - onto the orthogonal axes of the Frank system. The remaining four
-#' limb leads are exact linear combinations of I and II and carry no independent
-#' information, so all eight are required and no substitute exists for a missing
-#' one. Kors' matrix is preferred to the inverse Dower matrix: it reproduces the
-#' recorded Frank leads more closely and yields derived measures with more
-#' prognostic power (Man et al. 2011; Kück et al. 2018).
-#'
-#' The transformation is linear, so it commutes with windowing: a loop cut from
-#' the transformed record and a loop transformed after cutting are the same
-#' signal, and the record is therefore transformed once, after segmentation. It
-#' does not commute with the median, which is not a linear operator. The median
-#' is taken lead by lead first, so `beats = "median"` returns the loop of the
-#' median beat rather than the median of the beats' loops.
-#'
-#' # Segmentation
-#'
-#' Wave boundaries come from the record's annotations, since neither loop can be
-#' delimited without them. Windows run from wave onset to wave offset and must
-#' enclose the corresponding peak, using the same machinery as [get_windows()];
-#' a record with no delineation annotations is an error rather than a guess.
-#'
-#' `beats = "median"` collapses the beats to a single loop before transforming,
-#' which is the signal-averaged form used to characterise atrial conduction
-#' (Havmöller et al. 2007). `beats = "all"` returns one loop per beat, which
-#' preserves the beat-to-beat variability that a signal average is designed to
-#' remove and that itself carries information about the atrial substrate
-#' (Tachmatzidis et al. 2022).
-#'
-#' # Interpretation
-#'
-#' The P loop is small - roughly a tenth of the QRS in amplitude - so it is far
-#' more sensitive to baseline wander and to the accuracy of the P-onset
-#' annotation than the QRS loop is. `magnitude_peak` on the P loop is the spatial
-#' P-wave vector magnitude, which falls as the left atrium remodels and which
-#' tracks low-voltage area at electroanatomic mapping (Yano et al. 2023).
-#'
-#' A P loop only exists in an organised atrial rhythm. In atrial fibrillation
-#' there is no P wave to delineate, and the atrial signal is characterised
-#' instead by [extract_f_waves()].
-#'
-#' @param object An object of class `EGM` or of subclass [ECG]. An `EGM` from an
-#'   electrophysiology study is reduced to its surface leads first (see
-#'   [as_ECG()]). All eight leads of the Kors transformation must be present.
-#'
-#' @param beats Which beats to trace. `"median"` (default) returns a single loop
-#'   from the median beat; `"all"` returns one loop per beat.
-#'
-#' @param channel An optional annotation channel guiding the wave delineation,
-#'   passed to [by_rhythm()]. Required when the annotations span more than one
-#'   channel, as they do when an annotator has been run per lead.
-#'
-#' @param baseline Logical. If `TRUE` (default), each loop is referenced to its
-#'   own onset, taken as the median of the first 10 ms. Loop orientation is
-#'   measured from the origin, so an offset baseline rotates every angle.
-#'
-#' @return An object of class `vectorcardiogram`, a list with:
-#'
-#'   \describe{
-#'     \item{`loop`}{A `data.table` of the orthogonal signal with columns `beat`,
-#'       `sample`, `X`, `Y`, and `Z`, in the units of the source signal.}
-#'     \item{`metrics`}{A `data.table` with one row per loop, holding `duration`
-#'       (seconds), `magnitude_peak` and `magnitude_mean` (spatial vector
-#'       magnitude), `azimuth` and `elevation` (orientation of the peak vector,
-#'       in degrees), `area` (planar area enclosed by the loop), and `planarity`
-#'       (share of the loop's variance lying in its best-fit plane, 1 being
-#'       perfectly planar).}
-#'     \item{`wave`}{Either `"QRS"` or `"P"`.}
-#'     \item{`beats`}{Either `"median"` or `"all"`.}
-#'     \item{`frequency`}{Sampling frequency in Hz.}
-#'   }
+#' @format A 3 by 8 `numeric` matrix. Rows are the orthogonal axes `X` (positive
+#'   to the left), `Y` (positive inferiorly) and `Z` (positive posteriorly);
+#'   columns are the source leads `I`, `II` and `V1` through `V6`.
 #'
 #' @references
 #'
@@ -118,6 +35,112 @@ colnames(.kors) <- c("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")
 #' prediction of all-cause mortality. *Journal of Electrocardiology*.
 #' 2018;51(5):768-775. \doi{10.1016/j.jelectrocard.2018.05.011}
 #'
+#' @examples
+#' # The orthogonal leads are row combinations of the eight source leads
+#' kors["Z", ]
+#'
+#' @seealso [vectorcardiogram()]
+"kors"
+
+#' Reconstruct a vectorcardiogram from the 12-lead ECG
+#'
+#' @description `vectorcardiogram()` traces the ventricular loop and
+#'   `atrial_vectorcardiogram()` the atrial loop, both by applying the [kors]
+#'   transformation to the surface ECG and cutting the result at the annotated
+#'   wave boundaries. Each returns the orthogonal X, Y, Z signal together with
+#'   the components extracted from it.
+#'
+#' @details
+#'
+#' # Reconstruction
+#'
+#' The transformation is linear, so it commutes with the segmentation: the
+#' record is transformed once and cut afterwards, which is the same signal as
+#' cutting first and transforming each beat. It does not commute with the
+#' median, which is not a linear operator, so `beats = "median"` returns the
+#' median of the beats' *loops* rather than the loop of the median beat. This is
+#' the order used for signal-averaged orthogonal P-wave analysis (Havmöller et
+#' al. 2007).
+#'
+#' # Segmentation
+#'
+#' Wave boundaries come from the record's own delineation annotations, since
+#' neither loop can be delimited without them; a record without them is an error
+#' rather than a guess. Beats are anchored on the wave peak - the QRS peak for
+#' the ventricular loop, the P peak for the atrial one - and for
+#' `beats = "median"` every beat is placed on a common grid at that anchor and
+#' reduced sample by sample. The median beat's own boundaries are the medians of
+#' the individual ones, so it has a duration rather than the union of all
+#' durations.
+#'
+#' # Components
+#'
+#' Both loops yield the same geometric components: the peak and mean spatial
+#' vectors with their orientation, the area the loop encloses, and how far it
+#' departs from a plane.
+#'
+#' The ventricular loop additionally yields the global electric heterogeneity
+#' (GEH) components, which describe the discordance between depolarization and
+#' repolarization and so need the T wave to also be delineated: the spatial
+#' QRS-T angle in its peak and mean forms, the spatial ventricular gradient
+#' (magnitude, azimuth and elevation), and the sum absolute QRST integral (Waks
+#' et al. 2016). Where the T wave is not delineated they are returned as `NA`
+#' rather than dropped.
+#'
+#' `magnitude_peak` on the atrial loop is the spatial P-wave vector magnitude,
+#' which falls as the left atrium remodels and tracks low-voltage area at
+#' electroanatomic mapping (Yano et al. 2023). A P loop only exists in an
+#' organised atrial rhythm; in atrial fibrillation the atrial signal is
+#' characterised by [extract_f_waves()] instead.
+#'
+#' @param object An object of class `EGM` or of subclass [ECG]. An `EGM` from an
+#'   electrophysiology study is reduced to its surface leads first (see
+#'   [as_ECG()]). All eight leads of the [kors] transformation must be present.
+#'
+#' @param beats Which beats to trace. `"median"` (default) returns a single
+#'   loop; `"all"` returns one loop per beat, preserving the beat-to-beat
+#'   variability a signal average is designed to remove (Tachmatzidis et al.
+#'   2022).
+#'
+#' @param channel An optional annotation channel guiding the wave delineation.
+#'   Required when the annotations span more than one channel, as they do when
+#'   an annotator has been run per lead.
+#'
+#' @param baseline Logical. If `TRUE` (default), each beat is referenced to its
+#'   own onset, taken as the median of the first 10 ms. Orientation is measured
+#'   from the origin, so an offset baseline rotates every angle.
+#'
+#' @return A `list` of two `data.table`s:
+#'
+#'   \describe{
+#'     \item{`loop`}{The orthogonal signal, with columns `beat`, `sample`, `X`,
+#'       `Y` and `Z`, in the units of the source signal.}
+#'     \item{`components`}{One row per loop. Both functions return `duration`
+#'       (seconds); `magnitude_peak`, `azimuth_peak` and `elevation_peak` for the
+#'       largest spatial vector; `magnitude_mean`, `azimuth_mean` and
+#'       `elevation_mean` for the loop's mean vector; `area`, the planar area
+#'       enclosed; and `planarity`, the share of the loop's variance lying in its
+#'       best-fit plane, 1 being flat. `vectorcardiogram()` adds the GEH
+#'       components `qrst_angle_peak`, `qrst_angle_mean`, `svg_magnitude`,
+#'       `svg_azimuth`, `svg_elevation` and `sai_qrst`.}
+#'   }
+#'
+#'   Azimuth is measured in the transverse plane from `+X` toward `+Z`, and
+#'   elevation out of that plane toward `+Y`, both in degrees.
+#'
+#' @references
+#'
+#' Kors JA, van Herpen G, Sittig AC, van Bemmel JH. Reconstruction of the Frank
+#' vectorcardiogram from standard electrocardiographic leads: diagnostic
+#' comparison of different methods. *European Heart Journal*.
+#' 1990;11(12):1083-1092. \doi{10.1093/oxfordjournals.eurheartj.a059647}
+#'
+#' Waks JW, Sitlani CM, Soliman EZ, et al. Global electric heterogeneity risk
+#' score for prediction of sudden cardiac death in the general population: the
+#' Atherosclerosis Risk in Communities (ARIC) and Cardiovascular Health (CHS)
+#' studies. *Circulation*. 2016;133(23):2222-2234.
+#' \doi{10.1161/CIRCULATIONAHA.116.021306}
+#'
 #' Havmöller R, Carlson J, Holmqvist F, et al. Age-related changes in P wave
 #' morphology in healthy subjects. *BMC Cardiovascular Disorders*. 2007;7:22.
 #' \doi{10.1186/1471-2261-7-22}
@@ -135,8 +158,8 @@ colnames(.kors) <- c("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")
 #' analysis to predict atrial fibrillation recurrence after catheter ablation.
 #' *Diagnostics*. 2022;12(4):830. \doi{10.3390/diagnostics12040830}
 #'
-#' @seealso [as_ECG()] for the surface lead contract, [get_windows()] for the
-#'   segmentation, [extract_f_waves()] for the atrial signal when there is no P
+#' @seealso [kors] for the transformation itself, [as_ECG()] for the surface
+#'   lead contract, [extract_f_waves()] for the atrial signal when there is no P
 #'   wave to trace.
 #'
 #' @examples
@@ -144,11 +167,8 @@ colnames(.kors) <- c("I", "II", "V1", "V2", "V3", "V4", "V5", "V6")
 #' ecg <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"),
 #'                  annotator = "ecgpuwave")
 #'
-#' # Ventricular loop of the median beat
-#' vectorcardiogram(ecg)
-#'
-#' # Atrial loop, beat by beat
-#' atrial_vectorcardiogram(ecg, beats = "all")$metrics
+#' vectorcardiogram(ecg)$components
+#' atrial_vectorcardiogram(ecg, beats = "all")$components
 #' }
 #'
 #' @name vectorcardiogram
@@ -159,7 +179,65 @@ vectorcardiogram <- function(
   channel = NULL,
   baseline = TRUE
 ) {
-  vcg_from_wave(object, "QRS", match.arg(beats), channel, baseline)
+  traced <- trace_loops(
+    object,
+    waves = c("QRS", "T"),
+    beats = match.arg(beats),
+    channel = channel,
+    baseline = baseline,
+    what = "The vectorcardiogram"
+  )
+
+  qrs <- lapply(traced$beats, function(b) b$segment$QRS)
+  components <- data.table::rbindlist(lapply(
+    seq_along(traced$beats),
+    function(i) {
+      beat <- traced$beats[[i]]
+
+      # GEH describes the discordance between depolarization and repolarization,
+      # so all of it needs the T wave. Absent, the QRS loop still stands.
+      geh <- data.table::data.table(
+        qrst_angle_peak = NA_real_,
+        qrst_angle_mean = NA_real_,
+        svg_magnitude = NA_real_,
+        svg_azimuth = NA_real_,
+        svg_elevation = NA_real_,
+        sai_qrst = NA_real_
+      )
+
+      if (!is.null(beat$segment$T)) {
+        # Peak vectors are the largest of each loop, mean vectors their centroid;
+        # the spatial QRS-T angle is taken between each pair
+        qrs_peak <- beat$segment$QRS[which.max(magnitudes(beat$segment$QRS)), ]
+        t_peak <- beat$segment$T[which.max(magnitudes(beat$segment$T)), ]
+        qrs_mean <- colMeans(beat$segment$QRS)
+        t_mean <- colMeans(beat$segment$T)
+
+        # The beat spans QRS onset to T offset, so the ventricular gradient is
+        # its integral and the sum absolute QRST integral the non-directional
+        # counterpart, both in signal units x seconds
+        svg <- colSums(beat$xyz) / traced$frequency
+        svg_angles <- orientation(svg)
+
+        geh <- data.table::data.table(
+          qrst_angle_peak = spatial_angle(qrs_peak, t_peak),
+          qrst_angle_mean = spatial_angle(qrs_mean, t_mean),
+          svg_magnitude = sqrt(sum(svg^2)),
+          svg_azimuth = svg_angles[["azimuth"]],
+          svg_elevation = svg_angles[["elevation"]],
+          sai_qrst = sum(abs(beat$xyz)) / traced$frequency
+        )
+      }
+
+      data.table::data.table(
+        beat = i,
+        loop_components(beat$segment$QRS, traced$frequency),
+        geh
+      )
+    }
+  ))
+
+  list(loop = stack_loops(qrs), components = components)
 }
 
 #' @rdname vectorcardiogram
@@ -170,138 +248,240 @@ atrial_vectorcardiogram <- function(
   channel = NULL,
   baseline = TRUE
 ) {
-  vcg_from_wave(object, "P", match.arg(beats), channel, baseline)
+  traced <- trace_loops(
+    object,
+    waves = "P",
+    beats = match.arg(beats),
+    channel = channel,
+    baseline = baseline,
+    what = "The atrial vectorcardiogram"
+  )
+
+  loops <- lapply(traced$beats, function(b) b$segment$P)
+  components <- data.table::rbindlist(lapply(seq_along(loops), function(i) {
+    data.table::data.table(
+      beat = i,
+      loop_components(loops[[i]], traced$frequency)
+    )
+  }))
+
+  list(loop = stack_loops(loops), components = components)
 }
 
-#' Trace the loop of a single wave
+# Tracing ----------------------------------------------------------------------
+
+#' Cut the orthogonal signal into beats
 #'
 #' @description Shared engine behind [vectorcardiogram()] and
-#'   [atrial_vectorcardiogram()]. The two differ only in which annotations
-#'   delimit the wave.
+#'   [atrial_vectorcardiogram()]. Gates the record on the surface lead contract,
+#'   transforms it once, and cuts it at the annotated boundaries of the requested
+#'   waves.
+#'
+#' @details The first wave in `waves` anchors the beat; any others are attached
+#'   to the beat whose anchor they follow. Each returned beat holds `xyz`, the
+#'   orthogonal signal spanning the whole beat, and `mark`, the onset/offset
+#'   positions of each wave within it, plus `segment`, those slices taken.
 #'
 #' @inheritParams vectorcardiogram
-#' @param wave Either `"QRS"` or `"P"`.
+#' @param waves A `character` vector of waves to cut, anchor first.
+#' @param what A `character` naming the caller, used in error messages.
 #'
-#' @return A `vectorcardiogram` object.
+#' @return A `list` of `frequency` and `beats`.
 #'
 #' @keywords internal
-vcg_from_wave <- function(object, wave, beats, channel, baseline) {
-  what <- paste0("The ", wave, " vectorcardiogram")
-  object <- require_ECG(object, leads = colnames(.kors), what = what)
-
+trace_loops <- function(object, waves, beats, channel, baseline, what) {
+  object <- require_ECG(object, leads = colnames(kors), what = what)
   frequency <- attributes(object$header)$record_line$frequency
-  peak <- if (wave == "QRS") "N" else "p"
 
-  annotation <- get_single_annotation(object)
-  if (nrow(annotation) == 0) {
+  ann <- get_single_annotation(object)
+  if (nrow(ann) == 0) {
     stop(
       what,
       " requires wave delineation annotations to find the ",
-      wave,
+      waves[1],
       " boundaries; none are attached to this record",
       call. = FALSE
     )
   }
+  ann <- label_waves(ann)
 
-  # Per-lead annotators leave one set of boundaries per channel. Without a
-  # guiding channel the onsets of twelve leads interleave and the windows they
-  # imply are not beats, so the choice is the caller's to make.
-  if (is.null(channel) && !is.null(annotation$channel)) {
-    annotated <- unique(annotation$channel[annotation$channel != 0L])
-    if (length(annotated) > 1) {
+  # Per-lead annotators leave one set of boundaries per channel, and interleaved
+  # those do not describe beats
+  if ("channel" %in% names(ann)) {
+    spread <- unique(ann$channel[ann$channel != 0L])
+    if (is.null(channel) && length(spread) > 1) {
       stop(
         what,
         " needs a guiding `channel`: annotations span channels ",
-        paste(sort(annotated), collapse = ", "),
+        paste(sort(spread), collapse = ", "),
         call. = FALSE
       )
     }
+    if (!is.null(channel)) {
+      ann <- ann[ann$channel %in% c(as.integer(channel), 0L), ]
+    }
   }
 
-  # `rhythm = "sinus"` is chosen for its overlap rejection rather than as a claim
-  # about the rhythm: it discards any window that encloses a second onset, which
-  # is how a beat with a dropped offset annotation is kept out of the stack.
-  windows <- get_windows(
-    object,
-    by = by_rhythm(
-      rhythm = "sinus",
-      onset = list(type = "(", wave = wave),
-      offset = list(type = ")", wave = wave),
-      reference = list(type = peak),
-      channel = channel
-    )
-  )
+  # Whole record in orthogonal leads. Kors is linear, so cutting after is the
+  # same signal as cutting first and transforming each beat.
+  leads <- colnames(kors)
+  signal <- as.data.frame(object$signal)[, leads, drop = FALSE]
+  xyz <- as.matrix(signal) %*% t(kors)
 
-  if (length(windows) == 0) {
-    stop("No complete ", wave, " waves could be delineated", call. = FALSE)
+  # Bracket pairs, one row per delineated wave: each onset takes the next offset
+  # and the peak enclosed between them
+  delineated <- lapply(waves, function(w) {
+    onset <- sort(ann$sample[ann$type == "(" & ann$wave %in% w])
+    offset <- sort(ann$sample[ann$type == ")" & ann$wave %in% w])
+    peaks <- sort(ann$sample[ann$type %in% c("p", "N", "t") & ann$wave %in% w])
+
+    matched <- offset[findInterval(onset, offset) + 1L]
+    onset <- onset[!is.na(matched)]
+    matched <- matched[!is.na(matched)]
+    enclosed <- vapply(seq_along(onset), function(i) {
+      inside <- peaks[peaks > onset[i] & peaks < matched[i]]
+      if (length(inside) > 0) inside[1] else NA_integer_
+    }, integer(1))
+
+    # A bracket with nothing recognisable inside it is not a wave
+    complete <- !is.na(enclosed)
+    data.table::data.table(
+      onset = onset[complete],
+      offset = matched[complete],
+      peak = enclosed[complete]
+    )
+  })
+  names(delineated) <- waves
+
+  anchor <- delineated[[waves[1]]]
+  if (nrow(anchor) == 0) {
+    stop("No complete ", waves[1], " waves could be delineated", call. = FALSE)
+  }
+
+  # Sample offsets of every boundary from the anchor peak, one row per beat.
+  # Waves other than the anchor belong to the beat whose anchor they follow.
+  bounds <- lapply(waves, function(w) {
+    it <- delineated[[w]]
+    if (w != waves[1]) {
+      it <- it[match(seq_len(nrow(anchor)), findInterval(it$onset, anchor$onset))]
+    }
+    cbind(it$onset, it$offset) - anchor$peak
+  })
+  names(bounds) <- waves
+
+  if (beats == "median") {
+    # One representative beat: the median shape, on a grid anchored at the peak
+    bounds <- lapply(bounds, function(b) {
+      matrix(round(apply(b, 2, stats::median, na.rm = TRUE)), nrow = 1)
+    })
+  }
+
+  # A beat runs from the earliest onset to the latest offset across its waves
+  onsets <- do.call(pmin, c(lapply(bounds, function(b) b[, 1]), na.rm = TRUE))
+  offsets <- do.call(pmax, c(lapply(bounds, function(b) b[, 2]), na.rm = TRUE))
+
+  # Baselining is per beat and before any median, so that beat-to-beat wander is
+  # removed rather than averaged in. Samples off the ends of the record are NA.
+  cut_beat <- function(peak, from, to) {
+    rows <- peak + seq(from, to) + 1L
+    rows[rows < 1 | rows > nrow(xyz)] <- NA_integer_
+    beat <- xyz[rows, , drop = FALSE]
+
+    if (baseline) {
+      lead_in <- seq_len(min(nrow(beat), max(1, round(frequency * 0.01))))
+      onset <- apply(beat[lead_in, , drop = FALSE], 2, stats::median)
+      beat <- sweep(beat, 2, onset)
+    }
+
+    beat
   }
 
   if (beats == "median") {
-    windows <- list(median_window(
-      windows,
-      align_feature = peak,
-      channel_criteria = channel
-    ))
+    # Every beat on the median grid, then the row-wise median across them
+    stack <- vapply(
+      anchor$peak,
+      cut_beat,
+      matrix(0, offsets - onsets + 1L, 3L),
+      from = onsets,
+      to = offsets
+    )
+    loops <- list(apply(stack, c(1, 2), stats::median, na.rm = TRUE))
+    # vapply took its dimensions from the template, which carries no lead names
+    colnames(loops[[1]]) <- colnames(xyz)
+  } else {
+    loops <- lapply(seq_along(anchor$peak), function(i) {
+      cut_beat(anchor$peak[i], onsets[i], offsets[i])
+    })
   }
 
-  loops <- lapply(windows, function(w) kors_transform(w$signal, frequency, baseline))
+  # Boundaries become 1-based positions within the beat, so a caller can slice
+  # each wave straight out of it
+  traced <- lapply(seq_along(loops), function(i) {
+    mark <- lapply(bounds, function(b) as.integer(b[i, ] - onsets[i] + 1L))
+    segment <- lapply(mark, function(m) {
+      if (anyNA(m)) NULL else loops[[i]][m[1]:m[2], , drop = FALSE]
+    })
+    list(xyz = loops[[i]], mark = mark, segment = segment)
+  })
 
-  loop <- data.table::rbindlist(lapply(seq_along(loops), function(i) {
-    data.table::data.table(
-      beat = i,
-      sample = seq_len(nrow(loops[[i]])) - 1L,
-      data.table::as.data.table(loops[[i]])
-    )
-  }))
+  list(frequency = frequency, beats = traced)
+}
 
-  metrics <- data.table::rbindlist(lapply(seq_along(loops), function(i) {
-    data.table::data.table(beat = i, vcg_loop_metrics(loops[[i]], frequency))
-  }))
+# Components -------------------------------------------------------------------
 
-  structure(
-    list(
-      loop = loop,
-      metrics = metrics,
-      wave = wave,
-      beats = beats,
-      frequency = frequency
-    ),
-    class = c("vectorcardiogram", "list")
+#' Spatial magnitude of each vector in a loop
+#'
+#' @param xyz A numeric matrix with columns `X`, `Y`, and `Z`.
+#'
+#' @return A numeric vector of magnitudes.
+#'
+#' @keywords internal
+magnitudes <- function(xyz) {
+  sqrt(rowSums(xyz^2))
+}
+
+#' Orientation of a spatial vector
+#'
+#' @description Azimuth is measured in the transverse plane from `+X` (left)
+#'   toward `+Z` (posterior); elevation is the angle out of that plane toward
+#'   `+Y` (inferior). Both in degrees.
+#'
+#' @param v A numeric vector of length three, ordered X, Y, Z.
+#'
+#' @return A named numeric vector of `azimuth` and `elevation`.
+#'
+#' @keywords internal
+orientation <- function(v) {
+  # Unnamed so that the X/Y/Z labels a loop carries do not survive into the
+  # result and rename its elements
+  v <- unname(v)
+
+  c(
+    azimuth = atan2(v[3], v[1]) * 180 / pi,
+    elevation = atan2(v[2], sqrt(v[1]^2 + v[3]^2)) * 180 / pi
   )
 }
 
-#' Apply the Kors regression transformation
+#' Angle between two spatial vectors
 #'
-#' @description Maps the eight independent leads of a `signal_table` onto the
-#'   orthogonal X, Y, Z axes.
+#' @param a,b Numeric vectors of length three, ordered X, Y, Z.
 #'
-#' @param signal A `signal_table` holding at least the leads in `.kors`.
-#' @param frequency Sampling frequency in Hz.
-#' @param baseline Logical, whether to reference the loop to its own onset.
-#'
-#' @return A numeric matrix with columns `X`, `Y`, and `Z`.
+#' @return The angle in degrees, between 0 and 180.
 #'
 #' @keywords internal
-kors_transform <- function(signal, frequency, baseline = TRUE) {
-  leads <- colnames(.kors)
-  xyz <- vapply(leads, function(l) as.numeric(signal[[l]]), numeric(nrow(signal)))
-  xyz <- matrix(xyz, ncol = length(leads)) %*% t(.kors)
-
-  if (baseline) {
-    # Onset of the wave, taken over 10 ms so that a single noisy sample cannot
-    # displace the whole loop. Angles are measured from the origin, so an offset
-    # baseline rotates all of them.
-    n <- min(nrow(xyz), max(1L, round(frequency * 0.01)))
-    xyz <- sweep(xyz, 2, apply(xyz[seq_len(n), , drop = FALSE], 2, stats::median))
+spatial_angle <- function(a, b) {
+  scale <- sqrt(sum(a^2)) * sqrt(sum(b^2))
+  if (scale == 0) {
+    return(NA_real_)
   }
-
-  xyz
+  # Clamped because rounding can push the cosine a hair outside [-1, 1]
+  acos(max(-1, min(1, sum(a * b) / scale))) * 180 / pi
 }
 
-#' Describe a vectorcardiographic loop
+#' Geometric components of a vectorcardiographic loop
 #'
-#' @description The standard spatial descriptors of a single loop: how large it
-#'   is, where it points, how much area it encloses, and how flat it is.
+#' @description How large the loop is, where it points, how much area it
+#'   encloses, and how flat it is.
 #'
 #' @param xyz A numeric matrix with columns `X`, `Y`, and `Z`.
 #' @param frequency Sampling frequency in Hz.
@@ -309,25 +489,14 @@ kors_transform <- function(signal, frequency, baseline = TRUE) {
 #' @return A one-row `data.table`.
 #'
 #' @keywords internal
-vcg_loop_metrics <- function(xyz, frequency) {
-  magnitude <- sqrt(rowSums(xyz^2))
-  peak <- which.max(magnitude)
-  degrees <- 180 / pi
+loop_components <- function(xyz, frequency) {
+  magnitude <- magnitudes(xyz)
+  peak <- orientation(xyz[which.max(magnitude), ])
+  mean_vector <- colMeans(xyz)
 
-  # Orientation of the peak vector. Azimuth is measured in the transverse plane
-  # from +X (left) toward +Z (posterior); elevation is the angle out of that
-  # plane toward +Y (inferior).
-  azimuth <- atan2(xyz[peak, "Z"], xyz[peak, "X"]) * degrees
-  elevation <- atan2(
-    xyz[peak, "Y"],
-    sqrt(xyz[peak, "X"]^2 + xyz[peak, "Z"]^2)
-  ) * degrees
-
-  # Vector area of the closed polygon, A = 1/2 * sum(r_i x r_i+1). Its magnitude
-  # is the area a planar loop encloses, and the area of the best-fit projection
-  # otherwise. Taking the magnitude of the summed cross products rather than
-  # summing their magnitudes is what makes a figure-of-eight loop cancel, as it
-  # should.
+  # Vector area of the closed polygon, A = 1/2 sum(r_i x r_i+1). Its magnitude is
+  # the area a planar loop encloses. Summing the cross products before taking the
+  # magnitude is what makes a figure-of-eight cancel, as it should.
   area <- NA_real_
   planarity <- NA_real_
   if (nrow(xyz) >= 3) {
@@ -339,39 +508,39 @@ vcg_loop_metrics <- function(xyz, frequency) {
     ))^2)) / 2
 
     # Share of the loop's variance captured by its best-fit plane. A loop that
-    # bulges out of that plane - the non-dipolar content of a diseased atrium -
-    # falls away from 1.
-    variance <- eigen(stats::cov(xyz), symmetric = TRUE, only.values = TRUE)$values
-    if (sum(variance) > 0) {
-      planarity <- sum(variance[1:2]) / sum(variance)
+    # bulges out of that plane falls away from 1.
+    spread <- eigen(stats::cov(xyz), symmetric = TRUE, only.values = TRUE)$values
+    if (sum(spread) > 0) {
+      planarity <- sum(spread[1:2]) / sum(spread)
     }
   }
 
   data.table::data.table(
     duration = nrow(xyz) / frequency,
-    magnitude_peak = magnitude[peak],
-    magnitude_mean = mean(magnitude),
-    azimuth = azimuth,
-    elevation = elevation,
+    magnitude_peak = max(magnitude),
+    azimuth_peak = peak[["azimuth"]],
+    elevation_peak = peak[["elevation"]],
+    magnitude_mean = sqrt(sum(mean_vector^2)),
+    azimuth_mean = orientation(mean_vector)[["azimuth"]],
+    elevation_mean = orientation(mean_vector)[["elevation"]],
     area = area,
     planarity = planarity
   )
 }
 
-#' @export
-print.vectorcardiogram <- function(x, ...) {
-  cat("<vectorcardiogram>\n")
-  cat(
-    "  ",
-    x$wave,
-    " loop from ",
-    nrow(x$metrics),
-    if (x$beats == "median") " median beat" else " beats",
-    ", ",
-    x$frequency,
-    " Hz\n",
-    sep = ""
-  )
-  print(x$metrics)
-  invisible(x)
+#' Collect loops into a long table
+#'
+#' @param loops A list of numeric matrices with columns `X`, `Y`, and `Z`.
+#'
+#' @return A `data.table` of `beat`, `sample`, `X`, `Y`, and `Z`.
+#'
+#' @keywords internal
+stack_loops <- function(loops) {
+  data.table::rbindlist(lapply(seq_along(loops), function(i) {
+    data.table::data.table(
+      beat = i,
+      sample = seq_len(nrow(loops[[i]])) - 1L,
+      data.table::as.data.table(loops[[i]])
+    )
+  }))
 }

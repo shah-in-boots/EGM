@@ -10,18 +10,28 @@
   reproduces the recorded Frank leads less closely and yields derived measures
   with less prognostic power (Man et al., 2011; Kück et al., 2018).
 
-  Each returns the loop as a `data.table` of `beat`, `sample`, `X`, `Y`, `Z`
-  alongside its standard descriptors — peak and mean spatial vector magnitude,
-  azimuth and elevation of the peak vector, enclosed planar area, and planarity.
-  `beats = "median"` gives the signal-averaged loop used to characterise atrial
-  conduction (Havmöller et al., 2007); `beats = "all"` gives one loop per beat
-  and preserves the beat-to-beat variability that a signal average removes
-  (Tachmatzidis et al., 2022).
+  Each returns a plain `list` of the `loop` — a `data.table` of `beat`,
+  `sample`, `X`, `Y`, `Z` — and the `components` extracted from it: the peak and
+  mean spatial vectors with their azimuth and elevation, the planar area the
+  loop encloses, and how far it departs from a plane. `beats = "median"` gives
+  the signal-averaged loop used to characterise atrial conduction (Havmöller et
+  al., 2007); `beats = "all"` gives one loop per beat and preserves the
+  beat-to-beat variability a signal average removes (Tachmatzidis et al., 2022).
 
-  Segmentation reuses `get_windows()` and `median_window()`, so wave boundaries
-  come from the record's own delineation annotations. A record without them is an
-  error rather than a guess, as is a record whose annotations span several
-  channels without a guiding `channel`.
+  `vectorcardiogram()` additionally returns the global electric heterogeneity
+  (GEH) components — spatial QRS-T angle in its peak and mean forms, the spatial
+  ventricular gradient, and the sum absolute QRST integral (Waks et al., 2016).
+  These describe the discordance between depolarization and repolarization and
+  so need the T wave delineated as well; where it is not, they are `NA` rather
+  than absent.
+
+  Wave boundaries come from the record's own delineation annotations. A record
+  without them is an error rather than a guess, as is a record whose annotations
+  span several channels without a guiding `channel`.
+
+* **`kors` is a new exported dataset**, the 3 by 8 regression matrix itself, so
+  it can be inspected and used directly rather than being buried in the function
+  that applies it.
 
 ## The ECG class
 

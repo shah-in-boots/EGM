@@ -22,84 +22,86 @@ atrial_vectorcardiogram(
 \arguments{
 \item{object}{An object of class \code{EGM} or of subclass \link{ECG}. An \code{EGM} from an
 electrophysiology study is reduced to its surface leads first (see
-\code{\link[=as_ECG]{as_ECG()}}). All eight leads of the Kors transformation must be present.}
+\code{\link[=as_ECG]{as_ECG()}}). All eight leads of the \link{kors} transformation must be present.}
 
-\item{beats}{Which beats to trace. \code{"median"} (default) returns a single loop
-from the median beat; \code{"all"} returns one loop per beat.}
+\item{beats}{Which beats to trace. \code{"median"} (default) returns a single
+loop; \code{"all"} returns one loop per beat, preserving the beat-to-beat
+variability a signal average is designed to remove (Tachmatzidis et al.
+2022).}
 
-\item{channel}{An optional annotation channel guiding the wave delineation,
-passed to \code{\link[=by_rhythm]{by_rhythm()}}. Required when the annotations span more than one
-channel, as they do when an annotator has been run per lead.}
+\item{channel}{An optional annotation channel guiding the wave delineation.
+Required when the annotations span more than one channel, as they do when
+an annotator has been run per lead.}
 
-\item{baseline}{Logical. If \code{TRUE} (default), each loop is referenced to its
-own onset, taken as the median of the first 10 ms. Loop orientation is
-measured from the origin, so an offset baseline rotates every angle.}
+\item{baseline}{Logical. If \code{TRUE} (default), each beat is referenced to its
+own onset, taken as the median of the first 10 ms. Orientation is measured
+from the origin, so an offset baseline rotates every angle.}
 }
 \value{
-An object of class \code{vectorcardiogram}, a list with:
+A \code{list} of two \code{data.table}s:
 
 \describe{
-\item{\code{loop}}{A \code{data.table} of the orthogonal signal with columns \code{beat},
-\code{sample}, \code{X}, \code{Y}, and \code{Z}, in the units of the source signal.}
-\item{\code{metrics}}{A \code{data.table} with one row per loop, holding \code{duration}
-(seconds), \code{magnitude_peak} and \code{magnitude_mean} (spatial vector
-magnitude), \code{azimuth} and \code{elevation} (orientation of the peak vector,
-in degrees), \code{area} (planar area enclosed by the loop), and \code{planarity}
-(share of the loop's variance lying in its best-fit plane, 1 being
-perfectly planar).}
-\item{\code{wave}}{Either \code{"QRS"} or \code{"P"}.}
-\item{\code{beats}}{Either \code{"median"} or \code{"all"}.}
-\item{\code{frequency}}{Sampling frequency in Hz.}
+\item{\code{loop}}{The orthogonal signal, with columns \code{beat}, \code{sample}, \code{X},
+\code{Y} and \code{Z}, in the units of the source signal.}
+\item{\code{components}}{One row per loop. Both functions return \code{duration}
+(seconds); \code{magnitude_peak}, \code{azimuth_peak} and \code{elevation_peak} for the
+largest spatial vector; \code{magnitude_mean}, \code{azimuth_mean} and
+\code{elevation_mean} for the loop's mean vector; \code{area}, the planar area
+enclosed; and \code{planarity}, the share of the loop's variance lying in its
+best-fit plane, 1 being flat. \code{vectorcardiogram()} adds the GEH
+components \code{qrst_angle_peak}, \code{qrst_angle_mean}, \code{svg_magnitude},
+\code{svg_azimuth}, \code{svg_elevation} and \code{sai_qrst}.}
 }
+
+Azimuth is measured in the transverse plane from \code{+X} toward \code{+Z}, and
+elevation out of that plane toward \code{+Y}, both in degrees.
 }
 \description{
-\code{vectorcardiogram()} traces the ventricular (QRS) loop and
-\code{atrial_vectorcardiogram()} the atrial (P) loop, both by applying the Kors
-regression transformation to the surface ECG and cutting the result at the
-annotated wave boundaries. Each returns the orthogonal X, Y, Z signal
-together with the standard descriptors of the loop it traces.
+\code{vectorcardiogram()} traces the ventricular loop and
+\code{atrial_vectorcardiogram()} the atrial loop, both by applying the \link{kors}
+transformation to the surface ECG and cutting the result at the annotated
+wave boundaries. Each returns the orthogonal X, Y, Z signal together with
+the components extracted from it.
 }
 \section{Reconstruction}{
-The Kors regression matrix (Kors et al. 1990) maps eight leads - I, II and
-V1-V6 - onto the orthogonal axes of the Frank system. The remaining four
-limb leads are exact linear combinations of I and II and carry no independent
-information, so all eight are required and no substitute exists for a missing
-one. Kors' matrix is preferred to the inverse Dower matrix: it reproduces the
-recorded Frank leads more closely and yields derived measures with more
-prognostic power (Man et al. 2011; Kück et al. 2018).
-
-The transformation is linear, so it commutes with windowing: a loop cut from
-the transformed record and a loop transformed after cutting are the same
-signal, and the record is therefore transformed once, after segmentation. It
-does not commute with the median, which is not a linear operator. The median
-is taken lead by lead first, so \code{beats = "median"} returns the loop of the
-median beat rather than the median of the beats' loops.
+The transformation is linear, so it commutes with the segmentation: the
+record is transformed once and cut afterwards, which is the same signal as
+cutting first and transforming each beat. It does not commute with the
+median, which is not a linear operator, so \code{beats = "median"} returns the
+median of the beats' \emph{loops} rather than the loop of the median beat. This is
+the order used for signal-averaged orthogonal P-wave analysis (Havmöller et
+al. 2007).
 }
 
 \section{Segmentation}{
-Wave boundaries come from the record's annotations, since neither loop can be
-delimited without them. Windows run from wave onset to wave offset and must
-enclose the corresponding peak, using the same machinery as \code{\link[=get_windows]{get_windows()}};
-a record with no delineation annotations is an error rather than a guess.
-
-\code{beats = "median"} collapses the beats to a single loop before transforming,
-which is the signal-averaged form used to characterise atrial conduction
-(Havmöller et al. 2007). \code{beats = "all"} returns one loop per beat, which
-preserves the beat-to-beat variability that a signal average is designed to
-remove and that itself carries information about the atrial substrate
-(Tachmatzidis et al. 2022).
+Wave boundaries come from the record's own delineation annotations, since
+neither loop can be delimited without them; a record without them is an error
+rather than a guess. Beats are anchored on the wave peak - the QRS peak for
+the ventricular loop, the P peak for the atrial one - and for
+\code{beats = "median"} every beat is placed on a common grid at that anchor and
+reduced sample by sample. The median beat's own boundaries are the medians of
+the individual ones, so it has a duration rather than the union of all
+durations.
 }
 
-\section{Interpretation}{
-The P loop is small - roughly a tenth of the QRS in amplitude - so it is far
-more sensitive to baseline wander and to the accuracy of the P-onset
-annotation than the QRS loop is. \code{magnitude_peak} on the P loop is the spatial
-P-wave vector magnitude, which falls as the left atrium remodels and which
-tracks low-voltage area at electroanatomic mapping (Yano et al. 2023).
+\section{Components}{
+Both loops yield the same geometric components: the peak and mean spatial
+vectors with their orientation, the area the loop encloses, and how far it
+departs from a plane.
 
-A P loop only exists in an organised atrial rhythm. In atrial fibrillation
-there is no P wave to delineate, and the atrial signal is characterised
-instead by \code{\link[=extract_f_waves]{extract_f_waves()}}.
+The ventricular loop additionally yields the global electric heterogeneity
+(GEH) components, which describe the discordance between depolarization and
+repolarization and so need the T wave to also be delineated: the spatial
+QRS-T angle in its peak and mean forms, the spatial ventricular gradient
+(magnitude, azimuth and elevation), and the sum absolute QRST integral (Waks
+et al. 2016). Where the T wave is not delineated they are returned as \code{NA}
+rather than dropped.
+
+\code{magnitude_peak} on the atrial loop is the spatial P-wave vector magnitude,
+which falls as the left atrium remodels and tracks low-voltage area at
+electroanatomic mapping (Yano et al. 2023). A P loop only exists in an
+organised atrial rhythm; in atrial fibrillation the atrial signal is
+characterised by \code{\link[=extract_f_waves]{extract_f_waves()}} instead.
 }
 
 \examples{
@@ -107,11 +109,8 @@ instead by \code{\link[=extract_f_waves]{extract_f_waves()}}.
 ecg <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"),
                  annotator = "ecgpuwave")
 
-# Ventricular loop of the median beat
-vectorcardiogram(ecg)
-
-# Atrial loop, beat by beat
-atrial_vectorcardiogram(ecg, beats = "all")$metrics
+vectorcardiogram(ecg)$components
+atrial_vectorcardiogram(ecg, beats = "all")$components
 }
 
 }
@@ -121,15 +120,11 @@ vectorcardiogram from standard electrocardiographic leads: diagnostic
 comparison of different methods. \emph{European Heart Journal}.
 1990;11(12):1083-1092. \doi{10.1093/oxfordjournals.eurheartj.a059647}
 
-Man S, Algra AM, Schreurs CA, et al. Influence of the vectorcardiogram
-synthesis matrix on the power of the electrocardiogram-derived spatial QRS-T
-angle to predict arrhythmias in patients with ischemic heart disease and
-systolic left ventricular dysfunction. \emph{Journal of Electrocardiology}.
-2011;44(4):410-415. \doi{10.1016/j.jelectrocard.2011.04.007}
-
-Kück K, Isaksen JL, Graff C, et al. Spatial QRS-T angle variants for
-prediction of all-cause mortality. \emph{Journal of Electrocardiology}.
-2018;51(5):768-775. \doi{10.1016/j.jelectrocard.2018.05.011}
+Waks JW, Sitlani CM, Soliman EZ, et al. Global electric heterogeneity risk
+score for prediction of sudden cardiac death in the general population: the
+Atherosclerosis Risk in Communities (ARIC) and Cardiovascular Health (CHS)
+studies. \emph{Circulation}. 2016;133(23):2222-2234.
+\doi{10.1161/CIRCULATIONAHA.116.021306}
 
 Havmöller R, Carlson J, Holmqvist F, et al. Age-related changes in P wave
 morphology in healthy subjects. \emph{BMC Cardiovascular Disorders}. 2007;7:22.
@@ -149,7 +144,7 @@ analysis to predict atrial fibrillation recurrence after catheter ablation.
 \emph{Diagnostics}. 2022;12(4):830. \doi{10.3390/diagnostics12040830}
 }
 \seealso{
-\code{\link[=as_ECG]{as_ECG()}} for the surface lead contract, \code{\link[=get_windows]{get_windows()}} for the
-segmentation, \code{\link[=extract_f_waves]{extract_f_waves()}} for the atrial signal when there is no P
+\link{kors} for the transformation itself, \code{\link[=as_ECG]{as_ECG()}} for the surface
+lead contract, \code{\link[=extract_f_waves]{extract_f_waves()}} for the atrial signal when there is no P
 wave to trace.
 }
