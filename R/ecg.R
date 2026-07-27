@@ -297,17 +297,21 @@ as_ECG <- function(x, ...) {
       " other channel(s): ",
       paste(dropped, collapse = ", ")
     )
+  }
 
-    annotated_channels <- unlist(lapply(x$annotation, function(a) {
-      if (is.null(a$channel)) integer() else unique(a$channel[a$channel != 0L])
-    }))
-    if (length(annotated_channels) > 0) {
-      warning(
-        "Annotation `channel` indices refer to the original record and are not ",
-        "renumbered when channels are dropped",
-        call. = FALSE
-      )
-    }
+  # Channel indices address positions in the original record. They cannot be
+  # renumbered here without knowing whether the annotator counted from zero.
+  per_channel <- any(vapply(
+    x$annotation,
+    function(a) !is.null(a$channel) && any(a$channel != 0L),
+    logical(1)
+  ))
+  if (length(dropped) > 0 && per_channel) {
+    warning(
+      "Annotation `channel` indices refer to the original record and are not ",
+      "renumbered when channels are dropped",
+      call. = FALSE
+    )
   }
 
   # Header rows are parallel to signal columns, so channels are kept by position.

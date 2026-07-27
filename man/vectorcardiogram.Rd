@@ -83,9 +83,15 @@ The unit of analysis is one beat. Wave boundaries come from the record's own
 delineation annotations, since neither loop can be delimited without them; a
 record without them is an error rather than a guess.
 
-Both functions accept a whole record, a single windowed beat, or a median
-beat, because both routes go through \code{\link[=get_windows]{get_windows()}} and \code{\link[=median_window]{median_window()}} and
-an object that already holds one beat passes through each unchanged. So
+A record is cut into beats by \code{\link[=by_beat]{by_beat()}}, a fixed span around each wave peak.
+Equal-length windows are what let \code{\link[=median_window]{median_window()}} reduce them without
+padding, and a padded sample is a fabricated one - it would drag the median
+toward whatever the padding says at exactly the loop tails the components are
+read from.
+
+An object that already holds one beat - a window, or a median of them - is
+taken as it stands, since there is no room in it for a span and nothing left
+to reduce. So
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{vectorcardiogram(ecg)
 }\if{html}{\out{</div>}}
@@ -98,10 +104,10 @@ and
   vectorcardiogram()
 }\if{html}{\out{</div>}}
 
-describe the same beat, the first taking \code{beats = "median"} from its default
+both describe one beat, the first taking \code{beats = "median"} from its default
 and the second building the beat itself. Reach for the second when the
 windowing or the alignment needs to be something other than the default;
-\code{map_windows()} will run either function over every window of a collection.
+\code{\link[=map_windows]{map_windows()}} will run either function over every window of a collection.
 }
 
 \section{Components}{

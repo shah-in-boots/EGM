@@ -315,14 +315,14 @@ learn_template <- function(
   target_samples <- as.integer(target_samples)
 
   if (!is.null(channel_criteria)) {
-    valid_channel <- length(channel_criteria) == 1L && (
+    channel_ok <- length(channel_criteria) == 1L && (
       (is.numeric(channel_criteria) && !is.na(channel_criteria) &&
         is.finite(channel_criteria) && channel_criteria >= 0 &&
         channel_criteria == as.integer(channel_criteria)) ||
         (is.character(channel_criteria) && !is.na(channel_criteria) &&
           nzchar(channel_criteria))
     )
-    if (!valid_channel) {
+    if (!channel_ok) {
       stop("`channel_criteria` must be one non-negative channel number or name")
     }
     if (is.numeric(channel_criteria)) {

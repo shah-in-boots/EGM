@@ -70,9 +70,15 @@
 #' delineation annotations, since neither loop can be delimited without them; a
 #' record without them is an error rather than a guess.
 #'
-#' Both functions accept a whole record, a single windowed beat, or a median
-#' beat, because both routes go through [get_windows()] and [median_window()] and
-#' an object that already holds one beat passes through each unchanged. So
+#' A record is cut into beats by [by_beat()], a fixed span around each wave peak.
+#' Equal-length windows are what let [median_window()] reduce them without
+#' padding, and a padded sample is a fabricated one - it would drag the median
+#' toward whatever the padding says at exactly the loop tails the components are
+#' read from.
+#'
+#' An object that already holds one beat - a window, or a median of them - is
+#' taken as it stands, since there is no room in it for a span and nothing left
+#' to reduce. So
 #'
 #' ```r
 #' vectorcardiogram(ecg)
@@ -87,10 +93,10 @@
 #'   vectorcardiogram()
 #' ```
 #'
-#' describe the same beat, the first taking `beats = "median"` from its default
+#' both describe one beat, the first taking `beats = "median"` from its default
 #' and the second building the beat itself. Reach for the second when the
 #' windowing or the alignment needs to be something other than the default;
-#' `map_windows()` will run either function over every window of a collection.
+#' [map_windows()] will run either function over every window of a collection.
 #'
 #' # Components
 #'
@@ -208,65 +214,18 @@ vectorcardiogram <- function(
   channel = NULL,
   baseline = TRUE
 ) {
-  traced <- trace_loops(
-    object,
-    waves = c("QRS", "T"),
-    beats = match.arg(beats),
-    channel = channel,
-    baseline = baseline,
-    what = "The vectorcardiogram"
+  assemble_loops(
+    trace_loops(
+      object,
+      waves = c("QRS", "T"),
+      beats = match.arg(beats),
+      channel = channel,
+      baseline = baseline,
+      what = "The vectorcardiogram"
+    ),
+    wave = "QRS",
+    repolarization = "T"
   )
-
-  qrs <- lapply(traced$beats, function(b) b$segment$QRS)
-  components <- data.table::rbindlist(lapply(
-    seq_along(traced$beats),
-    function(i) {
-      beat <- traced$beats[[i]]
-
-      # GEH describes the discordance between depolarization and repolarization,
-      # so all of it needs the T wave. Absent, the QRS loop still stands.
-      geh <- data.table::data.table(
-        qrst_angle_peak = NA_real_,
-        qrst_angle_mean = NA_real_,
-        svg_magnitude = NA_real_,
-        svg_azimuth = NA_real_,
-        svg_elevation = NA_real_,
-        sai_qrst = NA_real_
-      )
-
-      if (!is.null(beat$segment$T)) {
-        # Peak vectors are the largest of each loop, mean vectors their centroid;
-        # the spatial QRS-T angle is taken between each pair
-        qrs_peak <- beat$segment$QRS[which.max(magnitudes(beat$segment$QRS)), ]
-        t_peak <- beat$segment$T[which.max(magnitudes(beat$segment$T)), ]
-        qrs_mean <- colMeans(beat$segment$QRS)
-        t_mean <- colMeans(beat$segment$T)
-
-        # The beat spans QRS onset to T offset, so the ventricular gradient is
-        # its integral and the sum absolute QRST integral the non-directional
-        # counterpart, both in signal units x seconds
-        svg <- colSums(beat$xyz) / traced$frequency
-        svg_angles <- orientation(svg)
-
-        geh <- data.table::data.table(
-          qrst_angle_peak = spatial_angle(qrs_peak, t_peak),
-          qrst_angle_mean = spatial_angle(qrs_mean, t_mean),
-          svg_magnitude = sqrt(sum(svg^2)),
-          svg_azimuth = svg_angles[["azimuth"]],
-          svg_elevation = svg_angles[["elevation"]],
-          sai_qrst = sum(abs(beat$xyz)) / traced$frequency
-        )
-      }
-
-      data.table::data.table(
-        beat = i,
-        loop_components(beat$segment$QRS, traced$frequency),
-        geh
-      )
-    }
-  ))
-
-  list(loop = stack_loops(qrs), components = components)
 }
 
 #' @rdname vectorcardiogram
@@ -277,24 +236,17 @@ atrial_vectorcardiogram <- function(
   channel = NULL,
   baseline = TRUE
 ) {
-  traced <- trace_loops(
-    object,
-    waves = "P",
-    beats = match.arg(beats),
-    channel = channel,
-    baseline = baseline,
-    what = "The atrial vectorcardiogram"
+  assemble_loops(
+    trace_loops(
+      object,
+      waves = "P",
+      beats = match.arg(beats),
+      channel = channel,
+      baseline = baseline,
+      what = "The atrial vectorcardiogram"
+    ),
+    wave = "P"
   )
-
-  loops <- lapply(traced$beats, function(b) b$segment$P)
-  components <- data.table::rbindlist(lapply(seq_along(loops), function(i) {
-    data.table::data.table(
-      beat = i,
-      loop_components(loops[[i]], traced$frequency)
-    )
-  }))
-
-  list(loop = stack_loops(loops), components = components)
 }
 
 # Tracing ----------------------------------------------------------------------
@@ -414,11 +366,18 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
     for (v in waves) {
       opens <- sort(fiducials$sample[fiducials$type == "(" & fiducials$wave %in% v])
       closes <- sort(fiducials$sample[fiducials$type == ")" & fiducials$wave %in% v])
-      opens <- if (v == waves[1]) opens[opens <= walk] else opens[opens > walk]
-      if (length(opens) == 0) next
-      onset <- if (v == waves[1]) opens[length(opens)] else opens[1]
+
+      # Nearest pair on the right side of the walk: the last to open at or before
+      # the fiducial for the first wave, the first to open after the wave before
+      # it for the rest
+      onset <- if (v == waves[1]) {
+        rev(opens[opens <= walk])[1]
+      } else {
+        opens[opens > walk][1]
+      }
       offset <- closes[closes > onset][1]
-      if (is.na(offset)) next
+      if (is.na(onset) || is.na(offset)) next
+
       mark[[v]] <- c(onset, offset) + 1L
       walk <- offset
     }
@@ -431,23 +390,19 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
     ) %*% t(kors)
 
     if (baseline) {
-      # The onset of the first wave, over 10 ms so that one noisy sample cannot
-      # displace the loop. A median beat may carry padding before that onset,
-      # which is why the lead-in starts there rather than at the window edge.
+      # The first 10 ms of the first wave, taken there rather than at the window
+      # edge because the window reaches beyond the beat on both sides. A median
+      # over 10 ms so that one noisy sample cannot displace the whole loop.
       from <- mark[[waves[1]]][1]
-      lead_in <- from + seq_len(min(
-        nrow(xyz) - from + 1L,
-        max(1, round(frequency * 0.01))
-      )) - 1L
-      onset <- apply(xyz[lead_in, , drop = FALSE], 2, stats::median)
-      xyz <- sweep(xyz, 2, onset)
+      width <- max(1L, round(frequency * 0.01))
+      lead_in <- seq(from, min(nrow(xyz), from + width - 1L))
+      xyz <- sweep(xyz, 2, apply(xyz[lead_in, , drop = FALSE], 2, stats::median))
     }
 
-    # The span the components are read over, ignoring any padding outside it
-    delineated <- Filter(Negate(is.null), mark)
-    span <- mark[[waves[1]]][1]:max(
-      vapply(delineated, function(m) m[2], numeric(1))
-    )
+    # The span the components are read over: the first wave's onset to the last
+    # offset delineated, ignoring the window either side of it
+    ends <- vapply(mark, function(m) if (is.null(m)) NA_real_ else m[2], numeric(1))
+    span <- mark[[waves[1]]][1]:max(ends, na.rm = TRUE)
 
     list(
       xyz = xyz[span, , drop = FALSE],
@@ -461,17 +416,6 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
 }
 
 # Components -------------------------------------------------------------------
-
-#' Spatial magnitude of each vector in a loop
-#'
-#' @param xyz A numeric matrix with columns `X`, `Y`, and `Z`.
-#'
-#' @return A numeric vector of magnitudes.
-#'
-#' @keywords internal
-magnitudes <- function(xyz) {
-  sqrt(rowSums(xyz^2))
-}
 
 #' Orientation of a spatial vector
 #'
@@ -523,7 +467,7 @@ spatial_angle <- function(a, b) {
 #'
 #' @keywords internal
 loop_components <- function(xyz, frequency) {
-  magnitude <- magnitudes(xyz)
+  magnitude <- sqrt(rowSums(xyz^2))
   peak <- orientation(xyz[which.max(magnitude), ])
   mean_vector <- colMeans(xyz)
 
@@ -561,19 +505,78 @@ loop_components <- function(xyz, frequency) {
   )
 }
 
-#' Collect loops into a long table
+#' Assemble traced beats into the tables the caller gets back
 #'
-#' @param loops A list of numeric matrices with columns `X`, `Y`, and `Z`.
+#' @description Takes what [trace_loops()] cut and returns the pair both
+#'   vectorcardiogram functions hand back: the named wave's loop, beat by beat,
+#'   and the components read off it.
 #'
-#' @return A `data.table` of `beat`, `sample`, `X`, `Y`, and `Z`.
+#' @details Naming a `repolarization` wave adds the global electric heterogeneity
+#'   components. Those describe the discordance between depolarization and
+#'   repolarization, so they need both loops and the span between them; a beat
+#'   without the second wave delineated keeps its loop and takes `NA` for them.
+#'
+#' @param traced The result of [trace_loops()].
+#' @param wave The wave whose loop is returned, e.g. `"QRS"`.
+#' @param repolarization Optional second wave to measure the first against.
+#'
+#' @return A `list` of `loop` and `components`, both `data.table`s.
 #'
 #' @keywords internal
-stack_loops <- function(loops) {
-  data.table::rbindlist(lapply(seq_along(loops), function(i) {
+assemble_loops <- function(traced, wave, repolarization = NULL) {
+  loops <- lapply(traced$beats, function(b) b$segment[[wave]])
+
+  loop <- data.table::rbindlist(lapply(seq_along(loops), function(i) {
     data.table::data.table(
       beat = i,
       sample = seq_len(nrow(loops[[i]])) - 1L,
       data.table::as.data.table(loops[[i]])
     )
   }))
+
+  components <- data.table::rbindlist(lapply(seq_along(loops), function(i) {
+    beat <- traced$beats[[i]]
+    against <- if (is.null(repolarization)) NULL else beat$segment[[repolarization]]
+
+    geh <- if (is.null(repolarization)) {
+      NULL
+    } else if (is.null(against)) {
+      data.table::data.table(
+        qrst_angle_peak = NA_real_,
+        qrst_angle_mean = NA_real_,
+        svg_magnitude = NA_real_,
+        svg_azimuth = NA_real_,
+        svg_elevation = NA_real_,
+        sai_qrst = NA_real_
+      )
+    } else {
+      # Peak vectors are the largest of each loop and mean vectors their
+      # centroid; the spatial QRS-T angle is taken between each pair. The beat
+      # spans one wave's onset to the other's offset, so the ventricular gradient
+      # is its integral and the sum absolute QRST integral the non-directional
+      # counterpart, both in signal units x seconds.
+      svg <- colSums(beat$xyz) / traced$frequency
+      angles <- orientation(svg)
+
+      data.table::data.table(
+        qrst_angle_peak = spatial_angle(
+          loops[[i]][which.max(rowSums(loops[[i]]^2)), ],
+          against[which.max(rowSums(against^2)), ]
+        ),
+        qrst_angle_mean = spatial_angle(colMeans(loops[[i]]), colMeans(against)),
+        svg_magnitude = sqrt(sum(svg^2)),
+        svg_azimuth = angles[["azimuth"]],
+        svg_elevation = angles[["elevation"]],
+        sai_qrst = sum(abs(beat$xyz)) / traced$frequency
+      )
+    }
+
+    data.table::data.table(
+      beat = i,
+      loop_components(loops[[i]], traced$frequency),
+      geh
+    )
+  }))
+
+  list(loop = loop, components = components)
 }

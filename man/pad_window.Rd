@@ -62,12 +62,15 @@ same sample length.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-Pads each window with a constant value (zero by default) so that every window
-shares a common length. Unlike time normalization, padding is
-\emph{non-destructive}: the original samples are preserved and only flat padding is
-added at the edges. This is primarily used to anchor a fiducial - typically
-the QRS peak - at a fixed index across windows, or simply to make ragged
-windows rectangular for stacking (e.g. before \code{\link[=median_window]{median_window()}}).
+Extends each window with \code{pad_value} so that every window shares a common
+length. Unlike time normalization, padding is \emph{non-destructive}: the original
+samples are preserved and only the edges are added to. Use it to anchor a
+fiducial - typically the QRS peak - at a fixed index across windows, or to
+make ragged windows rectangular for stacking.
+
+Where the windows can be cut equal in the first place, \code{\link[=by_beat]{by_beat()}} is the
+better route: padding marks the added samples absent, but absent samples
+still thin out the reduction that follows.
 }
 \details{
 The \code{align} argument controls where the real signal sits within the
