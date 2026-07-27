@@ -27,7 +27,7 @@ test_that("pad_window anchors the QRS at a common index", {
   expect_gte(pad_lengths[1], max(vapply(windows, function(w) nrow(w$signal), integer(1))))
 })
 
-test_that("pad_window places signal by alignment with zero edges", {
+test_that("pad_window places signal by alignment with absent edges", {
 
   windows <- make_sinus_windows()
   n1 <- nrow(windows[[1]]$signal)
@@ -35,17 +35,25 @@ test_that("pad_window places signal by alignment with zero edges", {
   left <- pad_window(windows, target_samples = 800, align = "left")
   right <- pad_window(windows, target_samples = 800, align = "right")
 
-  # Left alignment: real signal at the front, zero padding at the tail
+  # Left alignment: real signal at the front, padding at the tail
   expect_equal(nrow(left[[1]]$signal), 800)
-  expect_equal(left[[1]]$signal$II[800], 0)
+  expect_true(is.na(left[[1]]$signal$II[800]))
   expect_equal(left[[1]]$signal$II[seq_len(n1)], windows[[1]]$signal$II)
 
-  # Right alignment: zero padding at the front, real signal at the tail
-  expect_equal(right[[1]]$signal$II[1], 0)
+  # Right alignment: padding at the front, real signal at the tail
+  expect_true(is.na(right[[1]]$signal$II[1]))
   expect_equal(
     right[[1]]$signal$II[(800 - n1 + 1):800],
     windows[[1]]$signal$II
   )
+
+  # Padding marks the samples absent rather than asserting a potential of zero,
+  # which would drag a median toward the origin at the edges of a beat
+  expect_equal(
+    sum(!is.na(left[[1]]$signal$II)),
+    n1
+  )
+  expect_equal(pad_window(windows, target_samples = 800, pad_value = 0)[[1]]$signal$II[800], 0)
 })
 
 test_that("median_window collapses windows to a single beat", {
@@ -73,10 +81,14 @@ test_that("median_window collapses windows to a single beat", {
   expect_s3_class(beat2, "EGM")
   expect_equal(nrow(beat2$signal), nrow(padded[[1]]$signal))
 
-  # The median lies within the beat-to-beat range at each sample
+  # The median lies within the beat-to-beat range at each sample, over the beats
+  # that actually reach it
   mat <- vapply(padded, function(w) w$signal$II, numeric(nrow(padded[[1]]$signal)))
-  expect_true(all(beat2$signal$II >= apply(mat, 1, min) - 1e-8))
-  expect_true(all(beat2$signal$II <= apply(mat, 1, max) + 1e-8))
+  expect_true(all(beat2$signal$II >= apply(mat, 1, min, na.rm = TRUE) - 1e-8))
+  expect_true(all(beat2$signal$II <= apply(mat, 1, max, na.rm = TRUE) + 1e-8))
+
+  # No sample is left missing: every position is reached by at least one beat
+  expect_false(anyNA(beat2$signal$II))
 })
 
 test_that("the median beat carries the fiducials that produced it", {

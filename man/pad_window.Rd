@@ -12,7 +12,7 @@ pad_window(
   align_feature = "N",
   feature_position = NULL,
   channel_criteria = NULL,
-  pad_value = 0,
+  pad_value = NA,
   preserve_class = TRUE,
   ...
 )
@@ -43,7 +43,12 @@ centre.}
 \code{align_feature} in multi-lead annotation tables. Mirrors the \code{channel}
 argument of \code{\link[=by_rhythm]{by_rhythm()}}.}
 
-\item{pad_value}{The value used for padding. Defaults to \code{0}.}
+\item{pad_value}{The value used for padding. Defaults to \code{NA}, which marks
+the added samples as absent rather than as a measurement. Padding with \code{0}
+states that the potential there was zero, which is a fabricated observation:
+it biases \code{\link[=median_window]{median_window()}} toward the origin at the edges of the beat, and
+with it every measure read off the loop tails. Set it to \code{0} when a
+downstream step cannot carry missing values.}
 
 \item{preserve_class}{Logical. If TRUE (default), returns a \code{windows} object;
 if FALSE, returns a plain list of \code{EGM} objects.}

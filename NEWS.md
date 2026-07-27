@@ -169,6 +169,21 @@
   recording how many windows went into the beat, and loses the `window_info`
   string naming the single source window it is no longer from.
 
+* **`pad_window()` pads with `NA` rather than `0`** (**breaking**). Zero is a
+  fabricated observation: it states that the potential at those samples was zero,
+  and it drags `median_window()` toward the origin wherever the windows do not
+  all reach. On the bundled sinus record that shrank the P-loop area by 9%
+  against a median built from real signal; peak-vector measures were unaffected,
+  since the peak sits mid-beat where every window contributes. Beats windowed
+  from raw rhythm are ragged in proportion to how much the rhythm varies — on
+  the bundled AF record only 57% of the padded grid is backed by every beat.
+  Pass `pad_value = 0` where a downstream step cannot carry missing values.
+
+  This is a mitigation, not the fix. The standard construction (AHA/ACCF/HRS
+  Part I, Kligfield et al. 2007) forms the representative beat over a fixed span
+  of the continuous recording, so nothing is cut short and nothing needs
+  padding; a fixed-width windowing strategy would remove the question entirely.
+
 * **Windows cut from an `ECG` are `ECG`s.** The class was previously lost at
   extraction, so a windowed beat could not satisfy an analysis gated on it.
   `get_windows()`, `pad_window()`, `normalize_window()`, `warp_window()` and

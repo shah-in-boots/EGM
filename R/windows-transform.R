@@ -5,8 +5,8 @@
 # averaging, stacking into a matrix, plotting overlaid - needs them rectangular.
 # There are three ways to get there, and they differ in what they destroy:
 #
-#   pad_window()       non-destructive. Real samples untouched, flat padding
-#                      added at the edges. Anchors one fiducial.
+#   pad_window()       non-destructive. Real samples untouched, `NA` added at
+#                      the edges. Anchors one fiducial.
 #   normalize_window() warps the time axis so the two borders (or a single
 #                      aligned feature) land on a common grid.
 #   warp_window()      warps piecewise between many landmarks at once.
@@ -65,7 +65,12 @@
 #' @param channel_criteria Optional guiding channel used when locating
 #'   `align_feature` in multi-lead annotation tables. Mirrors the `channel`
 #'   argument of [by_rhythm()].
-#' @param pad_value The value used for padding. Defaults to `0`.
+#' @param pad_value The value used for padding. Defaults to `NA`, which marks
+#'   the added samples as absent rather than as a measurement. Padding with `0`
+#'   states that the potential there was zero, which is a fabricated observation:
+#'   it biases [median_window()] toward the origin at the edges of the beat, and
+#'   with it every measure read off the loop tails. Set it to `0` when a
+#'   downstream step cannot carry missing values.
 #' @param preserve_class Logical. If TRUE (default), returns a `windows` object;
 #'   if FALSE, returns a plain list of `EGM` objects.
 #' @param ... Additional arguments (currently unused).
@@ -82,7 +87,7 @@ pad_window <- function(
   align_feature = "N",
   feature_position = NULL,
   channel_criteria = NULL,
-  pad_value = 0,
+  pad_value = NA,
   preserve_class = TRUE,
   ...
 ) {
@@ -172,12 +177,14 @@ pad_window <- function(
     # Fill an all-`pad_value` grid, copying source samples into their placed
     # positions. Positions outside [0, total-1] are silently dropped, which is
     # how truncation is expressed when a target length is too small.
+    # `as.numeric()` so the default `NA` does not make an integer-typed column
+    # logical.
     out <- data.frame(sample = seq_len(total) - 1L)
     src_idx <- seq_len(nrow(signal_data))
     dst_idx <- place_i + (src_idx - 1L) # 0-based output positions
     keep <- dst_idx >= 0 & dst_idx <= (total - 1L)
     for (col in signal_cols) {
-      values <- rep(pad_value, total)
+      values <- rep(as.numeric(pad_value), total)
       values[dst_idx[keep] + 1L] <- signal_data[[col]][src_idx[keep]]
       out[[col]] <- values
     }
