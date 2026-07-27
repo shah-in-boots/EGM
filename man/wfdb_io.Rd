@@ -86,7 +86,16 @@ without any scaling applied. Use this to preserve exact round-trip fidelity.
 using the formula: \code{physical = (digital - baseline) / gain}, where \code{baseline}
 and \code{gain} are specified in the header file. This is the human-readable format
 for analysis.
-}}
+}
+
+The two differ by the ADC gain, which is commonly 200, so reading digital
+counts as though they were millivolts is a 200-fold error - and one that no
+downstream check can catch on its own, since the same number is plausible in
+either. The signal table returned by \code{\link[=read_wfdb]{read_wfdb()}} and \code{\link[=read_signal]{read_signal()}}
+therefore carries its units as a label, readable with \code{\link[=signal_units]{signal_units()}} and
+preserved through windowing, padding, medians and resampling.
+\code{\link[=write_wfdb]{write_wfdb()}} refuses to write a signal whose label contradicts the \code{units}
+it was told to expect.}
 
 \item{...}{Additional arguments to be passed to the function}
 

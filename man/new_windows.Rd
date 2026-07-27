@@ -9,6 +9,7 @@ new_windows(
   method = character(),
   source_record = character(),
   history = method,
+  dropped = integer(),
   ...
 )
 }
@@ -22,6 +23,9 @@ new_windows(
 
 \item{history}{A \code{character} vector of the steps applied so far, in order.
 Defaults to \code{method}, which is correct at the point of extraction.}
+
+\item{dropped}{A named \code{integer} vector counting candidate beats the strategy
+found but did not return, by reason. Read it back with \code{\link[=window_dropped]{window_dropped()}}.}
 
 \item{...}{Additional arguments passed to methods.}
 }
@@ -38,5 +42,6 @@ and only applies class attributes; collections are normally produced by
 \code{\link[=get_windows]{get_windows()}} rather than built by hand.
 }
 \seealso{
-\code{\link[=get_windows]{get_windows()}} to create one from an \code{EGM}.
+\code{\link[=get_windows]{get_windows()}} to create one from an \code{EGM}, \code{\link[=window_dropped]{window_dropped()}} for
+the candidates it did not return.
 }

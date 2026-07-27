@@ -7,6 +7,17 @@
 #'   number of rows. It will add a column of index positions called `sample` if
 #'   it does not already exist.
 #'
+#' @details Every signal table is labelled with the units its values are in,
+#'   `"digital"` or `"physical"`, readable with [signal_units()]. The label is
+#'   carried through windowing, padding, medians and resampling, so a table many
+#'   steps from the file it was read out of still says what its numbers mean.
+#'
+#'   The distinction is a factor of the ADC gain - commonly 200 - and nothing in
+#'   the values themselves reveals which one is in hand. Since the same amplitude
+#'   is a plausible number in either, a mislabelled signal is not detectable
+#'   downstream; only the label makes it checkable. [write_wfdb()] refuses to
+#'   write a table whose label contradicts the units it was told to expect.
+#'
 #' @returns An object of class `signal_table`, which is an extension of the
 #'   `data.table` class. The `sample` column is *invariant* and will always be
 #'   present. The other columns represent additional channels.
@@ -15,8 +26,14 @@
 #'
 #' @param ... A `list` of equal lengths
 #'
+#' @param units A `character` naming the units the values are in, either
+#'   `"digital"` (raw ADC counts, the default) or `"physical"` (the units the
+#'   header names, usually mV). Must be given by name.
+#'
+#' @seealso [signal_units()], [read_wfdb()]
+#'
 #' @export
-signal_table <- function(...) {
+signal_table <- function(..., units = c("digital", "physical")) {
   # Invariant rules:
   # 	Can add and remove rows (each row is a time point)
   # 	Rows can NOT be re-ordered
@@ -26,10 +43,11 @@ signal_table <- function(...) {
   # Invariant columns:
   # 	sample <integer> = represents a time point and order of data
 
+  units <- match.arg(units)
   x <- df_list(..., .name_repair = ~ make.unique(.x, sep = "_"))
 
   if (length(x) == 0) {
-    return(new_signal_table())
+    return(new_signal_table(units = units))
   }
 
   # Check to see if a `sample` column exists
@@ -46,20 +64,68 @@ signal_table <- function(...) {
   checkmate::assert_names(names(y), must.include = 'sample')
   checkmate::assert_integer(y$sample)
 
-  new_signal_table(data = y)
+  new_signal_table(data = y, units = units)
 }
 
 #' @keywords internal
-new_signal_table <- function(data = list()) {
-  new_data_frame(data, class = c('signal_table', 'data.table'))
+new_signal_table <- function(data = list(), units = "digital") {
+  new_data_frame(
+    data,
+    units = units,
+    class = c('signal_table', 'data.table')
+  )
 }
 
 #' @export
 print.signal_table <- function(x, ...) {
-  cat(sprintf('<%s: %s x %s>\n', class(x)[[1]], dim(x)[1], dim(x)[2]))
+  cat(sprintf(
+    '<%s: %s x %s, %s units>\n',
+    class(x)[[1]],
+    dim(x)[1],
+    dim(x)[2],
+    signal_units(x)
+  ))
   if (length(x) > 0) {
     NextMethod()
   }
+}
+
+#' Units a signal is recorded in
+#'
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' Reports whether a signal holds raw ADC counts (`"digital"`) or the physical
+#' units its header names (`"physical"`, usually mV). The two differ by the ADC
+#' gain - 200 in a great many records - and nothing in the values themselves
+#' says which is which, so the answer is carried as a label rather than inferred.
+#'
+#' @param x An `EGM` object or a `signal_table`.
+#'
+#' @return A single `character`, `"digital"` or `"physical"`.
+#'
+#' @examples
+#' \dontrun{
+#' signal_units(read_wfdb("ecg", test_path()))
+#' #> [1] "digital"
+#'
+#' signal_units(read_wfdb("ecg", test_path(), units = "physical"))
+#' #> [1] "physical"
+#' }
+#'
+#' @seealso [read_wfdb()], [signal_table()]
+#'
+#' @export
+signal_units <- function(x) {
+  signal <- if (is_signal_table(x)) x else x$signal
+  units <- attr(signal, "units")
+  # Anything built before the label existed, or by a route that dropped it, is
+  # digital: that is what every reader in this package produced by default
+  if (is.null(units) || !nzchar(units[1])) {
+    return("digital")
+  }
+  as.character(units[1])
 }
 
 #' @export

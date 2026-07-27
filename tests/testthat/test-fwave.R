@@ -588,3 +588,32 @@ test_that("QRS positions are refined onto the local energy maximum", {
 
   expect_equal(refined, true_peaks)
 })
+
+test_that("beat annotations are not pooled across a per-lead annotator", {
+  object <- as_ECG(read_wfdb("ecg-sinus", test_path(), "ann"))
+
+  # Twelve leads' worth of QRS annotations would be counted as twelve times as
+  # many beats, and every rhythm measure derived from them follows
+  expect_error(
+    extract_f_waves(object, verbose = FALSE),
+    "needs a guiding `channel`"
+  )
+
+  guided <- suppressWarnings(
+    extract_f_waves(object, channel = 2, verbose = FALSE)
+  )
+  qrs <- EGM:::locate_features(get_annotation(object), "N", 2L)
+  expect_equal(guided$record$n_beats, length(qrs))
+  expect_gt(guided$record$heart_rate, 20)
+  expect_lt(guided$record$heart_rate, 300)
+})
+
+test_that("an implausible heart rate is reported rather than returned", {
+  # Beats one sample apart at 500 Hz is 30,000 bpm: a counting error, most often
+  # annotations pooled across leads, and invisible in every feature downstream
+  expect_warning(
+    EGM:::rhythm_summary(c(100L, 101L, 102L, 103L), 500),
+    "Implausible heart rate"
+  )
+  expect_silent(EGM:::rhythm_summary(c(0L, 500L, 1000L, 1500L), 500))
+})

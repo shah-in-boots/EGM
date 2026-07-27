@@ -32,9 +32,10 @@ loop; \code{"all"} returns one loop per beat, preserving the beat-to-beat
 variability a signal average is designed to remove (Tachmatzidis et al.
 2022). An object that already holds one beat is unaffected by either.}
 
-\item{channel}{An optional annotation channel guiding the wave delineation.
-Required when the annotations span more than one channel, as they do when
-an annotator has been run per lead.}
+\item{channel}{The lead whose annotations delineate the waves, given as a
+channel number or name. Required when the annotations span more than one
+channel, as they do when an annotator has been run per lead; see the
+channels section.}
 
 \item{baseline}{Logical. If \code{TRUE} (default), each beat is referenced to its
 own onset, taken as the median of the 10 ms following it. Orientation is
@@ -46,14 +47,7 @@ A \code{list} of two \code{data.table}s:
 \describe{
 \item{\code{loop}}{The orthogonal signal, with columns \code{beat}, \code{sample}, \code{X},
 \code{Y} and \code{Z}, in the units of the source signal.}
-\item{\code{components}}{One row per loop. Both functions return \code{duration}
-(seconds); \code{magnitude_peak}, \code{azimuth_peak} and \code{elevation_peak} for the
-largest spatial vector; \code{magnitude_mean}, \code{azimuth_mean} and
-\code{elevation_mean} for the loop's mean vector; \code{area}, the planar area
-enclosed; and \code{planarity}, the share of the loop's variance lying in its
-best-fit plane, 1 being flat. \code{vectorcardiogram()} adds the GEH
-components \code{qrst_angle_peak}, \code{qrst_angle_mean}, \code{svg_magnitude},
-\code{svg_azimuth}, \code{svg_elevation} and \code{sai_qrst}.}
+\item{\code{components}}{One row per loop, as tabulated below.}
 }
 
 Azimuth is measured in the transverse plane from \code{+X} toward \code{+Z}, and
@@ -130,6 +124,72 @@ organised atrial rhythm; in atrial fibrillation the atrial signal is
 characterised by \code{\link[=extract_f_waves]{extract_f_waves()}} instead.
 }
 
+\section{Components and their units}{
+
+
+Half of these components are scale-free and half are not, which matters
+because the source signal may be in millivolts or in raw ADC counts
+depending on how the record was read (see the \code{units} argument of
+\code{\link[=read_wfdb]{read_wfdb()}}, and \code{\link[=signal_units]{signal_units()}} to ask an object which it holds). A gain
+of 200 changes every value in the "signal units" rows by 200, and none of
+the others. Between-record comparisons of those rows are only meaningful on
+signals read the same way.\tabular{lll}{
+   Component \tab Units \tab Scale-free \cr
+   \code{duration} \tab seconds \tab yes \cr
+   \code{magnitude_peak}, \code{magnitude_mean} \tab signal units \tab no \cr
+   \code{azimuth_peak}, \code{elevation_peak} \tab degrees \tab yes \cr
+   \code{azimuth_mean}, \code{elevation_mean} \tab degrees \tab yes \cr
+   \code{area} \tab signal units squared \tab no \cr
+   \code{planarity} \tab proportion (0-1) \tab yes \cr
+   \code{qrst_angle_peak}, \code{qrst_angle_mean} \tab degrees \tab yes \cr
+   \code{svg_magnitude} \tab signal units x seconds \tab no \cr
+   \code{svg_azimuth}, \code{svg_elevation} \tab degrees \tab yes \cr
+   \code{sai_qrst} \tab signal units x seconds \tab no \cr
+}
+
+
+The last five are returned by \code{vectorcardiogram()} only; they are the global
+electric heterogeneity components, and \code{atrial_vectorcardiogram()} declines
+to report a QRS-T relationship for a P loop.
+}
+
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
+}
+
 \examples{
 \dontrun{
 ecg <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"),
@@ -141,7 +201,7 @@ atrial_vectorcardiogram(ecg, beats = "all")$components
 # The same loop, with the windowing and alignment chosen explicitly
 ecg |>
   get_windows(by = by_rhythm(channel = 2)) |>
-  median_window(align_feature = "N", channel_criteria = 2) |>
+  median_window(align_feature = "N", channel = 2) |>
   vectorcardiogram()
 }
 

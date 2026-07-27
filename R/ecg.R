@@ -327,7 +327,8 @@ as_ECG <- function(x, ...) {
       signal_table,
       c(
         list(sample = signal$sample),
-        setNames(lapply(unname(leads), function(l) signal[[l]]), names(leads))
+        setNames(lapply(unname(leads), function(l) signal[[l]]), names(leads)),
+        list(units = signal_units(signal))
       )
     ),
     header = header_table(

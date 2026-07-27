@@ -5,12 +5,16 @@
 \alias{is_signal_table}
 \title{Signal tables}
 \usage{
-signal_table(...)
+signal_table(..., units = c("digital", "physical"))
 
 is_signal_table(x)
 }
 \arguments{
 \item{...}{A \code{list} of equal lengths}
+
+\item{units}{A \code{character} naming the units the values are in, either
+\code{"digital"} (raw ADC counts, the default) or \code{"physical"} (the units the
+header names, usually mV). Must be given by name.}
 
 \item{x}{\code{data.frame} A data frame of signal data}
 }
@@ -24,4 +28,19 @@ The \code{signal_table()} function modifies the \code{data.table} class to
 work with electrical signal data. The input should be a data set of equal
 number of rows. It will add a column of index positions called \code{sample} if
 it does not already exist.
+}
+\details{
+Every signal table is labelled with the units its values are in,
+\code{"digital"} or \code{"physical"}, readable with \code{\link[=signal_units]{signal_units()}}. The label is
+carried through windowing, padding, medians and resampling, so a table many
+steps from the file it was read out of still says what its numbers mean.
+
+The distinction is a factor of the ADC gain - commonly 200 - and nothing in
+the values themselves reveals which one is in hand. Since the same amplitude
+is a plausible number in either, a mislabelled signal is not detectable
+downstream; only the label makes it checkable. \code{\link[=write_wfdb]{write_wfdb()}} refuses to
+write a table whose label contradicts the units it was told to expect.
+}
+\seealso{
+\code{\link[=signal_units]{signal_units()}}, \code{\link[=read_wfdb]{read_wfdb()}}
 }

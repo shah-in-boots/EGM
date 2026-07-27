@@ -9,7 +9,7 @@ test_that("pad_window anchors the QRS at a common index", {
 
   windows <- make_sinus_windows()
   padded <- pad_window(
-    windows, align = "feature", align_feature = "N", channel_criteria = 2
+    windows, align = "feature", align_feature = "N", channel = 2
   )
 
   # All windows share one length, and their QRS annotations coincide
@@ -63,7 +63,7 @@ test_that("median_window collapses windows to a single beat", {
   # Ragged windows require an explicit alignment choice
   expect_error(median_window(windows), "differing lengths")
 
-  beat <- median_window(windows, align_feature = "N", channel_criteria = 2)
+  beat <- median_window(windows, align_feature = "N", channel = 2)
   expect_s3_class(beat, "EGM")
   expect_true(is_EGM(beat))
 
@@ -76,7 +76,7 @@ test_that("median_window collapses windows to a single beat", {
   )
 
   # Uniform-length input needs no alignment feature
-  padded <- pad_window(windows, align = "feature", channel_criteria = 2)
+  padded <- pad_window(windows, align = "feature", channel = 2)
   beat2 <- median_window(padded)
   expect_s3_class(beat2, "EGM")
   expect_equal(nrow(beat2$signal), nrow(padded[[1]]$signal))
@@ -95,7 +95,7 @@ test_that("the median beat carries the fiducials that produced it", {
 
   windows <- make_sinus_windows()
   aligned <- pad_window(
-    windows, align = "feature", align_feature = "N", channel_criteria = 2
+    windows, align = "feature", align_feature = "N", channel = 2
   )
   beat <- median_window(aligned)
   fiducials <- EGM:::get_single_annotation(beat)
@@ -141,7 +141,7 @@ test_that("the median beat carries the fiducials that produced it", {
 test_that("the median beat says in its header what it is", {
 
   windows <- make_sinus_windows()
-  beat <- median_window(windows, align_feature = "N", channel_criteria = 2)
+  beat <- median_window(windows, align_feature = "N", channel = 2)
   info <- attributes(beat$header)$info_strings
 
   expect_match(info$median_info, "median beat of 8 windows")
@@ -155,7 +155,7 @@ test_that("a median of unannotated windows has no fiducials to report", {
 
   windows <- pad_window(
     make_sinus_windows(),
-    align = "feature", align_feature = "N", channel_criteria = 2
+    align = "feature", align_feature = "N", channel = 2
   )
   bare <- lapply(windows, function(w) {
     w$annotation <- list(annotation_table())
@@ -171,7 +171,7 @@ test_that("a fiducial most windows lack is not part of their median", {
 
   windows <- pad_window(
     make_sinus_windows(),
-    align = "feature", align_feature = "N", channel_criteria = 2
+    align = "feature", align_feature = "N", channel = 2
   )
 
   # One window alone carries an annotation of type "A"
@@ -207,7 +207,7 @@ test_that("normalize_window centers align_feature on the guiding lead", {
   guided <- normalize_window(
     windows,
     align_feature = "N",
-    channel_criteria = 2,
+    channel = 2,
     target_samples = target
   )
 
@@ -226,23 +226,12 @@ test_that("normalize_window centers align_feature on the guiding lead", {
   expect_equal(nrow(guided[[1]]$signal), target)
   expect_identical(guided[[1]]$signal$sample, 0:(target - 1L))
 
-  # Without channel guidance the feature aligns on whichever lead sorts first,
-  # so the guiding lead's peak is generally NOT centered.
-  unguided <- normalize_window(
-    windows,
-    align_feature = "N",
-    target_samples = target
+  # Without channel guidance the feature would align on whichever lead sorted
+  # first, so multi-lead annotations are refused rather than resolved silently
+  expect_error(
+    normalize_window(windows, align_feature = "N", target_samples = target),
+    "needs a guiding `channel`"
   )
-  ch2_pos_unguided <- vapply(
-    unguided,
-    function(w) {
-      a <- EGM:::get_single_annotation(w)
-      n <- a$sample[a$type == "N" & a$channel == 2L]
-      if (length(n) > 0) n[1] else NA_integer_
-    },
-    integer(1)
-  )
-  expect_false(all(ch2_pos_unguided == center_point))
 
   # preserve_class = FALSE drops back to a plain list of EGM objects
   plain <- normalize_window(windows, target_samples = target, preserve_class = FALSE)

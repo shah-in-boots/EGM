@@ -65,9 +65,10 @@
 #' @param feature_position Target index (0-based) for the aligned feature when
 #'   `align = "feature"` and `target_samples` is supplied. Defaults to the window
 #'   centre.
-#' @param channel_criteria Optional guiding channel used when locating
-#'   `align_feature` in multi-lead annotation tables. Mirrors the `channel`
-#'   argument of [by_rhythm()].
+#' @param channel The lead whose `align_feature` anchors the alignment, given as
+#'   a channel number or name. Required when the annotations span more than one
+#'   channel; see the channels section.
+#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param pad_value The value used for padding. Defaults to `NA`, which marks
 #'   the added samples as absent rather than as a measurement. Padding with `0`
 #'   states that the potential there was zero, which is a fabricated observation:
@@ -77,6 +78,8 @@
 #' @param preserve_class Logical. If TRUE (default), returns a `windows` object;
 #'   if FALSE, returns a plain list of `EGM` objects.
 #' @param ... Additional arguments (currently unused).
+#'
+#' @inheritSection channels Guiding channel
 #'
 #' @return A `windows` object (or list) of padded `EGM` objects, all sharing the
 #'   same sample length.
@@ -89,13 +92,19 @@ pad_window <- function(
   align = c("center", "left", "right", "feature"),
   align_feature = "N",
   feature_position = NULL,
-  channel_criteria = NULL,
+  channel = NULL,
   pad_value = NA,
   preserve_class = TRUE,
+  channel_criteria = NULL,
   ...
 ) {
   windows <- as_window_list(x)
   align <- match.arg(align)
+  channel_criteria <- resolve_channel_argument(
+    channel,
+    channel_criteria,
+    fn = "pad_window"
+  )
 
   if (length(windows) == 0) {
     if (preserve_class) {
@@ -117,6 +126,11 @@ pad_window <- function(
   # window i; windows lacking the feature fall back to their own centre so they
   # are still stacked sensibly rather than dropped.
   if (align == "feature") {
+    channel_criteria <- require_window_channel(
+      windows,
+      channel_criteria,
+      what = "Feature alignment"
+    )
     feature_pos <- vapply(
       windows,
       function(w) {
@@ -191,7 +205,10 @@ pad_window <- function(
       values[dst_idx[keep] + 1L] <- signal_data[[col]][src_idx[keep]]
       out[[col]] <- values
     }
-    padded_signal <- do.call(signal_table, as.list(out))
+    padded_signal <- do.call(
+      signal_table,
+      c(as.list(out), list(units = signal_units(signal_data)))
+    )
 
     # Header: same record, new sample count
     padded_header <- data.table::copy(window$header)
@@ -266,11 +283,15 @@ pad_window <- function(
 #'   length before averaging, given as a `character` type symbol (e.g. "N", the
 #'   QRS peak) or a named list of annotation criteria. If `NULL` (default), the
 #'   windows must already share a common length.
-#' @param channel_criteria Optional guiding channel used when locating
-#'   `align_feature`. Mirrors the `channel` argument of [by_rhythm()].
+#' @param channel The lead whose `align_feature` anchors the alignment, given as
+#'   a channel number or name. Required when the annotations span more than one
+#'   channel; see the channels section.
 #' @param na.rm Logical passed to [stats::median()]; if TRUE (default), missing
 #'   values are ignored when averaging.
+#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param ... Additional arguments (currently unused).
+#'
+#' @inheritSection channels Guiding channel
 #'
 #' @return A single `EGM` object representing the median beat.
 #'
@@ -278,13 +299,26 @@ pad_window <- function(
 median_window <- function(
   x,
   align_feature = NULL,
-  channel_criteria = NULL,
+  channel = NULL,
   na.rm = TRUE,
+  channel_criteria = NULL,
   ...
 ) {
   windows <- as_window_list(x)
   if (length(windows) == 0) {
     stop("Cannot compute a median beat from zero windows")
+  }
+  channel_criteria <- resolve_channel_argument(
+    channel,
+    channel_criteria,
+    fn = "median_window"
+  )
+  if (!is.null(align_feature)) {
+    channel_criteria <- require_window_channel(
+      windows,
+      channel_criteria,
+      what = "Feature alignment"
+    )
   }
 
   window_lengths <- vapply(windows, function(w) nrow(w$signal), integer(1))
@@ -306,7 +340,7 @@ median_window <- function(
       windows,
       align = "feature",
       align_feature = align_feature,
-      channel_criteria = channel_criteria,
+      channel = channel_criteria,
       preserve_class = FALSE
     )
     window_lengths <- vapply(windows, function(w) nrow(w$signal), integer(1))
@@ -343,7 +377,10 @@ median_window <- function(
     )
     median_data[[lead]] <- apply(mat, 1, stats::median, na.rm = na.rm)
   }
-  median_signal <- do.call(signal_table, as.list(median_data))
+  median_signal <- do.call(
+    signal_table,
+    c(as.list(median_data), list(units = signal_units(windows[[1]])))
+  )
 
   # Header from the first window, renamed and re-sized
   median_header <- data.table::copy(windows[[1]]$header)
@@ -497,12 +534,13 @@ median_annotations <- function(
 #' @param align_feature Optional feature to centre each window on, given as a
 #'   `character` type symbol (e.g. "N", the QRS peak) or a named list of
 #'   annotation criteria. `NULL` (default) resamples border-to-border.
-#' @param channel_criteria Optional guiding channel used when locating
-#'   `align_feature`. Multi-lead annotation files (e.g. an `ecgpuwave`-style run
-#'   per lead) carry one fiducial per lead at slightly different samples, so a
-#'   bare `align_feature = "N"` would centre on whichever lead sorts first.
-#'   Mirrors the `channel` argument of [by_rhythm()]. Ignored when
-#'   `align_feature` is `NULL` or already specifies a `channel`.
+#' @param channel The lead whose `align_feature` the windows are centred on,
+#'   given as a channel number or name. Multi-lead annotation files (e.g. an
+#'   `ecgpuwave`-style run per lead) carry one fiducial per lead at slightly
+#'   different samples, so a bare `align_feature = "N"` would otherwise centre on
+#'   whichever lead sorts first. Ignored when `align_feature` is `NULL` or
+#'   already specifies a `channel`; see the channels section.
+#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param preserve_amplitude Logical. If TRUE, rescales each lead back to its
 #'   original amplitude range after interpolation. Defaults to FALSE, since a
 #'   pure time stretch should leave amplitudes to the interpolation.
@@ -528,8 +566,10 @@ median_annotations <- function(
 #' normalize_window(beats, target_samples = NULL, target_ms = 500)
 #'
 #' # Centre each beat on its QRS instead of stretching the borders
-#' normalize_window(beats, align_feature = "N", channel_criteria = 2)
+#' normalize_window(beats, align_feature = "N", channel = 2)
 #' }
+#'
+#' @inheritSection channels Guiding channel
 #'
 #' @export
 normalize_window <- function(
@@ -538,13 +578,26 @@ normalize_window <- function(
   target_ms = NULL,
   interpolation_method = c("linear", "spline", "step"),
   align_feature = NULL,
-  channel_criteria = NULL,
+  channel = NULL,
   preserve_amplitude = FALSE,
   preserve_class = TRUE,
+  channel_criteria = NULL,
   ...
 ) {
   windows <- as_window_list(x)
   interpolation_method <- match.arg(interpolation_method)
+  channel_criteria <- resolve_channel_argument(
+    channel,
+    channel_criteria,
+    fn = "normalize_window"
+  )
+  if (!is.null(align_feature)) {
+    channel_criteria <- require_window_channel(
+      windows,
+      channel_criteria,
+      what = "Feature alignment"
+    )
+  }
 
   normalized <- time_normalize_windows(
     windows,
@@ -753,7 +806,10 @@ time_normalize_windows <- function(
     }
 
     # Reassemble the resampled columns into a signal_table
-    std_signal <- do.call(signal_table, as.list(resampled_data))
+    std_signal <- do.call(
+      signal_table,
+      c(as.list(resampled_data), list(units = signal_units(signal_data)))
+    )
 
     # Carry the per-beat header forward, updating only the sample count to
     # reflect the resampled length. The window's record_name/file_name stay
@@ -867,9 +923,10 @@ interpolate_signal <- function(
 #'   with [learn_template()]. Plain lists are not accepted.
 #' @param interpolation_method Interpolation method for the warp. One of "linear"
 #'   (default), "spline", or "step".
-#' @param channel_criteria Optional fallback guiding channel used when locating a
-#'   landmark whose own spec does not name a channel. A landmark's own channel
-#'   always takes precedence.
+#' @param channel Fallback guiding channel used when locating a landmark whose
+#'   own spec does not name one, given as a channel number or name. A landmark's
+#'   own channel always takes precedence; see the channels section.
+#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param preserve_amplitude Logical. If TRUE, rescales each lead back to its
 #'   original amplitude range after warping. Defaults to FALSE.
 #' @param preserve_class Logical. If TRUE (default), returns a `windows` object;
@@ -885,6 +942,8 @@ interpolate_signal <- function(
 #' @return A `windows` object (or list) of landmark-warped `EGM` objects, each
 #'   `target_samples` long (as defined by the template).
 #'
+#' @inheritSection channels Guiding channel
+#'
 #' @seealso [learn_template()], [template()], [landmark()]
 #'
 #' @export
@@ -892,18 +951,24 @@ warp_window <- function(
   x,
   template,
   interpolation_method = c("linear", "spline", "step"),
-  channel_criteria = NULL,
+  channel = NULL,
   preserve_amplitude = FALSE,
   preserve_class = TRUE,
   missing = c("partial", "drop", "error"),
   ambiguous = c("error", "first", "drop"),
   order_policy = c("error", "drop"),
+  channel_criteria = NULL,
   ...
 ) {
   windows <- as_window_list(x)
   if (!is_template(template)) {
     stop("`template` must be a template object")
   }
+  channel_criteria <- resolve_channel_argument(
+    channel,
+    channel_criteria,
+    fn = "warp_window"
+  )
   interpolation_method <- match.arg(interpolation_method)
   missing <- match.arg(missing)
   ambiguous <- match.arg(ambiguous)
@@ -941,20 +1006,19 @@ warp_window <- function(
 
     for (j in seq_along(landmarks)) {
       point <- landmarks[[j]]
-      channel <- if (!channel_is_unset(point@channel)) {
+      point_channel <- if (!channel_is_unset(point@channel)) {
         point@channel
       } else {
         channel_criteria
       }
-      matches <- locate_features(
+      rows <- match_features(
         annotations,
         point@criteria,
-        resolve_channel_spec(window, channel)
+        resolve_channel_spec(window, point_channel)
       )
+      matches <- as.integer(rows$sample)
       if (length(matches) > 1L) {
-        issue <- paste0(
-          landmark_names[j], " matched ", length(matches), " annotations"
-        )
+        issue <- paste0(landmark_names[j], " ", describe_matches(rows))
         if (ambiguous == "error") {
           stop("Window ", i, ": ", issue)
         }
@@ -1119,7 +1183,10 @@ warp_window <- function(
       }
     }
 
-    warped_signal <- do.call(signal_table, as.list(out))
+    warped_signal <- do.call(
+      signal_table,
+      c(as.list(out), list(units = signal_units(window)))
+    )
 
     warped_header <- data.table::copy(window$header)
     rl <- attributes(warped_header)$record_line

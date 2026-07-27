@@ -7,8 +7,9 @@
 median_window(
   x,
   align_feature = NULL,
-  channel_criteria = NULL,
+  channel = NULL,
   na.rm = TRUE,
+  channel_criteria = NULL,
   ...
 )
 }
@@ -20,11 +21,14 @@ length before averaging, given as a \code{character} type symbol (e.g. "N", the
 QRS peak) or a named list of annotation criteria. If \code{NULL} (default), the
 windows must already share a common length.}
 
-\item{channel_criteria}{Optional guiding channel used when locating
-\code{align_feature}. Mirrors the \code{channel} argument of \code{\link[=by_rhythm]{by_rhythm()}}.}
+\item{channel}{The lead whose \code{align_feature} anchors the alignment, given as
+a channel number or name. Required when the annotations span more than one
+channel; see the channels section.}
 
 \item{na.rm}{Logical passed to \code{\link[stats:median]{stats::median()}}; if TRUE (default), missing
 values are ignored when averaging.}
+
+\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
 
 \item{...}{Additional arguments (currently unused).}
 }
@@ -60,3 +64,40 @@ dropped, since it is not part of what the median describes. The header is
 named \verb{<source>_median} and carries an info string recording how many
 windows it came from.
 }
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
+}
+

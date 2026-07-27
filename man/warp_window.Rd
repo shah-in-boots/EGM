@@ -8,12 +8,13 @@ warp_window(
   x,
   template,
   interpolation_method = c("linear", "spline", "step"),
-  channel_criteria = NULL,
+  channel = NULL,
   preserve_amplitude = FALSE,
   preserve_class = TRUE,
   missing = c("partial", "drop", "error"),
   ambiguous = c("error", "first", "drop"),
   order_policy = c("error", "drop"),
+  channel_criteria = NULL,
   ...
 )
 }
@@ -26,9 +27,9 @@ with \code{\link[=learn_template]{learn_template()}}. Plain lists are not accept
 \item{interpolation_method}{Interpolation method for the warp. One of "linear"
 (default), "spline", or "step".}
 
-\item{channel_criteria}{Optional fallback guiding channel used when locating a
-landmark whose own spec does not name a channel. A landmark's own channel
-always takes precedence.}
+\item{channel}{Fallback guiding channel used when locating a landmark whose
+own spec does not name one, given as a channel number or name. A landmark's
+own channel always takes precedence; see the channels section.}
 
 \item{preserve_amplitude}{Logical. If TRUE, rescales each lead back to its
 original amplitude range after warping. Defaults to FALSE.}
@@ -44,6 +45,8 @@ error, use the first, or drop that window.}
 
 \item{order_policy}{What to do when landmarks are crossed or duplicated:
 error or drop that window.}
+
+\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
 
 \item{...}{Additional arguments (currently unused).}
 }
@@ -76,6 +79,43 @@ the same map. Any breakpoints that are non-increasing in either axis are
 collapsed to keep the mapping monotonic. All leads are warped regardless of
 which channel a landmark was detected on.
 }
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
+}
+
 \seealso{
 \code{\link[=learn_template]{learn_template()}}, \code{\link[=template]{template()}}, \code{\link[=landmark]{landmark()}}
 }

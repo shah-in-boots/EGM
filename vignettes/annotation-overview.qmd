@@ -260,7 +260,8 @@ annotators <- list_annotators(record)
 # Extract a specific annotator from an egm object
 ecg_ann <- get_annotation(record, "ecgpuwave")
 
-# Extract all annotators as a list
+# Without a name: the table itself when there is one annotator, a named list of
+# them when there are several - the same shape `read_annotation()` returns
 all_ann <- get_annotation(record)
 
 # This will error if the annotator doesn't exist

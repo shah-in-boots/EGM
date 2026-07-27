@@ -20,8 +20,8 @@ The defaults span a full PQRST at ordinary rates.}
 \code{character} type symbol (default \code{"N"}, the QRS peak) or a named list of
 annotation criteria. Resolved the same way as a \code{\link[=by_rhythm]{by_rhythm()}} criterion.}
 
-\item{channel}{An optional channel number guiding multi-lead annotations,
-as in \code{\link[=by_rhythm]{by_rhythm()}}.}
+\item{channel}{The lead whose annotations locate the fiducial, given as a
+channel number or name, as in \code{\link[=by_rhythm]{by_rhythm()}}. See the channels section.}
 
 \item{adjust_sample_indices}{Logical, whether to rebase sample indices in the
 returned windows to be zero-based and relative to the window start.}
@@ -46,11 +46,50 @@ representative beat is derived (Kligfield et al. 2007).
 
 Beats too near either end of the record for the full span to be cut are
 dropped rather than truncated, since a short window gives up the guarantee
-the strategy exists for. How many were dropped is reported.
+the strategy exists for. How many were dropped is reported to the console
+and recorded on the returned collection, where \code{\link[=window_dropped]{window_dropped()}} reads it
+back - a message is invisible on a background worker.
 
 The span is given in milliseconds so that one strategy can be reused across
 records of differing sampling frequency.
 }
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
+}
+
 \examples{
 # A fixed PQRST window around every QRS peak
 by_beat()
@@ -66,5 +105,6 @@ standardization and interpretation of the electrocardiogram: part I.
 \doi{10.1161/CIRCULATIONAHA.106.180200}
 }
 \seealso{
-\code{\link[=get_windows]{get_windows()}}, \code{\link[=median_window]{median_window()}}, \code{\link[=by_rhythm]{by_rhythm()}}
+\code{\link[=get_windows]{get_windows()}}, \code{\link[=median_window]{median_window()}}, \code{\link[=by_rhythm]{by_rhythm()}},
+\code{\link[=window_dropped]{window_dropped()}}
 }

@@ -76,3 +76,27 @@ test_that('signal can be removed from EGM object', {
   expect_equal(dim(raw_array), c(5000, 12))
   expect_identical(dimnames(raw_array)[[2]], names(object$signal)[-1])
 })
+
+test_that("print dispatches to this package's methods", {
+  # `S7::method(print, cls) <- f` is a replacement call: written at the top level
+  # of a package it leaves a copy of `print` in the namespace, and every
+  # `S3method(print, ...)` directive then registers against that copy instead of
+  # `base::print`, which silently kills S3 print dispatch for every class here.
+  # The S7 methods are wrapped in `local()` to prevent it; this is the guard.
+  expect_false(exists("print", envir = asNamespace("EGM"), inherits = FALSE))
+
+  table <- get(".__S3MethodsTable__.", envir = asNamespace("base"))
+  for (method in c("print.EGM", "print.ECG", "print.windows",
+                   "print.signal_table", "print.header_table",
+                   "print.annotation_table")) {
+    expect_true(exists(method, envir = table), info = method)
+  }
+
+  # And the dispatch itself, rather than only its registration
+  windows <- new_windows(list(), method = "beat", source_record = "x")
+  expect_match(paste(capture.output(print(windows)), collapse = " "), "<windows:")
+  expect_match(
+    paste(capture.output(print(by_rhythm())), collapse = " "),
+    "<window_strategy: rhythm>"
+  )
+})

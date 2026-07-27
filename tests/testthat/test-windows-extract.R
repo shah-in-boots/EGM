@@ -103,7 +103,8 @@ test_that("strategy arguments are validated where they are written", {
     "`offset` must be"
   )
   expect_error(by_rhythm(channel = -1), "`channel` must be")
-  expect_error(by_rhythm(channel = "II"), "`channel` must be")
+  expect_error(by_rhythm(channel = c(1, 2)), "`channel` must be")
+  expect_error(by_rhythm(channel = list(lead = 2)), "not a criteria list")
   expect_error(by_rhythm(rhythm = ""), "`rhythm` must be")
   expect_error(by_rhythm(adjust_sample_indices = NA), "must be TRUE or FALSE")
 
@@ -249,4 +250,89 @@ test_that("median fiducials are matched outward from an anchor", {
   # Without the anchor it does not
   loose <- unanchored$sample[unanchored$type == "(" & unanchored$wave %in% "T"]
   expect_false(length(loose) == 1 && loose > qrs_peak)
+})
+
+test_that("multi-lead annotations are refused rather than pooled", {
+  object <- read_wfdb("ecg-sinus", test_path(), "ann")
+
+  # 12 leads' worth of onsets would otherwise yield 12 times as many windows,
+  # each bounded by fiducials from whichever lead sorted first
+  expect_error(get_windows(object), "needs a guiding `channel`")
+  expect_error(
+    get_windows(object, by = by_beat()),
+    "needs a guiding `channel`"
+  )
+
+  # A channel the annotations do not carry is an error too, which is what
+  # catches a numbering convention that does not match
+  expect_error(
+    get_windows(object, by = by_rhythm(channel = 99)),
+    "annotations do not carry"
+  )
+
+  guided <- suppressMessages(get_windows(object, by = by_rhythm(channel = 2)))
+  expect_gt(length(guided), 0)
+
+  # A channel name resolves to the same windows as its number
+  named <- suppressMessages(get_windows(object, by = by_rhythm(channel = "II")))
+  expect_equal(length(named), length(guided))
+})
+
+test_that("the candidates a strategy did not return are counted", {
+  object <- read_wfdb("ecg-sinus", test_path(), "ann")
+
+  beats <- suppressMessages(get_windows(object, by = by_beat(channel = 2)))
+  dropped <- window_dropped(beats)
+  expect_named(dropped, "incomplete_span")
+  expect_type(dropped, "integer")
+
+  # Counts are of candidates, so the two account for every fiducial found
+  centres <- EGM:::locate_features(get_annotation(object), "N", 2L)
+  expect_equal(length(beats) + sum(dropped), length(centres))
+
+  # A span wide enough to overhang the record drops beats at both ends
+  wide <- suppressMessages(
+    get_windows(object, by = by_beat(before = 2000, after = 2000, channel = 2))
+  )
+  expect_gt(window_dropped(wide)[["incomplete_span"]], 0)
+
+  # Rhythm windowing counts its own reasons, and subsetting keeps them
+  rhythm <- suppressMessages(get_windows(object, by = by_rhythm(channel = 2)))
+  expect_named(
+    window_dropped(rhythm),
+    c("no_offset", "no_reference", "overlapping")
+  )
+  expect_equal(window_dropped(rhythm[1]), window_dropped(rhythm))
+
+  # A bare list carries no such record
+  expect_length(window_dropped(list()), 0)
+})
+
+test_that("by_pwave windows the atrial portion of each beat", {
+  object <- read_wfdb("ecg-sinus", test_path(), "ann")
+
+  pwave <- suppressMessages(get_windows(object, by = by_pwave(channel = 2)))
+  expect_s3_class(pwave, "windows")
+  expect_equal(attr(pwave, "method"), "pwave")
+  expect_gt(length(pwave), 0)
+
+  # Each window opens on a P onset and closes on the QRS onset, so it holds the
+  # P peak and no QRS peak
+  fiducials <- lapply(pwave, function(w) {
+    ann <- EGM:::label_waves(get_annotation(w))
+    ann[ann$channel == 2L, ]
+  })
+  expect_true(all(vapply(fiducials, function(a) sum(a$type == "p"), integer(1)) == 1))
+  expect_true(all(vapply(fiducials, function(a) sum(a$type == "N"), integer(1)) == 0))
+
+  # Ending at the P offset instead gives strictly shorter windows
+  only <- suppressMessages(
+    get_windows(object, by = by_pwave(to = "p_offset", channel = 2))
+  )
+  span <- function(x) vapply(x, function(w) nrow(w$signal), integer(1))
+  expect_true(all(span(only) < span(pwave)))
+
+  # The strategy is reachable by name, and its criteria are inspectable
+  expect_equal(by_pwave()@method, "pwave")
+  expect_equal(as_window_strategy("pwave")@params$rhythm, "pwave")
 })

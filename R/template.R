@@ -202,27 +202,37 @@ template <- S7::new_class(
 #' @export
 is_template <- function(x) S7::S7_inherits(x, template)
 
-S7::method(print, landmark) <- function(x, ...) {
-  channel <- if (channel_is_unset(x@channel)) "any" else as.character(x@channel)
-  position <- if (is.na(x@position)) "unfitted" else format(x@position)
-  cat(
-    "<landmark: ", x@name, ">\n",
-    "  channel: ", channel, "\n",
-    "  position: ", position, "\n",
-    sep = ""
-  )
-  invisible(x)
-}
+# Wrapped in `local()` for the reason given at the same construct in
+# `windows-extract.R`: a top-level `method(print, cls) <- f` leaves a copy of
+# `print` in the namespace, against which every `S3method(print, ...)` directive
+# then registers instead of `base::print`.
+local({
+  S7::method(print, landmark) <- function(x, ...) {
+    channel <- if (channel_is_unset(x@channel)) {
+      "any"
+    } else {
+      as.character(x@channel)
+    }
+    position <- if (is.na(x@position)) "unfitted" else format(x@position)
+    cat(
+      "<landmark: ", x@name, ">\n",
+      "  channel: ", channel, "\n",
+      "  position: ", position, "\n",
+      sep = ""
+    )
+    invisible(x)
+  }
 
-S7::method(print, template) <- function(x, ...) {
-  cat(
-    "<template: ", x@method, ">\n",
-    "  landmarks: ", length(x@landmarks), "\n",
-    "  target samples: ", x@target_samples, "\n",
-    sep = ""
-  )
-  invisible(x)
-}
+  S7::method(print, template) <- function(x, ...) {
+    cat(
+      "<template: ", x@method, ">\n",
+      "  landmarks: ", length(x@landmarks), "\n",
+      "  target samples: ", x@target_samples, "\n",
+      sep = ""
+    )
+    invisible(x)
+  }
+})
 
 # Resolve a stable signal name to the integer annotation channel used by one
 # EGM. Numeric channel specifications pass through unchanged. This is shared by
@@ -272,7 +282,9 @@ resolve_channel_spec <- function(egm, channel) {
 #'   unfitted [landmark] objects. A concise specification may be a type string or
 #'   a named criteria list with optional `channel` and `required` fields.
 #' @param target_samples Number of samples in the template target grid.
-#' @param channel_criteria Default channel for landmarks without their own one.
+#' @param channel Default channel for landmarks without their own one, given as a
+#'   channel number or name. Required when the examples' annotations span more
+#'   than one channel; see the channels section.
 #' @param frequency Optional source frequency stored as provenance. By default it
 #'   is read from the first example.
 #' @param position_estimator Use the median or mean landmark phase.
@@ -280,7 +292,10 @@ resolve_channel_spec <- function(egm, channel) {
 #'   or error on incomplete examples.
 #' @param ambiguous Error when a landmark has multiple matches, or use the first.
 #' @param order_policy Drop examples with crossed landmarks, or error.
+#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param ... Additional arguments, currently unused.
+#'
+#' @inheritSection channels Guiding channel
 #'
 #' @return A learned [template] S7 object.
 #' @export
@@ -292,12 +307,13 @@ learn_template <- function(
     T_offset = list(type = ")", wave = "T")
   ),
   target_samples = 500L,
-  channel_criteria = NULL,
+  channel = NULL,
   frequency = NULL,
   position_estimator = c("median", "mean"),
   missing = c("complete", "available", "error"),
   ambiguous = c("error", "first"),
   order_policy = c("drop", "error"),
+  channel_criteria = NULL,
   ...
 ) {
   position_estimator <- match.arg(position_estimator)
@@ -314,21 +330,11 @@ learn_template <- function(
   }
   target_samples <- as.integer(target_samples)
 
-  if (!is.null(channel_criteria)) {
-    channel_ok <- length(channel_criteria) == 1L && (
-      (is.numeric(channel_criteria) && !is.na(channel_criteria) &&
-        is.finite(channel_criteria) && channel_criteria >= 0 &&
-        channel_criteria == as.integer(channel_criteria)) ||
-        (is.character(channel_criteria) && !is.na(channel_criteria) &&
-          nzchar(channel_criteria))
-    )
-    if (!channel_ok) {
-      stop("`channel_criteria` must be one non-negative channel number or name")
-    }
-    if (is.numeric(channel_criteria)) {
-      channel_criteria <- as.integer(channel_criteria)
-    }
-  }
+  channel_criteria <- resolve_channel_argument(
+    channel,
+    channel_criteria,
+    fn = "learn_template"
+  )
 
   if (
     is.list(landmarks) && length(landmarks) > 0L &&
@@ -427,12 +433,16 @@ learn_template <- function(
     }
     annotations <- get_single_annotation(egm)
     for (j in seq_along(specs)) {
-      channel <- resolve_channel_spec(egm, specs[[j]]@channel)
-      matches <- locate_features(annotations, specs[[j]]@criteria, channel)
+      spec_channel <- resolve_channel_spec(egm, specs[[j]]@channel)
+      rows <- match_features(annotations, specs[[j]]@criteria, spec_channel)
+      matches <- as.integer(rows$sample)
       if (length(matches) > 1L && ambiguous == "error") {
+        # The count rising with the number of leads is the clue that the
+        # annotator was run per lead, so say so rather than report the symptom
         stop(
-          "Landmark '", landmark_names[j], "' matched ", length(matches),
-          " annotations in example ", i
+          "Landmark '", landmark_names[j], "' ",
+          describe_matches(rows, where = paste0(" in example ", i)),
+          call. = FALSE
         )
       }
       if (length(matches) > 0L) {

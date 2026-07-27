@@ -13,11 +13,11 @@ label_waves(ann)
 A copy of \code{ann} with an additional \code{wave} column.
 }
 \description{
-Adds a working \code{wave} column (one of \code{"P"}, \code{"QRS"}, \code{"T"}, or
-\code{NA}) to an annotation table by recovering wave identity from the peak
-symbol enclosed within each \code{(}/\verb{)} waveform bracket. This is used by
-\code{\link[=by_rhythm]{by_rhythm()}} to isolate P-onset -> T-offset beats even when the
-WFDB \code{number} column is unpopulated (e.g. \code{ecgpuwave} run per lead).
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
+Adds a \code{wave} column (one of \code{"P"}, \code{"QRS"}, \code{"T"}, or \code{NA}) to an annotation
+table by recovering wave identity from the peak symbol enclosed within each
+\code{(}/\verb{)} waveform bracket.
 }
 \details{
 Peaks are mapped directly by their \code{type} symbol (\code{p} -> \code{"P"}, \code{N}
@@ -26,4 +26,38 @@ order: each onset \code{(} and its matching offset \verb{)} inherit the wave of 
 single peak that falls between them (the first peak if several are present,
 \code{NA} if none). The returned table is a copy; the input is not modified.
 }
-\keyword{internal}
+\section{Which annotators are usable}{
+This positional inference is what decides whether a delineating annotator
+can be used with this package, so it is worth stating plainly. The WFDB
+convention is that a waveform onset or offset carries its wave identity in
+the \code{number} column - \code{0} for P, \code{1} for QRS, \code{2} for T - but plenty of
+annotators leave \code{number} at zero throughout, which looks disqualifying and
+is not. As long as the file brackets each wave with \code{(} and \verb{)} around a
+typed peak, wave identity is recovered here from the position of that peak,
+and the \code{number} column is never consulted.
+
+So the requirement on an annotator is only this: \code{(}, \verb{)}, and at least one
+of \code{p}, \code{N}, \code{t} between each pair. Anything meeting it can drive
+\code{\link[=by_rhythm]{by_rhythm()}}, \code{\link[=by_pwave]{by_pwave()}}, and the wave criteria used throughout, whatever
+it writes in \code{number}.
+
+Wave identity is available anywhere a criteria list is accepted, as a
+virtual \code{wave} field alongside the real columns:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{by_rhythm(onset = list(type = "(", wave = "P"))
+}\if{html}{\out{</div>}}
+}
+
+\examples{
+\dontrun{
+ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
+
+# `number` is uninformative here, `wave` is not
+labelled <- label_waves(get_annotation(ecg))
+table(labelled$type, labelled$wave, useNA = "ifany")
+}
+
+}
+\seealso{
+\code{\link[=by_rhythm]{by_rhythm()}}, \code{\link[=get_windows]{get_windows()}}, \code{\link[=annotation_table]{annotation_table()}}
+}

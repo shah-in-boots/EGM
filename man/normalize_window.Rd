@@ -10,9 +10,10 @@ normalize_window(
   target_ms = NULL,
   interpolation_method = c("linear", "spline", "step"),
   align_feature = NULL,
-  channel_criteria = NULL,
+  channel = NULL,
   preserve_amplitude = FALSE,
   preserve_class = TRUE,
+  channel_criteria = NULL,
   ...
 )
 }
@@ -32,12 +33,12 @@ the first window's sampling frequency. Used only when \code{target_samples} is
 \code{character} type symbol (e.g. "N", the QRS peak) or a named list of
 annotation criteria. \code{NULL} (default) resamples border-to-border.}
 
-\item{channel_criteria}{Optional guiding channel used when locating
-\code{align_feature}. Multi-lead annotation files (e.g. an \code{ecgpuwave}-style run
-per lead) carry one fiducial per lead at slightly different samples, so a
-bare \code{align_feature = "N"} would centre on whichever lead sorts first.
-Mirrors the \code{channel} argument of \code{\link[=by_rhythm]{by_rhythm()}}. Ignored when
-\code{align_feature} is \code{NULL} or already specifies a \code{channel}.}
+\item{channel}{The lead whose \code{align_feature} the windows are centred on,
+given as a channel number or name. Multi-lead annotation files (e.g. an
+\code{ecgpuwave}-style run per lead) carry one fiducial per lead at slightly
+different samples, so a bare \code{align_feature = "N"} would otherwise centre on
+whichever lead sorts first. Ignored when \code{align_feature} is \code{NULL} or
+already specifies a \code{channel}; see the channels section.}
 
 \item{preserve_amplitude}{Logical. If TRUE, rescales each lead back to its
 original amplitude range after interpolation. Defaults to FALSE, since a
@@ -45,6 +46,8 @@ pure time stretch should leave amplitudes to the interpolation.}
 
 \item{preserve_class}{Logical. If TRUE (default), returns a \code{windows} object;
 if FALSE, returns a plain list of \code{EGM} objects.}
+
+\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
 
 \item{...}{Additional arguments (currently unused).}
 }
@@ -80,6 +83,43 @@ duration, use \code{\link[=change_frequency]{change_frequency()}}.
 When \code{align_feature} is given but not found in a window, that window falls
 back to border-to-border resampling with a warning.
 }
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
+}
+
 \examples{
 \dontrun{
 ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
@@ -92,7 +132,7 @@ normalize_window(beats, target_samples = 500)
 normalize_window(beats, target_samples = NULL, target_ms = 500)
 
 # Centre each beat on its QRS instead of stretching the borders
-normalize_window(beats, align_feature = "N", channel_criteria = 2)
+normalize_window(beats, align_feature = "N", channel = 2)
 }
 
 }

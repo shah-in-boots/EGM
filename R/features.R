@@ -73,8 +73,22 @@ feature_range <- function(lower, upper, inclusive = TRUE) {
 #' @return An integer vector of every matching sample, in annotation order.
 #' @keywords internal
 locate_features <- function(ann, feature, channel_criteria = NULL) {
+  as.integer(match_features(ann, feature, channel_criteria)$sample)
+}
+
+#' Rows of an annotation table matching a feature specification
+#'
+#' @description The engine behind [locate_features()], returning the matched rows
+#'   rather than their sample indices. Callers that have to explain an ambiguous
+#'   match need the rows: whether twelve matches are twelve fiducials or one
+#'   fiducial annotated on twelve leads is only visible in their channels.
+#'
+#' @inheritParams locate_feature
+#' @return The matching rows, in annotation order.
+#' @keywords internal
+match_features <- function(ann, feature, channel_criteria = NULL) {
   if (is.null(ann) || nrow(ann) == 0) {
-    return(integer())
+    return(empty_match())
   }
   criteria <- if (is.list(feature)) feature else list(type = feature)
   if (
@@ -112,14 +126,47 @@ locate_features <- function(ann, feature, channel_criteria = NULL) {
       work[work$channel == as.integer(channel_criteria), ]
     )
     if (nrow(requested) > 0) {
-      return(as.integer(requested$sample))
+      return(requested)
     }
-    global <- filter_criteria(work[work$channel == 0L, ])
-    return(as.integer(global$sample))
+    return(filter_criteria(work[work$channel == 0L, ]))
   }
 
-  work <- filter_criteria(work)
-  as.integer(work$sample)
+  filter_criteria(work)
+}
+
+# The zero-row result, shaped so that `$sample` and `$channel` are still
+# addressable by callers that summarise a match without testing for emptiness.
+empty_match <- function() {
+  data.frame(sample = integer(), channel = integer())
+}
+
+#' Explain an ambiguous feature match
+#'
+#' @description Turns "matched 12 annotations" into a sentence that names the
+#'   cause and the argument that resolves it. A count that rises with the number
+#'   of leads is the clue that an annotator was run per lead, and it only reads
+#'   as a clue to someone who already knows.
+#'
+#' @param rows The matched rows, as [match_features()] returns them.
+#' @param where An optional clause naming where the match happened, e.g.
+#'   `" in example 3"`, placed before the explanation.
+#' @param arg The argument name that would disambiguate them.
+#'
+#' @return A `character` scalar describing the match.
+#'
+#' @keywords internal
+describe_matches <- function(rows, where = "", arg = "channel") {
+  channels <- annotation_channels(rows)
+  counted <- paste0("matched ", nrow(rows), " annotations")
+  if (length(channels) < 2L) {
+    return(paste0(counted, where))
+  }
+  paste0(
+    counted, " across ", length(channels),
+    " channels (", paste(channels, collapse = ", "), ")", where,
+    ", which is one fiducial per lead rather than several fiducials; set `",
+    arg, "` to choose a guiding lead"
+  )
 }
 
 #' Locate a fiducial sample within an annotation table

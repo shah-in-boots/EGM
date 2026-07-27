@@ -54,6 +54,12 @@
 #'   from the object's annotation table when one is attached, and otherwise
 #'   detected from a multi-lead composite.
 #'
+#' @param channel The lead whose beat annotations give the QRS positions, given
+#'   as a channel number or name. Required when the annotations span more than
+#'   one channel: pooled across twelve leads they report twelve times as many
+#'   beats as the record holds, and every rhythm measure derived from them
+#'   follows. See the channels section. Ignored when `qrs_loc` is supplied.
+#'
 #' @param cancel_method Ventricular cancellation method. One of
 #'   `"spatiotemporal"` (default), `"average_beat"`, or `"adaptive_svd"`.
 #'
@@ -109,6 +115,8 @@
 #' @param ... Additional arguments passed to the cancellation and analysis
 #'   routines.
 #'
+#' @inheritSection channels Guiding channel
+#'
 #' @return An object of class `f_wave_analysis`, a list with:
 #'
 #'   \describe{
@@ -162,6 +170,7 @@ extract_f_waves <- function(
   object,
   lead = NULL,
   qrs_loc = NULL,
+  channel = NULL,
   cancel_method = c("spatiotemporal", "average_beat", "adaptive_svd"),
   f_characteristics = c(
     "amplitude",
@@ -185,6 +194,7 @@ extract_f_waves <- function(
   # a number rather than an error, which is the failure worth preventing.
   object <- require_ECG(object, what = "Fibrillatory wave extraction")
 
+  channel <- valid_channel(channel)
   cancel_method <- match.arg(cancel_method)
   amplitude_window <- match.arg(amplitude_window)
   normalize <- match.arg(normalize)
@@ -273,7 +283,7 @@ extract_f_waves <- function(
 
   # A single QRS set shared by every lead
   if (is.null(qrs_loc)) {
-    qrs_loc <- shared_qrs_positions(object, filtered, frequency)
+    qrs_loc <- shared_qrs_positions(object, filtered, frequency, channel)
   }
   qrs_loc <- sort(unique(as.integer(qrs_loc)))
   qrs_loc <- qrs_loc[qrs_loc >= 1 & qrs_loc <= length(filtered[[1]])]
@@ -455,10 +465,23 @@ filter_bandpass <- function(signal, frequency, low = 0.5, high = 30) {
 #' composite.
 #'
 #' @noRd
-shared_qrs_positions <- function(object, filtered, frequency) {
+shared_qrs_positions <- function(object, filtered, frequency, channel = NULL) {
   ann <- resolve_annotation(object$annotation)
 
   if (!is.null(ann)) {
+    # An annotator run per lead writes one beat annotation per lead, and pooling
+    # them counts every beat as many times as there are leads. Resolve to one
+    # lead, or refuse: a heart rate off by a factor of twelve is not visible in
+    # any downstream number.
+    channel <- resolve_annotation_channel(
+      ann,
+      resolve_channel_spec(object, channel),
+      what = "Fibrillatory wave extraction"
+    )
+    if (!is.null(channel) && "channel" %in% colnames(ann)) {
+      ann <- ann[ann$channel %in% c(as.integer(channel), 0L), , drop = FALSE]
+    }
+
     # Beat labels in the WFDB convention: N, L, R, B, A, a, J, S, V, r, F, e,
     # j, n, E, P, f, Q are all beat annotations
     beat_types <- c(
@@ -575,6 +598,25 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
   median_rr <- stats::median(rr)
   rr_cv <- stats::sd(rr) / mean(rr)
   rr_rmssd <- sqrt(mean(diff(rr)^2)) / mean(rr)
+  heart_rate <- 60 * frequency / median_rr
+
+  # A rate outside these bounds is not a rhythm, it is a counting error - most
+  # often beat annotations pooled across leads, or a sampling frequency that is
+  # not the one the positions were measured at. Neither is visible in any
+  # feature the caller reads afterwards, so it is said here.
+  if (is.finite(heart_rate) && (heart_rate < 20 || heart_rate > 300)) {
+    warning(
+      "Implausible heart rate (",
+      signif(heart_rate, 4),
+      " bpm) from ",
+      length(qrs_loc),
+      " QRS positions at ",
+      frequency,
+      " Hz. Check that the beat annotations belong to one lead - pooled across ",
+      "a per-lead annotator they count every beat once per lead - and that the ",
+      "positions are at the record's own sampling frequency."
+    )
+  }
 
   af_like <- if (!is.null(rhythm)) {
     tolower(rhythm) %in% c("af", "afib", "atrial fibrillation", "flutter", "aflutter")
@@ -586,7 +628,7 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
 
   list(
     median_rr = median_rr,
-    heart_rate = 60 * frequency / median_rr,
+    heart_rate = heart_rate,
     rr_cv = rr_cv,
     rr_rmssd = rr_rmssd,
     af_like = af_like,

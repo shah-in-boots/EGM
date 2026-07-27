@@ -742,3 +742,72 @@ test_that('digital-to-physical-to-digital round-trip is exact', {
   expect_equal(EGM_digital_final$signal$I, signal_digital$I, tolerance = 1)
   expect_equal(EGM_digital_final$signal$II, signal_digital$II, tolerance = 1)
 })
+
+# Signal units --------------------------------------------------------------
+
+test_that('a signal table says which units it holds', {
+  digital <- read_wfdb('ecg', test_path())
+  physical <- read_wfdb('ecg', test_path(), units = 'physical')
+
+  expect_equal(signal_units(digital), 'digital')
+  expect_equal(signal_units(physical), 'physical')
+  expect_equal(signal_units(physical$signal), 'physical')
+
+  # The two differ by the ADC gain, which nothing in the values reveals
+  gain <- as.numeric(digital$header$ADC_gain[[1]])
+  expect_equal(
+    as.numeric(physical$signal$II),
+    as.numeric(digital$signal$II) / gain,
+    tolerance = 1e-8
+  )
+
+  # A table built by hand is digital unless it says otherwise
+  expect_equal(signal_units(signal_table(sample = 0:4, II = as.numeric(0:4))), 'digital')
+  expect_equal(
+    signal_units(signal_table(sample = 0:4, II = as.numeric(0:4), units = 'physical')),
+    'physical'
+  )
+  expect_match(
+    paste(capture.output(print(physical$signal)), collapse = ' '),
+    'physical units'
+  )
+})
+
+test_that('the units label survives the transforms', {
+  physical <- read_wfdb('ecg-sinus', test_path(), 'ann', units = 'physical')
+
+  beats <- suppressMessages(get_windows(physical, by = by_beat(channel = 2)))
+  expect_equal(signal_units(beats[[1]]), 'physical')
+  expect_equal(signal_units(median_window(beats)), 'physical')
+  expect_equal(signal_units(change_frequency(physical, 250)), 'physical')
+  expect_equal(signal_units(normalize_window(beats)[[1]]), 'physical')
+  expect_equal(
+    signal_units(pad_window(beats, target_samples = 900)[[1]]),
+    'physical'
+  )
+  expect_equal(signal_units(as_ECG(physical)), 'physical')
+})
+
+test_that('write_wfdb refuses units that contradict the signal', {
+  skip_if_not_installed('withr')
+
+  physical <- read_wfdb('ecg', test_path(), units = 'physical')
+  digital <- read_wfdb('ecg', test_path())
+
+  withr::with_tempdir({
+    # Writing physical values as though they were ADC counts is a gain-sized
+    # error, and one that leaves no trace in the file
+    expect_error(
+      write_wfdb(physical, 'out', '.'),
+      'labelled "physical"'
+    )
+    expect_no_error(write_wfdb(physical, 'out', '.', units = 'physical'))
+
+    # A digital signal still round-trips on the defaults
+    expect_no_error(write_wfdb(digital, 'digital', '.'))
+    expect_equal(
+      read_wfdb('digital', '.')$signal$II,
+      digital$signal$II
+    )
+  })
+})

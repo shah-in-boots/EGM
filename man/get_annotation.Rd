@@ -7,16 +7,34 @@
 get_annotation(x, annotator = NULL)
 }
 \arguments{
-\item{x}{An \code{egm} object containing annotations}
+\item{x}{An \code{EGM} object containing annotations}
 
 \item{annotator}{Character string specifying which annotator to extract.
-If NULL (default), returns all annotations.}
+If NULL (default), returns every annotator's table.}
 }
 \value{
-An \code{annotation_table} object for the specified annotator, or
-a named list of all annotation tables if annotator is NULL.
+An \code{annotation_table} for the requested annotator; with \code{annotator = NULL}, the single \code{annotation_table} present, or a named list of them when
+the record carries more than one.
 }
 \description{
-Extract a specific annotator's annotation table from an
-\code{egm} object that may contain multiple annotators.
+Extract an annotator's annotation table from an \code{EGM} object,
+which may hold several.
+}
+\details{
+The shape returned matches \code{\link[=read_annotation]{read_annotation()}}: a single
+\code{annotation_table} when the record carries one annotator, and a named list
+of them when it carries several. That symmetry is the point of the function
+\itemize{
+\item code can move between a record read from disk and one held in memory
+without changing shape, and an empty record answers with an empty
+\code{annotation_table} rather than an empty list.
+}
+
+It is also the way to reach annotations that only exist in memory. The
+sample indices carried by an \code{EGM} are rescaled by \code{\link[=change_frequency]{change_frequency()}},
+while a copy read separately from disk is not, so after a rate change these
+are the annotations that agree with the signal.
+}
+\seealso{
+\code{\link[=read_annotation]{read_annotation()}}, \code{\link[=list_annotators]{list_annotators()}}, \code{\link[=change_frequency]{change_frequency()}}
 }

@@ -32,6 +32,10 @@ explicitly with a \verb{by_*()} constructor when its arguments need setting:
 get_windows(ecg, by = by_rhythm(channel = 2))
 }\if{html}{\out{</div>}}
 
+Three strategies are built in: \code{\link[=by_rhythm]{by_rhythm()}} cuts a whole beat between two
+fiducials, \code{\link[=by_pwave]{by_pwave()}} the atrial portion of one, and \code{\link[=by_beat]{by_beat()}} a fixed
+span around a fiducial.
+
 Both forms route through the same constructor, so both are validated the
 same way. Strategy arguments belong to the constructor rather than to this
 function, which is what allows a mistyped argument to be reported instead of
@@ -44,6 +48,43 @@ Windows are generally \emph{not} the same length, since they follow the signal
 rather than a fixed duration; see \code{\link[=pad_window]{pad_window()}}, \code{\link[=normalize_window]{normalize_window()}}, and
 \code{\link[=warp_window]{warp_window()}} for the ways to bring them onto a common basis.
 }
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
+}
+
 \examples{
 \dontrun{
 ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
@@ -53,13 +94,14 @@ beats <- get_windows(ecg, by = "rhythm")
 
 # Guided by a single lead, then collapsed to a median beat
 get_windows(ecg, by = by_rhythm(channel = 2)) |>
-  median_window(align_feature = "N", channel_criteria = 2)
+  median_window(align_feature = "N", channel = 2)
 }
 
 }
 \seealso{
-\code{\link[=by_rhythm]{by_rhythm()}} for the available strategy, \code{\link[=pad_window]{pad_window()}},
-\code{\link[=normalize_window]{normalize_window()}} and \code{\link[=warp_window]{warp_window()}} to bring windows onto a common
-length, and \code{\link[=change_frequency]{change_frequency()}} to harmonise sampling rates either before
-windowing or on the returned collection.
+\code{\link[=by_rhythm]{by_rhythm()}}, \code{\link[=by_pwave]{by_pwave()}} and \code{\link[=by_beat]{by_beat()}} for the available
+strategies, \code{\link[=window_dropped]{window_dropped()}} for the candidates a strategy did not return,
+\code{\link[=pad_window]{pad_window()}}, \code{\link[=normalize_window]{normalize_window()}} and \code{\link[=warp_window]{warp_window()}} to bring windows
+onto a common length, and \code{\link[=change_frequency]{change_frequency()}} to harmonise sampling rates
+either before windowing or on the returned collection.
 }

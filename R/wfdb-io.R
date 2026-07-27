@@ -129,6 +129,15 @@ NULL
 #'   and `gain` are specified in the header file. This is the human-readable format
 #'   for analysis.
 #'
+#'   The two differ by the ADC gain, which is commonly 200, so reading digital
+#'   counts as though they were millivolts is a 200-fold error - and one that no
+#'   downstream check can catch on its own, since the same number is plausible in
+#'   either. The signal table returned by [read_wfdb()] and [read_signal()]
+#'   therefore carries its units as a label, readable with [signal_units()] and
+#'   preserved through windowing, padding, medians and resampling.
+#'   [write_wfdb()] refuses to write a signal whose label contradicts the `units`
+#'   it was told to expect.
+#'
 #' @param channels Either the signal/channel in a `character` vector as a name or number.
 #'   Allows for duplication of signal or to re-order signal if needed. If
 #'   nothing is given, will default to all channels available.
@@ -184,7 +193,26 @@ write_wfdb <- function(
     signal <- data$signal
     header <- data$header
   } else {
-    signal <- signal_table(data)
+    signal <- signal_table(data, units = units)
+  }
+
+  # `units` declares what the caller is handing over, and the signal says what it
+  # actually holds. Disagreement is a gain-sized error - 200-fold in a typical
+  # record - and it is invisible in the written file, so it is refused here.
+  carried <- signal_units(signal)
+  if (!identical(carried, units)) {
+    stop(
+      "`units` was given as \"",
+      units,
+      "\", but this signal is labelled \"",
+      carried,
+      "\". Writing it as ",
+      units,
+      " would rescale every value by the ADC gain. Pass `units = \"",
+      carried,
+      "\"`, or relabel the signal if the label is the thing that is wrong.",
+      call. = FALSE
+    )
   }
 
   if (is.null(header)) {
@@ -391,6 +419,8 @@ read_wfdb <- function(
   channels = character(),
   ...
 ) {
+  units <- match.arg(units)
+
   # Load the shared header once so it can be passed to both the signal and
   # optional annotation readers without re-parsing the file.
   header <- read_header(record = record, record_dir = record_dir)
@@ -546,7 +576,10 @@ read_signal <- function(
 
   signal <- data.table::as.data.table(signal_list)
   signal[, sample := as.integer(sample)]
-  signal_table(signal)
+  # The returned table says which units it holds, so that a downstream step can
+  # assert it rather than assume: the two differ by the ADC gain, and nothing in
+  # the values distinguishes them
+  signal_table(signal, units = units)
 }
 
 #' @describeIn wfdb_io Specifically reads the header data from the WFDB header

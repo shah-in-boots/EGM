@@ -365,6 +365,25 @@ write_annotation <- function(
 #' Annotator systems for WFDB objects
 #'
 #' @description These functions create templates for annotation in R and extend the ability for developers to create their own annotation systems that are stable for WFDB objects. They are compatible with WFDB annotations and can be written out to a WFDB-compatible file. This also allows extensibility.
+#'
+#' @details
+#'
+#' # Choosing an annotator
+#'
+#' What this package needs from a delineating annotator is narrower than it
+#' looks. Wave identity is recovered positionally by [label_waves()], from the
+#' peak symbol enclosed by each `(`/`)` bracket pair, so an annotator that leaves
+#' the WFDB `number` column at zero throughout - which by the letter of the
+#' convention means every onset marks a P wave - is still perfectly usable. The
+#' requirement is only that each wave is bracketed around a typed peak (`p`, `N`,
+#' or `t`).
+#'
+#' An annotator run per lead writes one such set of brackets for each lead,
+#' distinguished by the `channel` column, which is resolved by naming a guiding
+#' `channel`; see [channels].
+#'
+#' @seealso [label_waves()], [read_annotation()], [channels]
+#'
 #' @name annotators
 NULL
 
@@ -486,15 +505,30 @@ wfdb_annotation_decode <- function(annotation, column = "type") {
 
 #' Get annotation from EGM object
 #'
-#' @description Extract a specific annotator's annotation table from an
-#'   `egm` object that may contain multiple annotators.
+#' @description Extract an annotator's annotation table from an `EGM` object,
+#'   which may hold several.
 #'
-#' @param x An `egm` object containing annotations
+#' @details The shape returned matches [read_annotation()]: a single
+#'   `annotation_table` when the record carries one annotator, and a named list
+#'   of them when it carries several. That symmetry is the point of the function
+#'   - code can move between a record read from disk and one held in memory
+#'   without changing shape, and an empty record answers with an empty
+#'   `annotation_table` rather than an empty list.
+#'
+#'   It is also the way to reach annotations that only exist in memory. The
+#'   sample indices carried by an `EGM` are rescaled by [change_frequency()],
+#'   while a copy read separately from disk is not, so after a rate change these
+#'   are the annotations that agree with the signal.
+#'
+#' @param x An `EGM` object containing annotations
 #' @param annotator Character string specifying which annotator to extract.
-#'   If NULL (default), returns all annotations.
+#'   If NULL (default), returns every annotator's table.
 #'
-#' @returns An `annotation_table` object for the specified annotator, or
-#'   a named list of all annotation tables if annotator is NULL.
+#' @returns An `annotation_table` for the requested annotator; with `annotator =
+#'   NULL`, the single `annotation_table` present, or a named list of them when
+#'   the record carries more than one.
+#'
+#' @seealso [read_annotation()], [list_annotators()], [change_frequency()]
 #'
 #' @export
 get_annotation <- function(x, annotator = NULL) {
@@ -512,14 +546,20 @@ get_annotation <- function(x, annotator = NULL) {
   # Handle empty annotations
   if (!has_annotators) {
     if (is.null(annotator)) {
-      return(list())
+      # An unnamed list is how a record with no annotator is stored; the shape
+      # a caller asked for is still a table, so hand back an empty one
+      return(if (length(ann) == 1L) ann[[1]] else annotation_table())
     } else {
       stop("No annotations available in this egm object", call. = FALSE)
     }
   }
 
-  # Return all if no specific annotator requested
+  # Return all if no specific annotator requested. One annotator unwraps to its
+  # own table, which is what `read_annotation()` returns for the same record.
   if (is.null(annotator)) {
+    if (length(ann) == 1L) {
+      return(ann[[1]])
+    }
     return(ann)
   }
 

@@ -8,6 +8,7 @@ extract_f_waves(
   object,
   lead = NULL,
   qrs_loc = NULL,
+  channel = NULL,
   cancel_method = c("spatiotemporal", "average_beat", "adaptive_svd"),
   f_characteristics = c("amplitude", "dominant_frequency", "organization",
     "sample_entropy"),
@@ -38,6 +39,12 @@ spatiotemporal fit draws on all of them.}
 record's own sampling frequency. If \code{NULL} (default), positions are taken
 from the object's annotation table when one is attached, and otherwise
 detected from a multi-lead composite.}
+
+\item{channel}{The lead whose beat annotations give the QRS positions, given
+as a channel number or name. Required when the annotations span more than
+one channel: pooled across twelve leads they report twelve times as many
+beats as the record holds, and every rhythm measure derived from them
+follows. See the channels section. Ignored when \code{qrs_loc} is supplied.}
 
 \item{cancel_method}{Ventricular cancellation method. One of
 \code{"spatiotemporal"} (default), \code{"average_beat"}, or \code{"adaptive_svd"}.}
@@ -145,6 +152,43 @@ rhythm there is no fibrillatory wave to find, so the estimator returns
 whatever is largest in the band. When \code{rhythm} is not supplied, irregularity
 is inferred from the RR series and a warning is issued if the record does not
 look like atrial fibrillation.
+}
+
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
 }
 
 \examples{

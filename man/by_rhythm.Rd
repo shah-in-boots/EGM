@@ -10,12 +10,15 @@ by_rhythm(
   offset = NULL,
   reference = NULL,
   channel = NULL,
+  reject_overlap = NULL,
   adjust_sample_indices = TRUE
 )
 }
 \arguments{
-\item{rhythm}{A \code{character} naming the rhythm type. Currently \code{"sinus"} is
-the only value with built-in defaults and overlap rejection.}
+\item{rhythm}{A \code{character} naming the rhythm type, used to label the windows
+and to select defaults. \code{"sinus"} is the only value carrying built-in
+criteria; any other name requires \code{onset} and \code{offset}, and is the
+documented way to describe a different segmentation.}
 
 \item{onset}{A named list of criteria identifying window onsets. Defaults to
 \code{list(type = "(", wave = "P")} (P-wave onset) for sinus.}
@@ -29,13 +32,20 @@ for P-onset to next P-onset.}
 between onset and offset, or \code{NULL} to skip the check. Defaults to
 \code{list(type = "N")} (the QRS peak) for sinus.}
 
-\item{channel}{An optional channel number guiding multi-lead windowing. When
-the annotation table spans multiple channels (e.g. an \code{ecgpuwave}-style file
-run per lead, where each lead is kept apart by the \code{channel} column), set
-this to the channel whose annotations should define the window boundaries.
-Annotations on the global channel (\code{0}) are always retained, and the
-returned windows still contain the signal for all channels. \code{NULL} (default)
-uses every annotation, which is correct for single-channel annotation files.}
+\item{channel}{The lead whose annotations define the window boundaries, given
+as a channel number or a channel name. An annotator run per lead (an
+\code{ecgpuwave}-style file, say) writes one copy of every fiducial for each
+lead, separated only by the \code{channel} column, and such a table has to be
+resolved to one lead before it describes beats: see the channels section
+below. Annotations on the global channel (\code{0}) are always retained, and the
+returned windows still contain the signal for every channel. \code{NULL}
+(default) uses every annotation, which is correct for a single-channel
+annotation file and an error for any other.}
+
+\item{reject_overlap}{Logical, whether to discard a window that contains a
+second onset. \code{NULL} (default) means \code{TRUE} for sinus and \code{FALSE} otherwise.
+A second onset inside the window means a fiducial went undetected and the
+window has run on into the following beat.}
 
 \item{adjust_sample_indices}{Logical, whether to rebase signal and annotation
 sample indices in the returned windows to be zero-based and relative to the
@@ -62,9 +72,64 @@ per lead.
 
 When \code{rhythm = "sinus"} the criteria default to a full beat and windows that
 contain a second onset are rejected, so that only clean non-overlapping
-beats are returned. Other rhythm names require \code{onset} and \code{offset} to be
-given explicitly.
+beats are returned.
 }
+\section{Segmentations other than a whole beat}{
+\code{rhythm} is a free-form label: it names the windows and their info strings,
+and it selects the sinus defaults. Any other name is an extension point -
+give \code{onset} and \code{offset} explicitly and the same engine will find whatever
+pair of fiducials you describe. Windowing from one P onset to the next, for
+instance:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{by_rhythm(
+  rhythm = "atrial",
+  onset = list(type = "(", wave = "P"),
+  offset = list(type = "(", wave = "P"),
+  reference = list(type = "p")
+)
+}\if{html}{\out{</div>}}
+
+\code{\link[=by_pwave]{by_pwave()}} is that pattern named and given defaults, for the segmentation
+worth having a constructor of its own.
+}
+
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
+}
+
 \examples{
 # Sinus defaults: one clean P-onset -> T-offset beat per window
 by_rhythm()
@@ -77,5 +142,5 @@ by_rhythm(offset = list(type = "(", wave = "P"))
 
 }
 \seealso{
-\code{\link[=get_windows]{get_windows()}}, \code{\link[=label_waves]{label_waves()}}
+\code{\link[=get_windows]{get_windows()}}, \code{\link[=by_pwave]{by_pwave()}}, \code{\link[=label_waves]{label_waves()}}
 }

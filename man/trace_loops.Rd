@@ -21,9 +21,10 @@ loop; \code{"all"} returns one loop per beat, preserving the beat-to-beat
 variability a signal average is designed to remove (Tachmatzidis et al.
 2022). An object that already holds one beat is unaffected by either.}
 
-\item{channel}{An optional annotation channel guiding the wave delineation.
-Required when the annotations span more than one channel, as they do when
-an annotator has been run per lead.}
+\item{channel}{The lead whose annotations delineate the waves, given as a
+channel number or name. Required when the annotations span more than one
+channel, as they do when an annotator has been run per lead; see the
+channels section.}
 
 \item{baseline}{Logical. If \code{TRUE} (default), each beat is referenced to its
 own onset, taken as the median of the 10 ms following it. Orientation is

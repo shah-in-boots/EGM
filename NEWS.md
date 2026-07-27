@@ -1,5 +1,118 @@
 # EGM (development version)
 
+## Per-lead annotations
+
+An annotator run once per lead writes twelve independent copies of every
+fiducial, separated only by the `channel` column. Every entry point that consumed
+annotations resolved that differently — some warned, one threw a message that did
+not name the fix, and one silently reported twelve times as many beats as the
+record contained. They now resolve it the same way, documented once in
+`?channels`.
+
+* **Annotations spanning more than one channel are an error where no `channel`
+  is given** (**breaking**). This holds in `get_windows()`, `learn_template()`,
+  `extract_f_waves()`, `vectorcardiogram()`, `median_window()`, `pad_window()`,
+  `normalize_window()` and `warp_window()`. `get_windows()` previously warned and
+  returned anyway, which is the worst of both: the warning disappears in a batch
+  job and leaves a well-formed `windows` object that flows happily into
+  everything downstream. On a record with 19 QRS complexes it returned 7 windows
+  without a channel and 10 with one.
+
+* **A `channel` that the annotations do not carry is an error.** The numbering
+  convention belongs to the annotator that wrote the file — WFDB's own tools
+  number channels from 0, others from 1 — so the check is what turns a silent
+  off-by-one lead into a message naming the channels that exist.
+
+* **`extract_f_waves()` gains a `channel` argument, and no longer pools QRS
+  annotations across channels** (**breaking**). Pooled, a 10-second AF record
+  reported 73 beats rather than 13, a heart rate of 15,000 bpm, an RR coefficient
+  of variation of 2.19 rather than 0.21, and all 12 leads flagged `on_harmonic`
+  rather than none — inverting the harmonic-contamination verdict with no error
+  and no warning.
+
+* **A heart rate outside 20–300 bpm is warned about.** It is not a rhythm, it is
+  a counting error, and it is invisible in every feature the caller goes on to
+  read. The guard is independent of the channel fix and would have caught it.
+
+* **`channel_criteria` is superseded by `channel`.** The old name invited a
+  criteria list — the shape `onset` and `offset` take a few arguments away —
+  while accepting only a scalar, and the neighbouring functions called the same
+  thing `channel`. All of them now take `channel`, which accepts a channel
+  number, a channel name (`"II"`), or a `list(channel = ...)` wrapper.
+  `channel_criteria` still works, and warns once per session.
+
+* **`learn_template()` names the cause of an ambiguous landmark.** The message
+  was `Landmark 'P_onset' matched 2 annotations in example 1`, which reports the
+  symptom; the count rising with the number of leads is the clue, and it only
+  reads as a clue to someone who already knows. It now reads `matched 12
+  annotations across 12 channels (1, ..., 12) in example 1, which is one fiducial
+  per lead rather than several fiducials; set `channel` to choose a guiding
+  lead`.
+
+* **`label_waves()` is exported.** It infers wave identity from the peak symbol
+  enclosed by each `(`…`)` pair, and that single fact decides whether an
+  annotator is usable: a file leaving the WFDB `number` column at zero throughout
+  looks disqualifying and is not. The contract is now stated in `?label_waves`
+  and `?annotators` rather than reachable only by reading the source with `:::`.
+
+## Signal units
+
+* **`read_wfdb()` and `read_signal()` label the units they return.** Read them
+  back with the new `signal_units()`. `read_wfdb()` has taken a `units` argument
+  for some time, but nothing on the returned object said which units were in
+  hand, and digital and physical values differ by the ADC gain — 200 in a great
+  many records — with no way to tell them apart from the numbers. The label is
+  carried through windowing, padding, medians, normalization, warping and
+  resampling.
+
+* **`write_wfdb()` refuses to write a signal whose label contradicts its `units`
+  argument.** Writing physical values as digital rescales every sample by the
+  gain and leaves no trace in the file.
+
+* **`read_wfdb()` matches its `units` argument.** It passed the unmatched default
+  through to `read_signal()`, which worked, but an invalid value was not caught
+  where it was written.
+
+## Sampling frequency
+
+* **`frequency()` works on a `header_table`.** Without a method it fell through
+  to `stats::frequency()`, which answers `1` for any object with no `tsp`
+  attribute — so a 500 Hz record reported 1 Hz, which is wrong in a way nothing
+  downstream can catch.
+
+* **A record with no usable sampling rate is an error rather than `NA`**
+  (**breaking**). An `NA` rate is never a recoverable state: it propagates into
+  every interval, heart rate and duration, while the analyses that do not divide
+  by it — vectorcardiography among them — go on looking healthy, so the failure
+  is invisible in aggregate.
+
+* **`change_frequency()` takes `to` first and defaults `from` to the recorded
+  rate** (**breaking**). `change_frequency(ecg, 500)` reads as "resample to 500
+  Hz" and now means it; it previously bound 500 to `from` and failed for a
+  missing `to`, at the far end of a batch job rather than at the call site. The
+  source rate is already on the header, and stating it is now an assertion: a
+  disagreement is an error. A bare `numeric` lead still requires `from`, having
+  no header to read.
+
+  Calls that passed both positionally must be updated. Where the object carries
+  a header the old order now raises the rate-disagreement error rather than
+  rescaling by the wrong ratio.
+
+* **The annotation rescaling is documented.** `change_frequency()` rescales the
+  annotations it carries, which is correct and not obvious; a second copy read
+  separately from disk is left on the original grid, and mixing the two halves
+  every interval measured from them.
+
+## Bug fixes
+
+* **Every `print()` method in the package now dispatches.** `S7::method(print,
+  cls) <- f` is a replacement call, so at the top level of a package it left a
+  copy of `print` in the namespace; each `S3method(print, ...)` directive in
+  `NAMESPACE` then registered against that copy rather than `base::print`, and
+  printing an `EGM`, a `windows` collection or any of the tables produced a wall
+  of raw list output. The three S7 method assignments are now wrapped in
+  `local()`.
+
 ## Vectorcardiography
 
 * **`vectorcardiogram()` and `atrial_vectorcardiogram()` are new.** Both
@@ -37,6 +150,11 @@
   Wave boundaries come from the record's own delineation annotations. A record
   without them is an error rather than a guess, as is a record whose annotations
   span several channels without a guiding `channel`.
+
+  `?vectorcardiogram` now tabulates each component's units and says which are
+  scale-free. The angles, `planarity` and the organisation measures are;
+  `magnitude_*`, `area` and `sai_qrst` inherit the signal's units, so two columns
+  of the same table behave differently under a change of gain.
 
 * **`kors` is a new exported dataset**, the 3 by 8 regression matrix itself, so
   it can be inspected and used directly rather than being buried in the function
@@ -157,6 +275,27 @@
   regex engine.
 
 ## Windowing
+
+* **`by_pwave()` is a new windowing strategy.** It cuts the atrial portion of
+  each beat, from the P onset to either the QRS onset (default) or the P offset.
+  Isolating the P wave is what makes atrial morphology modellable, since the QRS
+  is an order of magnitude taller and otherwise absorbs the variance in any basis
+  expansion fitted over a whole beat. Ending at the QRS onset keeps the
+  isoelectric PR segment, which costs nothing and avoids truncating the P wave
+  on the least reliably placed of the two fiducials.
+
+  This was already expressible through `by_rhythm()`, but only because any
+  `rhythm` other than `"sinus"` skipped the default-filling branch. That is now
+  documented as the extension point it is, and `by_rhythm()` gains
+  `reject_overlap` so the behaviour that was tied to the string `"sinus"` can be
+  asked for by name.
+
+* **Candidate beats a strategy did not return are counted on the collection.**
+  Read them with the new `window_dropped()`. `by_beat()` reports
+  `incomplete_span`; `by_rhythm()` reports `no_offset`, `no_reference` and
+  `overlapping`. The count was previously reported only to the console, which is
+  nowhere on a background worker — and the drop rate across a study is exactly
+  what an audit needs.
 
 * **`median_window()` returns the fiducials that produced the beat**
   (**breaking**). It previously discarded them on the grounds that a median of

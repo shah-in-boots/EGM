@@ -130,9 +130,10 @@
 #'   variability a signal average is designed to remove (Tachmatzidis et al.
 #'   2022). An object that already holds one beat is unaffected by either.
 #'
-#' @param channel An optional annotation channel guiding the wave delineation.
-#'   Required when the annotations span more than one channel, as they do when
-#'   an annotator has been run per lead.
+#' @param channel The lead whose annotations delineate the waves, given as a
+#'   channel number or name. Required when the annotations span more than one
+#'   channel, as they do when an annotator has been run per lead; see the
+#'   channels section.
 #'
 #' @param baseline Logical. If `TRUE` (default), each beat is referenced to its
 #'   own onset, taken as the median of the 10 ms following it. Orientation is
@@ -143,18 +144,40 @@
 #'   \describe{
 #'     \item{`loop`}{The orthogonal signal, with columns `beat`, `sample`, `X`,
 #'       `Y` and `Z`, in the units of the source signal.}
-#'     \item{`components`}{One row per loop. Both functions return `duration`
-#'       (seconds); `magnitude_peak`, `azimuth_peak` and `elevation_peak` for the
-#'       largest spatial vector; `magnitude_mean`, `azimuth_mean` and
-#'       `elevation_mean` for the loop's mean vector; `area`, the planar area
-#'       enclosed; and `planarity`, the share of the loop's variance lying in its
-#'       best-fit plane, 1 being flat. `vectorcardiogram()` adds the GEH
-#'       components `qrst_angle_peak`, `qrst_angle_mean`, `svg_magnitude`,
-#'       `svg_azimuth`, `svg_elevation` and `sai_qrst`.}
+#'     \item{`components`}{One row per loop, as tabulated below.}
 #'   }
 #'
 #'   Azimuth is measured in the transverse plane from `+X` toward `+Z`, and
 #'   elevation out of that plane toward `+Y`, both in degrees.
+#'
+#' @section Components and their units:
+#'
+#'   Half of these components are scale-free and half are not, which matters
+#'   because the source signal may be in millivolts or in raw ADC counts
+#'   depending on how the record was read (see the `units` argument of
+#'   [read_wfdb()], and [signal_units()] to ask an object which it holds). A gain
+#'   of 200 changes every value in the "signal units" rows by 200, and none of
+#'   the others. Between-record comparisons of those rows are only meaningful on
+#'   signals read the same way.
+#'
+#'   | Component | Units | Scale-free |
+#'   |---|---|---|
+#'   | `duration` | seconds | yes |
+#'   | `magnitude_peak`, `magnitude_mean` | signal units | no |
+#'   | `azimuth_peak`, `elevation_peak` | degrees | yes |
+#'   | `azimuth_mean`, `elevation_mean` | degrees | yes |
+#'   | `area` | signal units squared | no |
+#'   | `planarity` | proportion (0-1) | yes |
+#'   | `qrst_angle_peak`, `qrst_angle_mean` | degrees | yes |
+#'   | `svg_magnitude` | signal units x seconds | no |
+#'   | `svg_azimuth`, `svg_elevation` | degrees | yes |
+#'   | `sai_qrst` | signal units x seconds | no |
+#'
+#'   The last five are returned by `vectorcardiogram()` only; they are the global
+#'   electric heterogeneity components, and `atrial_vectorcardiogram()` declines
+#'   to report a QRS-T relationship for a P loop.
+#'
+#' @inheritSection channels Guiding channel
 #'
 #' @references
 #'
@@ -202,7 +225,7 @@
 #' # The same loop, with the windowing and alignment chosen explicitly
 #' ecg |>
 #'   get_windows(by = by_rhythm(channel = 2)) |>
-#'   median_window(align_feature = "N", channel_criteria = 2) |>
+#'   median_window(align_feature = "N", channel = 2) |>
 #'   vectorcardiogram()
 #' }
 #'
@@ -291,17 +314,11 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
 
   # Per-lead annotators leave one set of boundaries per channel, and interleaved
   # those do not describe beats
-  if (is.null(channel) && !is.null(ann$channel)) {
-    spread <- unique(ann$channel[ann$channel != 0L])
-    if (length(spread) > 1) {
-      stop(
-        what,
-        " needs a guiding `channel`: annotations span channels ",
-        paste(sort(spread), collapse = ", "),
-        call. = FALSE
-      )
-    }
-  }
+  channel <- resolve_annotation_channel(
+    ann,
+    resolve_channel_spec(object, valid_channel(channel)),
+    what = what
+  )
 
   # A fixed span around the fiducial, wide enough to hold the waves at any
   # physiological rate. Equal-length windows are what let the median be taken
@@ -340,7 +357,7 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
     windows <- list(median_window(
       windows,
       align_feature = peaks[[waves[1]]],
-      channel_criteria = channel
+      channel = channel
     ))
   }
 

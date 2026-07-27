@@ -3,22 +3,24 @@
 \name{frequency}
 \alias{frequency}
 \alias{frequency.EGM}
+\alias{frequency.header_table}
 \alias{frequency.windows}
 \title{Sampling frequency of signal data}
 \usage{
 \method{frequency}{EGM}(x, ...)
 
+\method{frequency}{header_table}(x, ...)
+
 \method{frequency}{windows}(x, ...)
 }
 \arguments{
-\item{x}{An \code{EGM} or \code{windows} object.}
+\item{x}{An \code{EGM}, \code{header_table}, or \code{windows} object.}
 
 \item{...}{Additional arguments (currently unused).}
 }
 \value{
-A \code{numeric} sampling rate in Hz. \code{NA_real_} when a record carries no
-usable rate, and for \code{windows} objects a vector of the distinct rates
-present (empty for an empty collection).
+A \code{numeric} sampling rate in Hz; for \code{windows} objects a vector of the
+distinct rates present (empty for an empty collection).
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -29,17 +31,33 @@ converts sample indices into physical time. Use \code{\link[=change_frequency]{c
 change it.
 }
 \details{
-These are methods for the \code{\link[stats:frequency]{stats::frequency()}} generic. For a single
-\code{EGM} the rate is a scalar. A \code{windows} collection may in principle mix
-rates - windows from different source records can be concatenated with
-\code{\link[=c.windows]{c.windows()}} - so its method returns the \emph{distinct} rates present. A
-result of length one therefore means the collection is already harmonised,
-and anything longer means the windows are not directly comparable.
+These are methods for the \code{\link[stats:frequency]{stats::frequency()}} generic, defined for
+every object that carries a rate: an \code{EGM} (and so an \link{ECG}), a bare
+\code{header_table}, and a \code{windows} collection. A \code{header_table} needs its own
+method because the default one answers \code{1} for any object without a \code{tsp}
+attribute, and a 500 Hz record reported as 1 Hz is wrong in a way that
+nothing downstream can catch.
+
+For a single record the rate is a scalar. A \code{windows} collection may in
+principle mix rates - windows from different source records can be
+concatenated with \code{\link[=c.windows]{c.windows()}} - so its method returns the \emph{distinct} rates
+present. A result of length one therefore means the collection is already
+harmonised, and anything longer means the windows are not directly
+comparable.
+
+A record whose header carries no usable rate is an error rather than an
+\code{NA}. There is no arithmetic that recovers from a missing sampling rate: it
+propagates into every interval, every heart rate, and every duration, while
+leaving the analyses that do not divide by it looking healthy. Repair the
+header, or state the rate with \code{\link[=change_frequency]{change_frequency()}}.
 }
 \examples{
 \dontrun{
 ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
 frequency(ecg)
+
+# The header answers for itself
+frequency(ecg$header)
 
 # A harmonised collection reports a single rate
 frequency(get_windows(ecg))

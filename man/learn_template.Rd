@@ -9,12 +9,13 @@ learn_template(
   landmarks = list(P_onset = list(type = "(", wave = "P"), QRS = list(type = "N"),
     T_offset = list(type = ")", wave = "T")),
   target_samples = 500L,
-  channel_criteria = NULL,
+  channel = NULL,
   frequency = NULL,
   position_estimator = c("median", "mean"),
   missing = c("complete", "available", "error"),
   ambiguous = c("error", "first"),
   order_policy = c("drop", "error"),
+  channel_criteria = NULL,
   ...
 )
 }
@@ -27,7 +28,9 @@ a named criteria list with optional \code{channel} and \code{required} fields.}
 
 \item{target_samples}{Number of samples in the template target grid.}
 
-\item{channel_criteria}{Default channel for landmarks without their own one.}
+\item{channel}{Default channel for landmarks without their own one, given as a
+channel number or name. Required when the examples' annotations span more
+than one channel; see the channels section.}
 
 \item{frequency}{Optional source frequency stored as provenance. By default it
 is read from the first example.}
@@ -41,6 +44,8 @@ or error on incomplete examples.}
 
 \item{order_policy}{Drop examples with crossed landmarks, or error.}
 
+\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
+
 \item{...}{Additional arguments, currently unused.}
 }
 \value{
@@ -52,3 +57,40 @@ its median or mean fractional position, and returns a fitted \link{template}. Fo
 manual templates, construct positioned \link{landmark} objects and pass them to
 \code{\link[=template]{template()}} directly.
 }
+\section{Guiding channel}{
+
+
+A delineating annotator may be run over a record once, or once per lead. Run
+per lead it writes twelve independent copies of every fiducial, separated
+only by the \code{channel} column, and such a table does not describe beats until
+it is resolved to a single lead: pooled, it reports twelve times as many
+beats as the record contains, and taking the first match at each point
+silently follows whichever lead happens to sort first.
+
+So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
+\code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+it the same way:
+\itemize{
+\item annotations spanning more than one channel with no \code{channel} given are an
+error, not a guess;
+\item a \code{channel} that the annotations do not carry is an error, which is what
+catches a numbering convention that does not match;
+\item the global channel \code{0} is not a lead, so it never counts toward the span
+and is always kept alongside the chosen lead.
+}
+
+The channel may be a number or a channel name (\code{"II"}), resolved against the
+record's own header. A number is matched literally against the \code{channel}
+column, and the numbering there belongs to the annotator that wrote the
+file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
+the record rather than assuming:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
+}\if{html}{\out{</div>}}
+
+Only the boundaries are restricted to one lead. Windows still carry the
+signal for every channel, which is what makes a windowed beat usable as a
+vectorcardiogram.
+}
+

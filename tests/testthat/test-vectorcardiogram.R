@@ -267,7 +267,7 @@ test_that("windows carry the ECG class through the transforms", {
   study <- read_wfdb("ecg-sinus", test_path(), "ann")
   plain <- get_windows(study, by = by_rhythm(channel = 2))
   expect_false(is_ECG(plain[[1]]))
-  expect_false(is_ECG(median_window(plain, align_feature = "N", channel_criteria = 2)))
+  expect_false(is_ECG(median_window(plain, align_feature = "N", channel = 2)))
 })
 
 # Global electric heterogeneity ----

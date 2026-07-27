@@ -9,6 +9,9 @@
 #             resampled collection still knows it started as rhythm windows.
 #   history - every step applied, in order, e.g. c("rhythm", "padded",
 #             "normalized"). Each transform appends exactly one entry.
+#   dropped - candidate beats the strategy found but did not return, by reason.
+#             Recorded here rather than only messaged, so that a batch running
+#             on background workers can still audit its own drop rate.
 #
 # The window count is deliberately *not* stored; it is `length(x)`, and keeping a
 # copy meant every method that changed the length had to remember to update it.
@@ -31,11 +34,14 @@
 #' @param source_record The name of the original record.
 #' @param history A `character` vector of the steps applied so far, in order.
 #'   Defaults to `method`, which is correct at the point of extraction.
+#' @param dropped A named `integer` vector counting candidate beats the strategy
+#'   found but did not return, by reason. Read it back with [window_dropped()].
 #' @param ... Additional arguments passed to methods.
 #'
 #' @return An object of class `windows` which inherits from `list`.
 #'
-#' @seealso [get_windows()] to create one from an `EGM`.
+#' @seealso [get_windows()] to create one from an `EGM`, [window_dropped()] for
+#'   the candidates it did not return.
 #'
 #' @export
 new_windows <- function(
@@ -43,6 +49,7 @@ new_windows <- function(
   method = character(),
   source_record = character(),
   history = method,
+  dropped = integer(),
   ...
 ) {
   if (!is.list(x)) {
@@ -61,6 +68,7 @@ new_windows <- function(
     method = method,
     source_record = source_record,
     history = history,
+    dropped = dropped,
     creation_time = Sys.time()
   )
 }
@@ -71,14 +79,19 @@ set_windows_attrs <- function(
   method,
   source_record,
   history,
+  dropped = integer(),
   creation_time = Sys.time()
 ) {
+  if (is.null(dropped)) {
+    dropped <- integer()
+  }
   structure(
     x,
     class = c("windows", "list"),
     method = as.character(method),
     source_record = source_record,
     history = as.character(history),
+    dropped = dropped,
     creation_time = creation_time
   )
 }
@@ -113,6 +126,16 @@ format.windows <- function(x, ...) {
   # The history is the pipeline as applied, so an arrow chain reads correctly
   cat("History: ", paste(attr(x, "history"), collapse = " -> "), "\n", sep = "")
   cat("Source: ", attr(x, "source_record"), "\n", sep = "")
+  dropped <- window_dropped(x)
+  dropped <- dropped[dropped > 0]
+  if (length(dropped) > 0) {
+    cat(
+      "Dropped: ",
+      paste0(dropped, " ", names(dropped), collapse = ", "),
+      "\n",
+      sep = ""
+    )
+  }
   cat("Created: ", format(attr(x, "creation_time")), "\n", sep = "")
 
   invisible(x)
@@ -149,6 +172,7 @@ print.windows <- function(x, ...) {
     method = attrs$method,
     source_record = attrs$source_record,
     history = attrs$history,
+    dropped = attrs$dropped,
     creation_time = attrs$creation_time
   )
 }
@@ -184,8 +208,27 @@ c.windows <- function(...) {
     result,
     method = attr(donor, "method"),
     source_record = attr(donor, "source_record"),
-    history = attr(donor, "history")
+    history = attr(donor, "history"),
+    # Drop counts are counts of candidates, so a concatenation accumulates them
+    dropped = sum_dropped(lapply(args, window_dropped))
   )
+}
+
+# Add named count vectors that need not share names or order.
+sum_dropped <- function(counts) {
+  counts <- counts[lengths(counts) > 0]
+  if (length(counts) == 0) {
+    return(integer())
+  }
+  reasons <- unique(unlist(lapply(counts, names)))
+  totals <- vapply(
+    reasons,
+    function(r) sum(vapply(counts, function(x) {
+      if (!(r %in% names(x)) || is.na(x[[r]])) 0L else as.integer(x[[r]])
+    }, integer(1))),
+    integer(1)
+  )
+  totals
 }
 
 #' Apply a function across a collection of windows
@@ -232,7 +275,8 @@ map_windows <- function(x, f, ...) {
       results,
       method = window_method(x),
       source_record = window_source_record(x),
-      history = c(window_history(x), "mapped")
+      history = c(window_history(x), "mapped"),
+      dropped = window_dropped(x)
     ))
   }
 
@@ -324,7 +368,8 @@ rewrap_windows <- function(result, source, step) {
     lapply(result, keep_ECG, windows = source),
     method = window_method(source),
     source_record = window_source_record(source),
-    history = c(window_history(source), step)
+    history = c(window_history(source), step),
+    dropped = window_dropped(source)
   )
 }
 

@@ -6,8 +6,8 @@
 \usage{
 change_frequency(
   x,
-  from,
   to,
+  from = NULL,
   method = c("linear", "spline", "step", "polyphase"),
   anti_alias = TRUE,
   preserve_class = TRUE,
@@ -19,10 +19,11 @@ change_frequency(
 object, a plain list of \code{EGM} objects, or a bare \code{numeric} vector holding a
 single lead.}
 
-\item{from}{The rate the data is currently sampled at, in Hz. For objects
-carrying a header this must agree with the recorded rate.}
-
 \item{to}{The target sampling rate in Hz.}
+
+\item{from}{The rate the data is currently sampled at, in Hz. Defaults to the
+rate the object's own header declares, and must agree with it when given.
+Required for a bare \code{numeric} lead, which carries no header.}
 
 \item{method}{The resampling method, one of \code{"linear"} (default), \code{"spline"},
 \code{"step"}, or \code{"polyphase"}. See details.}
@@ -50,14 +51,12 @@ ECGs) so that downstream operations such as \code{\link[=median_window]{median_w
 a fixed rate be fed at that rate.
 }
 \details{
-Both the source rate (\code{from}) and the target rate (\code{to}) must be
-stated. Requiring \code{from} is deliberate: sampling rate is the one property
-that cannot be recovered from the samples themselves, and every subsequent
-interval measurement depends on it. For objects that carry a header the
-declared \code{from} is checked against the recorded rate and a disagreement is
-an error, so the argument acts as an assertion about data you have already
-inspected rather than as redundant typing. Read the recorded rate with
-\code{\link[=frequency]{frequency()}}.
+Only the target rate (\code{to}) has to be stated. The source rate is
+taken from the object's own header, which already carries it; state \code{from}
+as well when you want it checked, and a disagreement with the recorded rate
+is an error. A bare \code{numeric} lead has no header, so there \code{from} is
+required - the sampling rate is the one property that cannot be recovered
+from the samples themselves. Read the recorded rate with \code{\link[=frequency]{frequency()}}.
 
 The change is duration-preserving: a 0.8 second beat stays 0.8 seconds long,
 but its sample count scales with the frequency ratio. For \code{EGM} input the
@@ -66,11 +65,22 @@ sample count are updated, and every annotator's sample indices are rescaled
 onto the new grid. Annotation \code{time} strings are left alone, because
 absolute time is unchanged by definition.
 
+\strong{The annotations carried by the object are rescaled; a separate copy of
+them is not.} Annotations read separately from disk, or held from before
+the conversion, remain on the original grid, and mixing the two halves every
+interval measured from them (or doubles it). Take the annotations from the
+converted object with \code{\link[=get_annotation]{get_annotation()}} rather than re-reading them:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{slow <- change_frequency(ecg, to = 250)
+get_annotation(slow)      # rescaled, on the 250 Hz grid
+read_annotation(...)      # still on the 500 Hz grid
+}\if{html}{\out{</div>}}
+
 It is written as a pipe stage rather than an argument of the functions that
 need it, so the rate change is explicit and happens exactly once:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{read_wfdb("ecg", ".", "ecgpuwave") |>
-  change_frequency(from = 500, to = 250) |>
+  change_frequency(to = 250) |>
   get_windows(by = "rhythm")
 }\if{html}{\out{</div>}}
 
@@ -103,16 +113,20 @@ already performs the equivalent filtering.
 \dontrun{
 ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
 
-# Down-sample the whole record from 500 Hz to 250 Hz
-slow <- change_frequency(ecg, from = frequency(ecg), to = 250)
+# Down-sample the whole record to 250 Hz; the source rate is on the header
+slow <- change_frequency(ecg, 250)
 frequency(slow)
+
+# State `from` as well to assert what you believe you were given
+change_frequency(ecg, to = 250, from = 500)
 
 # Or harmonise a set of windowed beats after the fact
 beats <- get_windows(ecg, by = "rhythm")
-change_frequency(beats, from = 500, to = 1000, method = "polyphase")
+change_frequency(beats, to = 1000, method = "polyphase")
 
-# A bare lead works too, for signal-processing pipelines
-change_frequency(ecg$signal$II, from = 500, to = 1000)
+# A bare lead works too, for signal-processing pipelines. It carries no
+# header, so `from` is required
+change_frequency(ecg$signal$II, to = 1000, from = 500)
 }
 
 }

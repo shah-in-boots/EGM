@@ -38,7 +38,7 @@ test_that("learn_template learns a template from EGM examples", {
   examples <- lapply(windows, identity)
   learned <- learn_template(
     examples,
-    channel_criteria = 2,
+    channel = 2,
     target_samples = 500
   )
 
@@ -107,7 +107,7 @@ test_that("learn_template reports missing landmarks and invalid examples", {
     learn_template(
       windows,
       landmarks = list(ghost = list(type = "ZZZ")),
-      channel_criteria = 2
+      channel = 2
     ),
     "never located"
   )
@@ -118,7 +118,7 @@ test_that("learn_template reports missing landmarks and invalid examples", {
 })
 
 test_that("template and landmark have print methods", {
-  learned <- learn_template(template_sinus_windows(), channel_criteria = 2)
+  learned <- learn_template(template_sinus_windows(), channel = 2)
   expect_true(any(grepl("<template: learned>", capture.output(print(learned)))))
   expect_true(any(grepl(
     "<landmark:",
@@ -128,7 +128,7 @@ test_that("template and landmark have print methods", {
 
 test_that("warp_window aligns beats to a learned template", {
   windows <- template_sinus_windows()
-  learned <- learn_template(windows, channel_criteria = 2, target_samples = 500)
+  learned <- learn_template(windows, channel = 2, target_samples = 500)
   warped <- warp_window(windows, learned)
 
   expect_s3_class(warped, "windows")
@@ -215,7 +215,7 @@ test_that("learning uses the signal sample coordinate", {
     x$sample <- x$sample + 1000L
     x
   })
-  learned <- learn_template(shifted, channel_criteria = 2, target_samples = 500)
+  learned <- learn_template(shifted, channel = 2, target_samples = 500)
   positions <- vapply(
     learned@landmarks,
     function(x) x@position,
@@ -308,4 +308,46 @@ test_that("crossed warp anchors fail explicitly", {
     preserve_class = FALSE
   )
   expect_length(dropped, 0L)
+})
+
+test_that("a channel is named the same way everywhere it is accepted", {
+  windows <- template_sinus_windows()[1:3]
+
+  # A number, the criteria-list shape the neighbouring arguments take, and a
+  # stable channel name all name the same lead
+  by_number <- learn_template(windows, channel = 2, target_samples = 300)
+  by_list <- learn_template(
+    windows,
+    channel = list(channel = 2),
+    target_samples = 300
+  )
+  by_name <- learn_template(windows, channel = "II", target_samples = 300)
+  expect_equal(by_list@statistics, by_number@statistics)
+  expect_equal(by_name@statistics, by_number@statistics)
+
+  # The superseded name still works, and says so
+  expect_warning(
+    superseded <- learn_template(
+      windows,
+      channel_criteria = 2,
+      target_samples = 300
+    ),
+    "superseded"
+  )
+  expect_equal(superseded@statistics, by_number@statistics)
+  expect_error(
+    learn_template(windows, channel = 2, channel_criteria = 2),
+    "not both"
+  )
+})
+
+test_that("ambiguity from a per-lead annotator names the argument that fixes it", {
+  windows <- template_sinus_windows()[1:2]
+
+  # The count rising with the number of leads is the clue, so the message says
+  # so rather than reporting the bare count as a symptom
+  expect_error(
+    learn_template(windows),
+    "annotations across [0-9]+ channels.*set `channel`"
+  )
 })

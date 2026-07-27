@@ -6,3 +6,20 @@
 \description{
 These functions create templates for annotation in R and extend the ability for developers to create their own annotation systems that are stable for WFDB objects. They are compatible with WFDB annotations and can be written out to a WFDB-compatible file. This also allows extensibility.
 }
+\section{Choosing an annotator}{
+What this package needs from a delineating annotator is narrower than it
+looks. Wave identity is recovered positionally by \code{\link[=label_waves]{label_waves()}}, from the
+peak symbol enclosed by each \code{(}/\verb{)} bracket pair, so an annotator that leaves
+the WFDB \code{number} column at zero throughout - which by the letter of the
+convention means every onset marks a P wave - is still perfectly usable. The
+requirement is only that each wave is bracketed around a typed peak (\code{p}, \code{N},
+or \code{t}).
+
+An annotator run per lead writes one such set of brackets for each lead,
+distinguished by the \code{channel} column, which is resolved by naming a guiding
+\code{channel}; see \link{channels}.
+}
+
+\seealso{
+\code{\link[=label_waves]{label_waves()}}, \code{\link[=read_annotation]{read_annotation()}}, \link{channels}
+}

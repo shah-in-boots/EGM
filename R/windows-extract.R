@@ -66,42 +66,44 @@ window_strategy <- S7::new_class(
 #' @export
 is_window_strategy <- function(x) S7::S7_inherits(x, window_strategy)
 
-S7::method(print, window_strategy) <- function(x, ...) {
-  cat("<window_strategy: ", x@method, ">\n", sep = "")
-  for (nm in names(x@params)) {
-    value <- x@params[[nm]]
-    shown <- if (is.null(value)) {
-      "any"
-    } else if (is.list(value)) {
-      # Criteria lists print as `column = value` pairs, which is how they were
-      # written at the call site
-      paste(
-        paste0(names(value), " = ", vapply(value, format_criterion, character(1))),
-        collapse = ", "
-      )
-    } else {
-      paste(format(value), collapse = ", ")
+# Wrapped in `local()` deliberately: `method(print, cls) <- f` is a replacement
+# call, so it assigns the generic back into the enclosing environment. At the top
+# level of a package that leaves a copy of `print` in the namespace, and every
+# `S3method(print, ...)` directive in NAMESPACE then registers against that copy
+# instead of `base::print` - which silently kills S3 print dispatch for every
+# class the package defines. The registration S7 performs is a side effect and
+# survives; only the stray binding is discarded.
+local({
+  S7::method(print, window_strategy) <- function(x, ...) {
+    cat("<window_strategy: ", x@method, ">\n", sep = "")
+    for (nm in names(x@params)) {
+      value <- x@params[[nm]]
+      shown <- if (is.null(value)) {
+        "any"
+      } else if (is.list(value)) {
+        # Criteria lists print as `column = value` pairs, which is how they were
+        # written at the call site
+        paste(
+          paste0(
+            names(value),
+            " = ",
+            vapply(value, format_criterion, character(1))
+          ),
+          collapse = ", "
+        )
+      } else {
+        paste(format(value), collapse = ", ")
+      }
+      cat("  ", nm, ": ", shown, "\n", sep = "")
     }
-    cat("  ", nm, ": ", shown, "\n", sep = "")
+    invisible(x)
   }
-  invisible(x)
-}
+})
 
 # Argument checks shared by the `by_*()` constructors, so that a mistyped channel
-# or flag is reported the same way whichever strategy it was written on.
-valid_channel <- function(x) {
-  if (is.null(x)) {
-    return(NULL)
-  }
-  if (
-    length(x) != 1L || !is.numeric(x) || is.na(x) || !is.finite(x) ||
-      x < 0 || x != as.integer(x)
-  ) {
-    stop("`channel` must be NULL or one non-negative whole number")
-  }
-  as.integer(x)
-}
-
+# or flag is reported the same way whichever strategy it was written on. The
+# channel check itself lives in `channels.R`, since every annotation consumer
+# needs it and they must all read a channel the same way.
 valid_flag <- function(x, arg) {
   if (length(x) != 1L || !is.logical(x) || is.na(x)) {
     stop("`", arg, "` must be TRUE or FALSE")
@@ -130,6 +132,7 @@ format_criterion <- function(x) {
 window_registry <- function() {
   list(
     rhythm = list(strategy = by_rhythm, engine = windows_by_rhythm),
+    pwave = list(strategy = by_pwave, engine = windows_by_rhythm),
     beat = list(strategy = by_beat, engine = windows_by_beat)
   )
 }
@@ -183,11 +186,32 @@ as_window_strategy <- function(by) {
 #'
 #'   When `rhythm = "sinus"` the criteria default to a full beat and windows that
 #'   contain a second onset are rejected, so that only clean non-overlapping
-#'   beats are returned. Other rhythm names require `onset` and `offset` to be
-#'   given explicitly.
+#'   beats are returned.
 #'
-#' @param rhythm A `character` naming the rhythm type. Currently `"sinus"` is
-#'   the only value with built-in defaults and overlap rejection.
+#'   # Segmentations other than a whole beat
+#'
+#'   `rhythm` is a free-form label: it names the windows and their info strings,
+#'   and it selects the sinus defaults. Any other name is an extension point -
+#'   give `onset` and `offset` explicitly and the same engine will find whatever
+#'   pair of fiducials you describe. Windowing from one P onset to the next, for
+#'   instance:
+#'
+#'   ```r
+#'   by_rhythm(
+#'     rhythm = "atrial",
+#'     onset = list(type = "(", wave = "P"),
+#'     offset = list(type = "(", wave = "P"),
+#'     reference = list(type = "p")
+#'   )
+#'   ```
+#'
+#'   [by_pwave()] is that pattern named and given defaults, for the segmentation
+#'   worth having a constructor of its own.
+#'
+#' @param rhythm A `character` naming the rhythm type, used to label the windows
+#'   and to select defaults. `"sinus"` is the only value carrying built-in
+#'   criteria; any other name requires `onset` and `offset`, and is the
+#'   documented way to describe a different segmentation.
 #' @param onset A named list of criteria identifying window onsets. Defaults to
 #'   `list(type = "(", wave = "P")` (P-wave onset) for sinus.
 #' @param offset A named list of criteria identifying window offsets. Defaults to
@@ -197,16 +221,24 @@ as_window_strategy <- function(by) {
 #' @param reference A named list of criteria for a fiducial that must exist
 #'   between onset and offset, or `NULL` to skip the check. Defaults to
 #'   `list(type = "N")` (the QRS peak) for sinus.
-#' @param channel An optional channel number guiding multi-lead windowing. When
-#'   the annotation table spans multiple channels (e.g. an `ecgpuwave`-style file
-#'   run per lead, where each lead is kept apart by the `channel` column), set
-#'   this to the channel whose annotations should define the window boundaries.
-#'   Annotations on the global channel (`0`) are always retained, and the
-#'   returned windows still contain the signal for all channels. `NULL` (default)
-#'   uses every annotation, which is correct for single-channel annotation files.
+#' @param channel The lead whose annotations define the window boundaries, given
+#'   as a channel number or a channel name. An annotator run per lead (an
+#'   `ecgpuwave`-style file, say) writes one copy of every fiducial for each
+#'   lead, separated only by the `channel` column, and such a table has to be
+#'   resolved to one lead before it describes beats: see the channels section
+#'   below. Annotations on the global channel (`0`) are always retained, and the
+#'   returned windows still contain the signal for every channel. `NULL`
+#'   (default) uses every annotation, which is correct for a single-channel
+#'   annotation file and an error for any other.
+#' @param reject_overlap Logical, whether to discard a window that contains a
+#'   second onset. `NULL` (default) means `TRUE` for sinus and `FALSE` otherwise.
+#'   A second onset inside the window means a fiducial went undetected and the
+#'   window has run on into the following beat.
 #' @param adjust_sample_indices Logical, whether to rebase signal and annotation
 #'   sample indices in the returned windows to be zero-based and relative to the
 #'   window start. Default `TRUE`, since each window is a new WFDB record.
+#'
+#' @inheritSection channels Guiding channel
 #'
 #' @return A [window_strategy] object.
 #'
@@ -220,7 +252,7 @@ as_window_strategy <- function(by) {
 #' # P-onset to next P-onset instead of a full beat
 #' by_rhythm(offset = list(type = "(", wave = "P"))
 #'
-#' @seealso [get_windows()], [label_waves()]
+#' @seealso [get_windows()], [by_pwave()], [label_waves()]
 #'
 #' @export
 by_rhythm <- function(
@@ -229,10 +261,14 @@ by_rhythm <- function(
   offset = NULL,
   reference = NULL,
   channel = NULL,
+  reject_overlap = NULL,
   adjust_sample_indices = TRUE
 ) {
   if (!valid_scalar_string(rhythm)) {
     stop("`rhythm` must be a single non-empty string")
+  }
+  if (is.null(reject_overlap)) {
+    reject_overlap <- identical(rhythm, "sinus")
   }
 
   # Sensible, overridable defaults for sinus rhythm. Wave identity is recovered
@@ -267,12 +303,88 @@ by_rhythm <- function(
       offset = offset,
       reference = reference,
       channel = valid_channel(channel),
+      reject_overlap = valid_flag(reject_overlap, "reject_overlap"),
       adjust_sample_indices = valid_flag(
         adjust_sample_indices,
         "adjust_sample_indices"
       )
     )
   )
+}
+
+# P wave strategy --------------------------------------------------------------
+
+#' Window the P wave
+#'
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' Builds a [window_strategy] that cuts the atrial portion of each beat: from the
+#' P onset to either the QRS onset (default) or the P offset. Isolating the P
+#' wave is what makes atrial morphology modellable, since the QRS is an order of
+#' magnitude taller and otherwise absorbs the variance in any basis expansion
+#' fitted over a whole beat.
+#'
+#' @details Ending at the QRS onset keeps the PR segment, which costs nothing -
+#'   it is isoelectric - and buys robustness, since the P offset is the least
+#'   reliably placed of the two fiducials and a P wave truncated by a
+#'   mis-delineated offset is a distorted one. End at the P offset instead when
+#'   the window itself, rather than what it contains, is the measurement.
+#'
+#'   Windows containing a second P onset are discarded: that means a QRS onset
+#'   went undetected and the window has run into the following beat.
+#'
+#'   This is [by_rhythm()] with a fixed set of criteria, so it uses the same
+#'   engine and returns windows of differing length. Windows are named `pwave1`,
+#'   `pwave2`, and so on.
+#'
+#' @param to Where the window ends: `"qrs_onset"` (default) or `"p_offset"`.
+#' @param channel The lead whose annotations define the window boundaries, given
+#'   as a channel number or name. See the channels section.
+#' @param adjust_sample_indices Logical, whether to rebase sample indices in the
+#'   returned windows to be zero-based and relative to the window start.
+#'
+#' @inheritSection channels Guiding channel
+#'
+#' @return A [window_strategy] object.
+#'
+#' @examples
+#' # P onset to QRS onset, guided by one lead
+#' by_pwave(channel = 2)
+#'
+#' # The P wave alone
+#' by_pwave(to = "p_offset")
+#'
+#' @seealso [get_windows()], [by_rhythm()], [atrial_vectorcardiogram()]
+#'
+#' @export
+by_pwave <- function(
+  to = c("qrs_onset", "p_offset"),
+  channel = NULL,
+  adjust_sample_indices = TRUE
+) {
+  to <- match.arg(to)
+
+  offset <- switch(
+    to,
+    qrs_onset = list(type = "(", wave = "QRS"),
+    p_offset = list(type = ")", wave = "P")
+  )
+
+  strategy <- by_rhythm(
+    rhythm = "pwave",
+    onset = list(type = "(", wave = "P"),
+    offset = offset,
+    reference = list(type = "p"),
+    channel = channel,
+    reject_overlap = TRUE,
+    adjust_sample_indices = adjust_sample_indices
+  )
+
+  # Same engine, its own registry key, so that `get_windows(x, by = "pwave")`
+  # reaches this constructor rather than the rhythm defaults
+  window_strategy(method = "pwave", params = strategy@params)
 }
 
 # Beat strategy ----------------------------------------------------------------
@@ -296,7 +408,9 @@ by_rhythm <- function(
 #'
 #'   Beats too near either end of the record for the full span to be cut are
 #'   dropped rather than truncated, since a short window gives up the guarantee
-#'   the strategy exists for. How many were dropped is reported.
+#'   the strategy exists for. How many were dropped is reported to the console
+#'   and recorded on the returned collection, where [window_dropped()] reads it
+#'   back - a message is invisible on a background worker.
 #'
 #'   The span is given in milliseconds so that one strategy can be reused across
 #'   records of differing sampling frequency.
@@ -306,10 +420,12 @@ by_rhythm <- function(
 #' @param feature The fiducial each window is built around, given as a
 #'   `character` type symbol (default `"N"`, the QRS peak) or a named list of
 #'   annotation criteria. Resolved the same way as a [by_rhythm()] criterion.
-#' @param channel An optional channel number guiding multi-lead annotations,
-#'   as in [by_rhythm()].
+#' @param channel The lead whose annotations locate the fiducial, given as a
+#'   channel number or name, as in [by_rhythm()]. See the channels section.
 #' @param adjust_sample_indices Logical, whether to rebase sample indices in the
 #'   returned windows to be zero-based and relative to the window start.
+#'
+#' @inheritSection channels Guiding channel
 #'
 #' @return A [window_strategy] object.
 #'
@@ -327,7 +443,8 @@ by_rhythm <- function(
 #' # Tight around the P wave instead, guided by lead II
 #' by_beat(before = 200, after = 200, feature = "p", channel = 2)
 #'
-#' @seealso [get_windows()], [median_window()], [by_rhythm()]
+#' @seealso [get_windows()], [median_window()], [by_rhythm()],
+#'   [window_dropped()]
 #'
 #' @export
 by_beat <- function(
@@ -374,17 +491,24 @@ by_beat <- function(
 windows_by_beat <- function(object, params) {
   record <- attributes(object$header)$record_line
   ann <- get_single_annotation(object)
+  channel <- resolve_annotation_channel(
+    ann,
+    resolve_channel_spec(object, params$channel),
+    what = "Beat windowing"
+  )
 
-  before <- ceiling(params$before / 1000 * record$frequency)
-  after <- ceiling(params$after / 1000 * record$frequency)
+  before <- ceiling(params$before / 1000 * frequency_of(object))
+  after <- ceiling(params$after / 1000 * frequency_of(object))
 
-  centres <- locate_features(ann, params$feature, params$channel)
+  centres <- locate_features(ann, params$feature, channel)
   if (length(centres) == 0) {
     warning("No occurrences of the requested feature were found")
     return(list())
   }
 
-  # A beat without room for the full span is dropped, not truncated
+  # A beat without room for the full span is dropped, not truncated. How many is
+  # reported to the console *and* returned, since a message is invisible on a
+  # background worker and the count is what an audit aggregates.
   limits <- range(object$signal$sample)
   whole <- centres - before >= limits[1] & centres + after <= limits[2]
   if (any(!whole)) {
@@ -397,27 +521,31 @@ windows_by_beat <- function(object, params) {
       " ms window and were dropped"
     )
   }
+  dropped <- c(incomplete_span = sum(!whole))
   centres <- centres[whole]
 
   if (length(centres) == 0) {
     warning("No beat had room for the full window")
-    return(list())
+    return(structure(list(), dropped = dropped))
   }
 
-  lapply(seq_along(centres), function(i) {
-    cut_window(
-      object,
-      ann,
-      onset = centres[i] - before,
-      offset = centres[i] + after,
-      name = paste0("beat", i),
-      info = paste0(
-        "beat window ", i, " centred on ", centres[i],
-        " (-", params$before, "/+", params$after, " ms)"
-      ),
-      adjust_sample_indices = params$adjust_sample_indices
-    )
-  })
+  structure(
+    lapply(seq_along(centres), function(i) {
+      cut_window(
+        object,
+        ann,
+        onset = centres[i] - before,
+        offset = centres[i] + after,
+        name = paste0("beat", i),
+        info = paste0(
+          "beat window ", i, " centred on ", centres[i],
+          " (-", params$before, "/+", params$after, " ms)"
+        ),
+        adjust_sample_indices = params$adjust_sample_indices
+      )
+    }),
+    dropped = dropped
+  )
 }
 
 # Extraction entry point -------------------------------------------------------
@@ -440,6 +568,10 @@ windows_by_beat <- function(object, params) {
 #'   get_windows(ecg, by = "rhythm")
 #'   get_windows(ecg, by = by_rhythm(channel = 2))
 #'   ```
+#'
+#'   Three strategies are built in: [by_rhythm()] cuts a whole beat between two
+#'   fiducials, [by_pwave()] the atrial portion of one, and [by_beat()] a fixed
+#'   span around a fiducial.
 #'
 #'   Both forms route through the same constructor, so both are validated the
 #'   same way. Strategy arguments belong to the constructor rather than to this
@@ -469,13 +601,16 @@ windows_by_beat <- function(object, params) {
 #'
 #' # Guided by a single lead, then collapsed to a median beat
 #' get_windows(ecg, by = by_rhythm(channel = 2)) |>
-#'   median_window(align_feature = "N", channel_criteria = 2)
+#'   median_window(align_feature = "N", channel = 2)
 #' }
 #'
-#' @seealso [by_rhythm()] for the available strategy, [pad_window()],
-#'   [normalize_window()] and [warp_window()] to bring windows onto a common
-#'   length, and [change_frequency()] to harmonise sampling rates either before
-#'   windowing or on the returned collection.
+#' @inheritSection channels Guiding channel
+#'
+#' @seealso [by_rhythm()], [by_pwave()] and [by_beat()] for the available
+#'   strategies, [window_dropped()] for the candidates a strategy did not return,
+#'   [pad_window()], [normalize_window()] and [warp_window()] to bring windows
+#'   onto a common length, and [change_frequency()] to harmonise sampling rates
+#'   either before windowing or on the returned collection.
 #'
 #' @export
 get_windows <- function(object, by = "rhythm") {
@@ -501,8 +636,49 @@ get_windows <- function(object, by = "rhythm") {
   new_windows(
     lapply(windows, keep_ECG, windows = list(object)),
     method = strategy@method,
-    source_record = source_record
+    source_record = source_record,
+    dropped = attr(windows, "dropped")
   )
+}
+
+#' Candidate beats a windowing strategy did not return
+#'
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' How many candidate beats [get_windows()] found but did not return, and why.
+#' The counts are recorded on the collection rather than only reported to the
+#' console, because a message is invisible on a background worker and the drop
+#' rate across a study is exactly what an audit needs.
+#'
+#' @details The reasons are strategy-specific. [by_beat()] reports
+#'   `incomplete_span`, beats lying too near either end of the record for the
+#'   full span to be cut. [by_rhythm()] reports `no_offset` (an onset with no
+#'   matching offset before the record ends), `no_reference` (no reference
+#'   fiducial inside the window), and `overlapping` (a second onset inside the
+#'   window, which for sinus means the beat was not clean).
+#'
+#'   Counts are of candidate onsets, so `length(x) + sum(window_dropped(x))` is
+#'   the number of candidates the strategy considered.
+#'
+#' @param x A [windows] collection.
+#'
+#' @return A named `integer` vector of counts, one per reason; empty for a
+#'   collection that was not produced by [get_windows()].
+#'
+#' @examples
+#' \dontrun{
+#' beats <- get_windows(ecg, by = by_beat(channel = 2))
+#' window_dropped(beats)
+#' }
+#'
+#' @seealso [get_windows()]
+#'
+#' @export
+window_dropped <- function(x) {
+  d <- attr(x, "dropped")
+  if (is.null(d)) integer() else d
 }
 
 # Rhythm engine ----------------------------------------------------------------
@@ -527,6 +703,11 @@ windows_by_rhythm <- function(object, params) {
   adjust_sample_indices <- params$adjust_sample_indices
 
   ann <- get_single_annotation(object)
+  channel_criteria <- resolve_annotation_channel(
+    ann,
+    resolve_channel_spec(object, channel_criteria),
+    what = "Rhythm windowing"
+  )
 
   # Build a working copy used only for boundary detection. It carries an extra
   # `wave` column (P/QRS/T) inferred positionally, and is optionally restricted
@@ -535,22 +716,11 @@ windows_by_rhythm <- function(object, params) {
   # column set.
   ann_work <- label_waves(ann)
 
-  has_channel <- "channel" %in% colnames(ann_work)
-  if (!is.null(channel_criteria) && has_channel) {
+  if (!is.null(channel_criteria) && "channel" %in% colnames(ann_work)) {
     # Use a local vector (not named `channel`) so data.table's non-standard
     # evaluation of the `i` expression does not capture the `channel` column.
     keep_channels <- c(as.integer(channel_criteria), 0L)
     ann_work <- ann_work[ann_work$channel %in% keep_channels, ]
-  } else if (is.null(channel_criteria) && has_channel) {
-    leads <- unique(ann_work$channel[ann_work$channel != 0L])
-    if (length(leads) > 1) {
-      warning(
-        "Annotations span multiple channels (",
-        paste(sort(leads), collapse = ", "),
-        "); window boundaries may mix leads. ",
-        "Specify `channel` in the strategy to select a guiding lead."
-      )
-    }
   }
 
   # Boundary detection is a strict equality match on every named criterion.
@@ -597,6 +767,11 @@ windows_by_rhythm <- function(object, params) {
   windows <- list()
   window_count <- 0
 
+  # Onsets that yielded no window, by reason. Counted rather than messaged: on a
+  # background worker the console is nowhere, and the ratio of candidate onsets
+  # to returned windows is the first thing an audit of a batch wants.
+  dropped <- c(no_offset = 0L, no_reference = 0L, overlapping = 0L)
+
   # Extract sample points
   onset_samples <- onset_points$sample
   offset_samples <- offset_points$sample
@@ -611,6 +786,9 @@ windows_by_rhythm <- function(object, params) {
     # If there are no further offsets, this will not be a window
     next_offsets <- offset_samples[offset_samples > onset]
     if (length(next_offsets) == 0) {
+      # Every remaining onset runs off the end of the record
+      dropped[["no_offset"]] <- dropped[["no_offset"]] +
+        length(onset_samples) - i + 1L
       break
     }
 
@@ -625,21 +803,21 @@ windows_by_rhythm <- function(object, params) {
       ]
       if (length(refs_between) == 0) {
         # No reference point between onset and offset, skip this window
+        dropped[["no_reference"]] <- dropped[["no_reference"]] + 1L
         next
       }
       reference <- refs_between[1]
     }
 
-    # Apply rhythm-specific validation
-    if (rhythm == "sinus") {
-      # For sinus, check if there's another onset between this onset and offset
-      # (which might indicate overlap)
+    # A second onset inside the window means a fiducial went undetected and the
+    # window has run on into the following beat
+    if (isTRUE(params$reject_overlap)) {
       onset_between <- onset_samples[
         onset_samples > onset &
           onset_samples < offset
       ]
       if (length(onset_between) > 0) {
-        # For sinus, we typically want clean non-overlapping beats
+        dropped[["overlapping"]] <- dropped[["overlapping"]] + 1L
         next
       }
     }
@@ -671,11 +849,11 @@ windows_by_rhythm <- function(object, params) {
       rhythm,
       " windows found with the specified criteria"
     )
-    return(list())
+    return(structure(list(), dropped = dropped))
   }
 
   # Return list of windows
-  windows
+  structure(windows, dropped = dropped)
 }
 
 # Shared cutting ---------------------------------------------------------------
@@ -753,11 +931,13 @@ cut_window <- function(
 
 #' Label annotation waves positionally
 #'
-#' @description Adds a working `wave` column (one of `"P"`, `"QRS"`, `"T"`, or
-#'   `NA`) to an annotation table by recovering wave identity from the peak
-#'   symbol enclosed within each `(`/`)` waveform bracket. This is used by
-#'   [by_rhythm()] to isolate P-onset -> T-offset beats even when the
-#'   WFDB `number` column is unpopulated (e.g. `ecgpuwave` run per lead).
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' Adds a `wave` column (one of `"P"`, `"QRS"`, `"T"`, or `NA`) to an annotation
+#' table by recovering wave identity from the peak symbol enclosed within each
+#' `(`/`)` waveform bracket.
 #'
 #' @details Peaks are mapped directly by their `type` symbol (`p` -> `"P"`, `N`
 #'   -> `"QRS"`, `t` -> `"T"`). Brackets are labelled per channel, in sample
@@ -765,11 +945,45 @@ cut_window <- function(
 #'   single peak that falls between them (the first peak if several are present,
 #'   `NA` if none). The returned table is a copy; the input is not modified.
 #'
+#'   # Which annotators are usable
+#'
+#'   This positional inference is what decides whether a delineating annotator
+#'   can be used with this package, so it is worth stating plainly. The WFDB
+#'   convention is that a waveform onset or offset carries its wave identity in
+#'   the `number` column - `0` for P, `1` for QRS, `2` for T - but plenty of
+#'   annotators leave `number` at zero throughout, which looks disqualifying and
+#'   is not. As long as the file brackets each wave with `(` and `)` around a
+#'   typed peak, wave identity is recovered here from the position of that peak,
+#'   and the `number` column is never consulted.
+#'
+#'   So the requirement on an annotator is only this: `(`, `)`, and at least one
+#'   of `p`, `N`, `t` between each pair. Anything meeting it can drive
+#'   [by_rhythm()], [by_pwave()], and the wave criteria used throughout, whatever
+#'   it writes in `number`.
+#'
+#'   Wave identity is available anywhere a criteria list is accepted, as a
+#'   virtual `wave` field alongside the real columns:
+#'
+#'   ```r
+#'   by_rhythm(onset = list(type = "(", wave = "P"))
+#'   ```
+#'
 #' @param ann An `annotation_table` (or compatible `data.table`).
 #'
 #' @return A copy of `ann` with an additional `wave` column.
 #'
-#' @keywords internal
+#' @examples
+#' \dontrun{
+#' ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
+#'
+#' # `number` is uninformative here, `wave` is not
+#' labelled <- label_waves(get_annotation(ecg))
+#' table(labelled$type, labelled$wave, useNA = "ifany")
+#' }
+#'
+#' @seealso [by_rhythm()], [get_windows()], [annotation_table()]
+#'
+#' @export
 label_waves <- function(ann) {
   out <- data.table::as.data.table(data.table::copy(ann))
   out$wave <- NA_character_

@@ -190,3 +190,49 @@ test_that("rational_ratio approximates frequency ratios", {
   expect_lte(approx_pi$q, 1000L)
   expect_lt(abs(approx_pi$p / approx_pi$q - pi), 1e-5)
 })
+
+test_that("a header answers for its own sampling rate", {
+  object <- read_wfdb("ecg-sinus", test_path(), "ann")
+
+  # Without a method the default one answers 1 for any object with no `tsp`,
+  # which is a plausible-looking rate rather than a refusal
+  expect_equal(frequency(object$header), 500)
+  expect_equal(frequency(object$header), frequency(object))
+})
+
+test_that("a missing sampling rate is refused rather than returned", {
+  object <- read_wfdb("ecg-sinus", test_path(), "ann")
+  rl <- attributes(object$header)$record_line
+  rl$frequency <- integer()
+  attr(object$header, "record_line") <- rl
+
+  expect_error(frequency(object), "no usable sampling frequency")
+  expect_error(frequency(object$header), "no usable sampling frequency")
+  expect_true(is.na(EGM:::frequency_of(object)))
+
+  # `change_frequency()` is the way to repair one, so it still accepts the record
+  repaired <- change_frequency(object, to = 250, from = 500)
+  expect_equal(frequency(repaired), 250)
+})
+
+test_that("change_frequency reads the source rate off the record", {
+  object <- read_wfdb("ecg-sinus", test_path(), "ann")
+
+  # The single-argument call reads as "resample to 250 Hz" and means it
+  slow <- change_frequency(object, 250)
+  expect_equal(frequency(slow), 250)
+  expect_equal(slow$signal, change_frequency(object, to = 250, from = 500)$signal)
+
+  # A stated `from` is an assertion about the data, so a wrong one is an error
+  expect_error(change_frequency(object, to = 250, from = 300), "recorded at 500")
+
+  # A bare lead carries no header to read it from
+  expect_error(
+    change_frequency(as.numeric(object$signal$II), to = 1000),
+    "`from` is required"
+  )
+  expect_length(
+    change_frequency(as.numeric(object$signal$II), to = 1000, from = 500),
+    2 * nrow(object$signal) - 1
+  )
+})

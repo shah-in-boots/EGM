@@ -162,3 +162,34 @@ test_that("add_annotation validates inputs", {
   attr(ann_no_attr, "annotator") <- NULL
   expect_error(add_annotation(EGM(), ann_no_attr), "annotator.*attribute")
 })
+
+test_that("get_annotation returns the same shape as read_annotation", {
+  from_disk <- read_annotation("ecg-sinus", "ann", test_path())
+  in_memory <- get_annotation(read_wfdb("ecg-sinus", test_path(), "ann"))
+
+  expect_s3_class(in_memory, "annotation_table")
+  expect_equal(nrow(in_memory), nrow(from_disk))
+  expect_named(in_memory, names(from_disk))
+
+  # A record with no annotator answers with an empty table, not an empty list
+  bare <- get_annotation(read_wfdb("ecg-sinus", test_path()))
+  expect_s3_class(bare, "annotation_table")
+  expect_equal(nrow(bare), 0)
+
+  # Several annotators keep the named-list shape, as read_annotation does
+  both <- read_wfdb("ecg", test_path(), c("ecgpuwave", "wqrs"))
+  expect_type(get_annotation(both), "list")
+  expect_named(get_annotation(both), c("ecgpuwave", "wqrs"))
+  expect_s3_class(get_annotation(both, "wqrs"), "annotation_table")
+})
+
+test_that("the annotations reachable after a rate change are the rescaled ones", {
+  object <- read_wfdb("ecg-sinus", test_path(), "ann")
+  slow <- change_frequency(object, to = 250)
+
+  expect_equal(
+    max(get_annotation(slow)$sample),
+    round(max(get_annotation(object)$sample) / 2),
+    tolerance = 1
+  )
+})

@@ -24,24 +24,39 @@
 #' converts sample indices into physical time. Use [change_frequency()] to
 #' change it.
 #'
-#' @details These are methods for the [stats::frequency()] generic. For a single
-#'   `EGM` the rate is a scalar. A `windows` collection may in principle mix
-#'   rates - windows from different source records can be concatenated with
-#'   [c.windows()] - so its method returns the *distinct* rates present. A
-#'   result of length one therefore means the collection is already harmonised,
-#'   and anything longer means the windows are not directly comparable.
+#' @details These are methods for the [stats::frequency()] generic, defined for
+#'   every object that carries a rate: an `EGM` (and so an [ECG]), a bare
+#'   `header_table`, and a `windows` collection. A `header_table` needs its own
+#'   method because the default one answers `1` for any object without a `tsp`
+#'   attribute, and a 500 Hz record reported as 1 Hz is wrong in a way that
+#'   nothing downstream can catch.
 #'
-#' @param x An `EGM` or `windows` object.
+#'   For a single record the rate is a scalar. A `windows` collection may in
+#'   principle mix rates - windows from different source records can be
+#'   concatenated with [c.windows()] - so its method returns the *distinct* rates
+#'   present. A result of length one therefore means the collection is already
+#'   harmonised, and anything longer means the windows are not directly
+#'   comparable.
+#'
+#'   A record whose header carries no usable rate is an error rather than an
+#'   `NA`. There is no arithmetic that recovers from a missing sampling rate: it
+#'   propagates into every interval, every heart rate, and every duration, while
+#'   leaving the analyses that do not divide by it looking healthy. Repair the
+#'   header, or state the rate with [change_frequency()].
+#'
+#' @param x An `EGM`, `header_table`, or `windows` object.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return A `numeric` sampling rate in Hz. `NA_real_` when a record carries no
-#'   usable rate, and for `windows` objects a vector of the distinct rates
-#'   present (empty for an empty collection).
+#' @return A `numeric` sampling rate in Hz; for `windows` objects a vector of the
+#'   distinct rates present (empty for an empty collection).
 #'
 #' @examples
 #' \dontrun{
 #' ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
 #' frequency(ecg)
+#'
+#' # The header answers for itself
+#' frequency(ecg$header)
 #'
 #' # A harmonised collection reports a single rate
 #' frequency(get_windows(ecg))
@@ -55,11 +70,13 @@ NULL
 #' @rdname frequency
 #' @export
 frequency.EGM <- function(x, ...) {
-  freq <- attributes(x$header)$record_line$frequency
-  if (is.null(freq) || length(freq) == 0) {
-    return(NA_real_)
-  }
-  as.numeric(freq[1])
+  require_frequency(frequency_of(x), "record")
+}
+
+#' @rdname frequency
+#' @export
+frequency.header_table <- function(x, ...) {
+  require_frequency(frequency_of(x), "header")
 }
 
 #' @rdname frequency
@@ -69,6 +86,48 @@ frequency.windows <- function(x, ...) {
     return(numeric())
   }
   unique(vapply(x, stats::frequency, numeric(1)))
+}
+
+#' Read the recorded sampling rate without demanding one
+#'
+#' @description The accessor the package uses internally. It reports `NA_real_`
+#'   for a record that carries no usable rate, which the exported [frequency()]
+#'   methods then refuse; the two are separated because a handful of operations
+#'   - [change_frequency()], most of all - are defined precisely on records whose
+#'   header is missing or wrong.
+#'
+#' @param x An `EGM`, `header_table`, or anything carrying a header.
+#'
+#' @return A single `numeric` rate in Hz, or `NA_real_`.
+#'
+#' @keywords internal
+frequency_of <- function(x) {
+  header <- if (is_header_table(x)) x else x$header
+  freq <- attributes(header)$record_line$frequency
+  if (is.null(freq) || length(freq) == 0) {
+    return(NA_real_)
+  }
+  freq <- suppressWarnings(as.numeric(freq[1]))
+  if (is.na(freq) || !is.finite(freq) || freq <= 0) {
+    return(NA_real_)
+  }
+  freq
+}
+
+#' Refuse a missing sampling rate
+#' @keywords internal
+require_frequency <- function(freq, what = "record") {
+  if (is.na(freq)) {
+    stop(
+      "This ",
+      what,
+      " carries no usable sampling frequency. Every interval, rate, and ",
+      "duration is derived from it, so there is nothing sensible to return; ",
+      "repair the header, or state the rate with change_frequency().",
+      call. = FALSE
+    )
+  }
+  freq
 }
 
 # Changing the sampling frequency ----------------------------------------------
@@ -86,14 +145,12 @@ frequency.windows <- function(x, ...) {
 #' [normalize_window()] compare like with like, and lets analyses that assume
 #' a fixed rate be fed at that rate.
 #'
-#' @details Both the source rate (`from`) and the target rate (`to`) must be
-#'   stated. Requiring `from` is deliberate: sampling rate is the one property
-#'   that cannot be recovered from the samples themselves, and every subsequent
-#'   interval measurement depends on it. For objects that carry a header the
-#'   declared `from` is checked against the recorded rate and a disagreement is
-#'   an error, so the argument acts as an assertion about data you have already
-#'   inspected rather than as redundant typing. Read the recorded rate with
-#'   [frequency()].
+#' @details Only the target rate (`to`) has to be stated. The source rate is
+#'   taken from the object's own header, which already carries it; state `from`
+#'   as well when you want it checked, and a disagreement with the recorded rate
+#'   is an error. A bare `numeric` lead has no header, so there `from` is
+#'   required - the sampling rate is the one property that cannot be recovered
+#'   from the samples themselves. Read the recorded rate with [frequency()].
 #'
 #'   The change is duration-preserving: a 0.8 second beat stays 0.8 seconds long,
 #'   but its sample count scales with the frequency ratio. For `EGM` input the
@@ -102,12 +159,24 @@ frequency.windows <- function(x, ...) {
 #'   onto the new grid. Annotation `time` strings are left alone, because
 #'   absolute time is unchanged by definition.
 #'
+#'   **The annotations carried by the object are rescaled; a separate copy of
+#'   them is not.** Annotations read separately from disk, or held from before
+#'   the conversion, remain on the original grid, and mixing the two halves every
+#'   interval measured from them (or doubles it). Take the annotations from the
+#'   converted object with [get_annotation()] rather than re-reading them:
+#'
+#'   ```r
+#'   slow <- change_frequency(ecg, to = 250)
+#'   get_annotation(slow)      # rescaled, on the 250 Hz grid
+#'   read_annotation(...)      # still on the 500 Hz grid
+#'   ```
+#'
 #'   It is written as a pipe stage rather than an argument of the functions that
 #'   need it, so the rate change is explicit and happens exactly once:
 #'
 #'   ```r
 #'   read_wfdb("ecg", ".", "ecgpuwave") |>
-#'     change_frequency(from = 500, to = 250) |>
+#'     change_frequency(to = 250) |>
 #'     get_windows(by = "rhythm")
 #'   ```
 #'
@@ -139,10 +208,11 @@ frequency.windows <- function(x, ...) {
 #'   object, a plain list of `EGM` objects, or a bare `numeric` vector holding a
 #'   single lead.
 #'
-#' @param from The rate the data is currently sampled at, in Hz. For objects
-#'   carrying a header this must agree with the recorded rate.
-#'
 #' @param to The target sampling rate in Hz.
+#'
+#' @param from The rate the data is currently sampled at, in Hz. Defaults to the
+#'   rate the object's own header declares, and must agree with it when given.
+#'   Required for a bare `numeric` lead, which carries no header.
 #'
 #' @param method The resampling method, one of `"linear"` (default), `"spline"`,
 #'   `"step"`, or `"polyphase"`. See details.
@@ -162,16 +232,20 @@ frequency.windows <- function(x, ...) {
 #' \dontrun{
 #' ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
 #'
-#' # Down-sample the whole record from 500 Hz to 250 Hz
-#' slow <- change_frequency(ecg, from = frequency(ecg), to = 250)
+#' # Down-sample the whole record to 250 Hz; the source rate is on the header
+#' slow <- change_frequency(ecg, 250)
 #' frequency(slow)
+#'
+#' # State `from` as well to assert what you believe you were given
+#' change_frequency(ecg, to = 250, from = 500)
 #'
 #' # Or harmonise a set of windowed beats after the fact
 #' beats <- get_windows(ecg, by = "rhythm")
-#' change_frequency(beats, from = 500, to = 1000, method = "polyphase")
+#' change_frequency(beats, to = 1000, method = "polyphase")
 #'
-#' # A bare lead works too, for signal-processing pipelines
-#' change_frequency(ecg$signal$II, from = 500, to = 1000)
+#' # A bare lead works too, for signal-processing pipelines. It carries no
+#' # header, so `from` is required
+#' change_frequency(ecg$signal$II, to = 1000, from = 500)
 #' }
 #'
 #' @seealso [frequency()], [normalize_window()] to change the number of samples
@@ -180,42 +254,52 @@ frequency.windows <- function(x, ...) {
 #' @export
 change_frequency <- function(
   x,
-  from,
   to,
+  from = NULL,
   method = c("linear", "spline", "step", "polyphase"),
   anti_alias = TRUE,
   preserve_class = TRUE,
   ...
 ) {
   method <- match.arg(method)
-  from <- validate_frequency(from, "from")
   to <- validate_frequency(to, "to")
-  ratio <- to / from
 
   # A bare lead has no header to consult, so `from` is the only source of truth
   if (is.numeric(x)) {
     if (!is.null(dim(x))) {
       stop("`x` must be a plain `numeric` vector, not an array or matrix")
     }
-    return(resample_values(as.numeric(x), ratio, method, anti_alias))
+    if (is.null(from)) {
+      stop(
+        "`from` is required for a bare `numeric` lead, which carries no ",
+        "header to read the current rate from"
+      )
+    }
+    from <- validate_frequency(from, "from")
+    return(resample_values(as.numeric(x), ratio_of(from, to), method, anti_alias))
   }
 
   # `EGM` inherits from list, so it has to be tested before the list branch
   if (is_EGM(x)) {
-    assert_declared_frequency(stats::frequency(x), from)
-    return(resample_egm(x, ratio, to, method, anti_alias))
+    from <- resolve_source_frequency(frequency_of(x), from)
+    return(resample_egm(x, ratio_of(from, to), to, method, anti_alias))
   }
 
   # `data.frame` is a list too, but is a table of samples rather than a
   # collection of records, so it falls through to the error below
   if (is_window_set(x) || (is.list(x) && !is.data.frame(x))) {
     windows <- as_window_list(x)
-    if (length(windows) > 0) {
-      assert_declared_frequency(
-        unique(vapply(windows, stats::frequency, numeric(1))),
-        from
-      )
+    if (length(windows) == 0) {
+      if (is_window_set(x) && preserve_class) {
+        return(rewrap_windows(list(), x, "resampled"))
+      }
+      return(list())
     }
+    from <- resolve_source_frequency(
+      unique(vapply(windows, frequency_of, numeric(1))),
+      from
+    )
+    ratio <- ratio_of(from, to)
     converted <- lapply(
       windows,
       resample_egm,
@@ -337,7 +421,11 @@ resample_egm <- function(x, ratio, to, method, anti_alias) {
   new_samples <- new_origin + seq_len(n_new) - 1L
   new_signal <- do.call(
     signal_table,
-    c(list(sample = new_samples), stats::setNames(values, leads))
+    c(
+      list(sample = new_samples),
+      stats::setNames(values, leads),
+      list(units = signal_units(sig))
+    )
   )
 
   # Header carries forward; only the rate and the sample count change
@@ -377,28 +465,53 @@ validate_frequency <- function(frequency, arg = "frequency") {
   as.numeric(frequency)
 }
 
-#' Confirm a declared source rate against the recorded one
+#' Settle on the rate the data is currently sampled at
 #'
-#' @description [change_frequency()] takes the source rate as an argument so that
-#'   the caller has to know it. That only helps if the claim is checked, so this
-#'   compares it against whatever the object's own header reports.
+#' @description The source rate normally comes from the object's own header, and
+#'   passing it explicitly is redundant. A caller may still state it, in which
+#'   case it is an assertion: a disagreement with the recorded rate is an error
+#'   rather than an instruction to rescale by the wrong ratio.
 #'
 #' @details A record with no usable recorded rate is accepted on the caller's
 #'   word - there is nothing to contradict, and the declared rate repairs the
-#'   header. A `windows` collection that mixes rates cannot be described by a
-#'   single `from`, so it fails here rather than silently mis-scaling part of the
-#'   collection; convert each source record before combining them.
+#'   header - but with nothing declared either there is no ratio to compute, so
+#'   that combination fails. A `windows` collection that mixes rates cannot be
+#'   described by a single `from`, so it fails here rather than silently
+#'   mis-scaling part of the collection; convert each source record before
+#'   combining them.
 #'
-#' @param actual Recorded rate(s), as returned by [frequency()].
-#' @param from The rate the caller declared.
+#' @param actual Recorded rate(s), as [frequency_of()] reports them.
+#' @param from The rate the caller declared, or `NULL`.
 #'
-#' @return `from`, invisibly.
+#' @return The source rate to convert from.
 #'
 #' @keywords internal
-assert_declared_frequency <- function(actual, from) {
+resolve_source_frequency <- function(actual, from) {
   known <- actual[is.finite(actual) & actual > 0]
+
+  if (is.null(from)) {
+    if (length(known) == 0) {
+      stop(
+        "The data carries no usable sampling frequency, so there is nothing to ",
+        "convert from; state it with `from`",
+        call. = FALSE
+      )
+    }
+    if (length(known) > 1) {
+      stop(
+        "The data mixes sampling rates (",
+        paste0(format(known), " Hz", collapse = ", "),
+        "), so a single conversion cannot describe it. Convert each source ",
+        "record before combining them.",
+        call. = FALSE
+      )
+    }
+    return(known)
+  }
+
+  from <- validate_frequency(from, "from")
   if (length(known) == 0) {
-    return(invisible(from))
+    return(from)
   }
   agrees <- vapply(
     known,
@@ -412,10 +525,17 @@ assert_declared_frequency <- function(actual, from) {
       " Hz, but the data is recorded at ",
       paste0(format(known), " Hz", collapse = ", "),
       ". Check the recorded rate with frequency(); a collection that mixes ",
-      "rates must be converted one source record at a time."
+      "rates must be converted one source record at a time.",
+      call. = FALSE
     )
   }
-  invisible(from)
+  from
+}
+
+#' The conversion ratio, target over source
+#' @keywords internal
+ratio_of <- function(from, to) {
+  to / validate_frequency(from, "from")
 }
 
 #' Rescale annotation sample indices onto a resampled grid

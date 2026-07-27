@@ -62,6 +62,14 @@ The `read_wfdb()` and `read_signal()` functions support a `units` parameter that
 - `units = "digital"` (default): Returns raw ADC counts as stored in the file
 - `units = "physical"`: Returns values converted to physical units (e.g., mV)
 
+The returned signal carries which of the two it holds, readable with
+`signal_units()`. This matters because the difference is a factor of the gain —
+200 in the record below — and nothing in the values themselves distinguishes
+them: a signal of digital counts read as though it were millivolts is a 200-fold
+error that no later check can catch on its own. The label is preserved through
+windowing, padding, medians and resampling, and `write_wfdb()` refuses to write a
+signal whose label contradicts the units it was told to expect.
+
 Let's demonstrate this concept using a WFDB file:
 
 ```{r}
@@ -80,6 +88,12 @@ ecg_physical <- read_wfdb(
   record_dir = dir_path,
   units = "physical"
 )
+
+# Each signal says which units it holds
+signal_units(ecg_digital)
+#> [1] "digital"
+signal_units(ecg_physical)
+#> [1] "physical"
 
 # Examine the header to see the conversion parameters
 head(ecg_digital$header)
