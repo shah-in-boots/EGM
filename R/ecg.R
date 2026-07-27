@@ -31,6 +31,13 @@
 #'   that is not the standard twelve is accepted with a warning, since partial
 #'   surface sets are common and several analyses tolerate them.
 #'
+#'   Leads are held in the order the source record wrote them, which is not
+#'   always the display order and is not always the same order twice: a MUSE
+#'   export and a PhysioNet record disagree about where the augmented limb leads
+#'   sit. Index by name rather than by position, and use [ecg_leads()] and
+#'   [lead_factor()] where an order is needed - for a plot, a sort, or the
+#'   columns of a matrix stacked across records.
+#'
 #' @returns An object of class `ECG`, which inherits from `EGM`, containing
 #'   signal, header, and annotation components.
 #'
@@ -193,6 +200,107 @@ is_ECG <- function(x) {
 
 # Surface leads ----------------------------------------------------------------
 
+#' The twelve surface leads, in the order they are displayed
+#'
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' `ecg_leads()` returns the standard twelve leads as an ordered factor.
+#' `lead_factor()` puts a set of lead labels onto that order, whatever they were
+#' called and whatever sequence they arrived in.
+#'
+#' @details The display sequence is the AHA/ACCF/HRS one (Kligfield et al.
+#'   2007): the three bipolar limb leads, the three augmented limb leads, and
+#'   then the precordials left to right.
+#'
+#'   \deqn{\text{I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6}}{I, II, III,
+#'   aVR, aVL, aVF, V1, V2, V3, V4, V5, V6}
+#'
+#'   It is what every ECG cart prints and what PhysioNet's twelve-lead databases
+#'   are written in, so it is the order to hold a cohort in. `order = "cabrera"`
+#'   gives the Cabrera sequence (aVL, I, -aVR, II, aVF, III, then the
+#'   precordials), the recognised alternative, in which the frontal leads run
+#'   contiguously from -30 to +120 degrees. Note that Cabrera displays *-aVR*;
+#'   the lead named here is still `AVR`, and inverting its signal is the caller's
+#'   to do.
+#'
+#'   A record's leads are stored in whatever order its source wrote them, and
+#'   `as_ECG()` does not reorder them - annotation `channel` indices address
+#'   signal columns by position, so permuting the columns would silently
+#'   repoint every per-lead fiducial. Order at the point of use instead:
+#'
+#'   ```r
+#'   features$lead <- lead_factor(features$lead)   # then sort, facet, or split
+#'   signal <- get_signal(ecg)[, c("sample", as.character(ecg_leads()))]
+#'   ```
+#'
+#'   `lead_factor()` canonicalises before ordering, so `aVR`, `av r` and `AV-R`
+#'   all become `AVR`. A label that is not a surface lead becomes `NA`, which is
+#'   deliberate: it shows up in a plot or a sort rather than being dropped
+#'   quietly.
+#'
+#' @param order The display sequence. `"standard"` (default) or `"cabrera"`.
+#' @param x A `character` vector of lead labels, or a factor of them.
+#' @param drop Logical. If `TRUE`, levels no label uses are dropped, which is
+#'   what a plot of a subset of leads usually wants. Default `FALSE`, so that
+#'   records with different lead sets stay comparable.
+#'
+#' @return `ecg_leads()`, an ordered `factor` of twelve lead names.
+#'   `lead_factor()`, an ordered `factor` of the same levels, one element per
+#'   element of `x`.
+#'
+#' @references
+#'
+#' Kligfield P, Gettes LS, Bailey JJ, et al. Recommendations for the
+#' standardization and interpretation of the electrocardiogram: part I.
+#' *Circulation*. 2007;115(10):1306-1324.
+#' \doi{10.1161/CIRCULATIONAHA.106.180200}
+#'
+#' @examples
+#' ecg_leads()
+#'
+#' ecg_leads("cabrera")
+#'
+#' # Whatever they were called, and whatever order they came in
+#' lead_factor(c("v2", "aVR", "II", "AV-L"))
+#'
+#' sort(lead_factor(c("V6", "I", "aVF", "V1")))
+#'
+#' # Not a surface lead, and said so rather than dropped
+#' lead_factor(c("II", "CS 1-2"))
+#'
+#' @seealso [as_ECG()] for extracting the surface leads from a record, [ECG] for
+#'   the class
+#'
+#' @name ecg_leads
+#' @export
+ecg_leads <- function(order = c("standard", "cabrera")) {
+  order <- match.arg(order)
+  standard <- as.character(.leads$ECG)
+
+  sequence <- switch(
+    order,
+    standard = standard,
+    # Frontal leads contiguous from -30 to +120 degrees; the precordials are
+    # unaffected and follow as they do in the standard sequence
+    cabrera = c(
+      "AVL", "I", "AVR", "II", "AVF", "III",
+      standard[startsWith(standard, "V")]
+    )
+  )
+
+  factor(sequence, levels = sequence, ordered = TRUE)
+}
+
+#' @rdname ecg_leads
+#' @export
+lead_factor <- function(x, order = c("standard", "cabrera"), drop = FALSE) {
+  levels <- as.character(ecg_leads(match.arg(order)))
+
+  factor(canonical_leads(x), levels = levels, ordered = TRUE)[, drop = drop]
+}
+
 #' Surface ECG leads present among a set of channels
 #'
 #' @description Selects the surface ECG leads from a set of channel labels,
@@ -209,6 +317,26 @@ is_ECG <- function(x) {
 #'
 #' @keywords internal
 surface_leads <- function(x) {
+  canonical <- canonical_leads(x)
+  found <- !is.na(canonical)
+
+  setNames(x[found], canonical[found])
+}
+
+#' Canonical lead name for each label, or `NA`
+#'
+#' @description The one place a written lead label is matched to a lead. Returns
+#'   a vector parallel to its input, so a caller that must keep every element -
+#'   [lead_factor()] - can, and one that wants only the matches -
+#'   [surface_leads()] - drops the `NA`s itself.
+#'
+#' @param x A `character` vector of channel labels.
+#'
+#' @return A `character` vector the same length as `x`, `NA` where the label is
+#'   not a surface lead.
+#'
+#' @keywords internal
+canonical_leads <- function(x) {
   standard <- as.character(.leads$ECG)
 
   # `[[:space:]]` rather than `\\s`: in R's default TRE engine a backslash inside
@@ -216,10 +344,7 @@ surface_leads <- function(x) {
   # silently mangles lead names
   key <- function(y) toupper(gsub("[_[:space:]-]", "", y))
 
-  canonical <- standard[match(key(x), key(standard))]
-  found <- !is.na(canonical)
-
-  setNames(x[found], canonical[found])
+  standard[match(key(as.character(x)), key(standard))]
 }
 
 #' Convert an EGM object to an ECG object
@@ -240,13 +365,24 @@ surface_leads <- function(x) {
 #'   channels are dropped those indices no longer address the leads they name, so
 #'   a warning is raised if any channel-specific annotation is carried across.
 #'
+#'   For the same reason the kept leads stay in the order the record wrote them,
+#'   rather than being put into display order. A channel index addresses a signal
+#'   column by position, so permuting the columns would repoint every per-lead
+#'   fiducial at a different lead - silently, since the indices remain valid.
+#'   Renumbering them is not open to this function either: whether an annotator
+#'   counted from zero or from one is a property of the file, and channel `0` is
+#'   also how a fiducial says it belongs to no particular lead. Order at the
+#'   point of use instead, with [ecg_leads()] and [lead_factor()].
+#'
 #' @param x An object of class `EGM`
 #' @param ... Additional arguments
 #'
-#' @return An object of class `ECG`
+#' @return An object of class `ECG`, holding its leads in the source record's
+#'   order.
 #'
-#' @seealso [ECG()] for the class, [extract_f_waves()] and [vectorcardiogram()]
-#'   for analyses that require it.
+#' @seealso [ecg_leads()] and [lead_factor()] for the display order, [ECG()] for
+#'   the class, [extract_f_waves()] and [vectorcardiogram()] for analyses that
+#'   require it.
 #'
 #' @export
 as_ECG <- function(x, ...) {

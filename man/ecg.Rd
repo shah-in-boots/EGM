@@ -55,6 +55,13 @@ rather than a silent result.
 Construction is otherwise identical to \code{\link[=EGM]{EGM()}}. A record with a lead set
 that is not the standard twelve is accepted with a warning, since partial
 surface sets are common and several analyses tolerate them.
+
+Leads are held in the order the source record wrote them, which is not
+always the display order and is not always the same order twice: a MUSE
+export and a PhysioNet record disagree about where the augmented limb leads
+sit. Index by name rather than by position, and use \code{\link[=ecg_leads]{ecg_leads()}} and
+\code{\link[=lead_factor]{lead_factor()}} where an order is needed - for a plot, a sort, or the
+columns of a matrix stacked across records.
 }
 \seealso{
 \code{\link[=as_ECG]{as_ECG()}} to extract the surface leads from a study, \code{\link[=EGM]{EGM()}} for the

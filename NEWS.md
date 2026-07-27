@@ -179,6 +179,48 @@ record contained. They now resolve it the same way, documented once in
 
 ## The ECG class
 
+* **The twelve leads are ordered as they are displayed.** They were held as
+  `I, II, III, AVF, AVL, AVR, V1`–`V6`, which puts the augmented limb leads in
+  alphabetical order rather than the AHA/ACCF/HRS display sequence (Kligfield et
+  al., 2007); it is now `I, II, III, AVR, AVL, AVF, V1`–`V6`, the order every
+  ECG cart prints and every PhysioNet twelve-lead database is written in.
+
+  Worse, the lead list was built with `factor(..., ordered = TRUE)` and no
+  `levels =`, so the levels came out **alphabetical** — `AVF < AVL < AVR < I <
+  II < III` — and every catheter list with them, most visibly `DD 1-2 < DD 11-12
+  < DD 13-14 < … < DD 9-10`. Each was a factor that claimed to be ordered and
+  ordered by nothing. Levels are now the sequence as written, for the surface
+  leads and for every catheter.
+
+  Two things follow. Plot facets are laid out in the display sequence regardless
+  of what order the record stores its channels in. And `read_muse()` returns its
+  columns in that sequence — the values are unchanged and each lead keeps its
+  own samples, but a record converted from MUSE XML now writes its `.hea`
+  channels in a different order than one converted before this change.
+
+* **`ecg_leads()` and `lead_factor()` are new.** `ecg_leads()` returns the twelve
+  leads as an ordered factor, `order = "cabrera"` giving the recognised
+  alternative sequence. `lead_factor()` puts arbitrary lead labels onto that
+  order, canonicalising them on the way, so `aVR`, `av r` and `AV-R` all sort as
+  `AVR`:
+
+  ```r
+  features$lead <- lead_factor(features$lead)   # then sort, facet, or split
+  ```
+
+  Between them they are the one place the display order is written down. A label
+  that is not a surface lead becomes `NA` rather than being dropped, so it stays
+  visible in whatever it was going to be plotted or sorted into.
+
+* **Lead order in a record still follows the record.** `as_ECG()` renames leads
+  canonically but deliberately does not reorder them: annotation `channel`
+  indices address signal columns by position, so permuting the columns would
+  repoint every per-lead fiducial at a different lead, silently, since the
+  indices stay valid. Renumbering them is not available either — whether an
+  annotator counted from zero or from one is a property of the file, and channel
+  `0` is also how a fiducial says it belongs to no lead in particular. Index by
+  name, and order at the point of use. `?ECG` and `?as_ECG` say so.
+
 * **`as_ECG()` now extracts the surface ECG rather than relabelling the whole
   record** (**breaking**). An electrophysiology study records surface and
   intracardiac channels side by side; `as_ECG()` keeps the recognised surface

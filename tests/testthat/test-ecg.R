@@ -228,6 +228,98 @@ test_that("surface lead matching handles separators", {
   expect_named(EGM:::surface_leads(c("V6", "I")), c("V6", "I"))
 })
 
+# Display order ----
+
+test_that("the twelve leads are held in the AHA display sequence", {
+
+  # I, II, III, aVR, aVL, aVF, V1-V6. Not alphabetical, which is what an
+  # `ordered = TRUE` factor built without `levels =` silently gives instead -
+  # it put AVF before I, so every sort and every facet came out wrong while
+  # still claiming to be ordered.
+  expect_equal(
+    as.character(ecg_leads()),
+    c("I", "II", "III", "AVR", "AVL", "AVF", paste0("V", 1:6))
+  )
+
+  # The levels are the sequence, so the order is the one written
+  expect_true(is.ordered(ecg_leads()))
+  expect_equal(levels(ecg_leads()), as.character(ecg_leads()))
+  expect_equal(sort(ecg_leads()), ecg_leads())
+  expect_lt(ecg_leads()[1], ecg_leads()[12])
+
+  # The internal list the rest of the package reads is the same order
+  expect_equal(as.character(EGM:::.leads$ECG), as.character(ecg_leads()))
+  expect_equal(levels(EGM:::.leads$ECG), as.character(ecg_leads()))
+})
+
+test_that("catheter channels are ordered as written, not alphabetically", {
+
+  # `DD 11-12` sorts before `DD 3-4` as text, so an ordered factor of these
+  # without explicit levels is ordered by nothing meaningful
+  leads <- EGM:::.leads
+  for (catheter in names(leads)) {
+    expect_equal(
+      levels(leads[[catheter]]),
+      as.character(leads[[catheter]]),
+      info = catheter
+    )
+  }
+
+  expect_equal(levels(EGM:::.source), as.character(EGM:::.source))
+
+  # `.labels` drives the plot facet order, and takes the sequence from these
+  expect_equal(
+    head(as.character(EGM:::.labels), 12),
+    as.character(ecg_leads())
+  )
+  expect_equal(levels(EGM:::.labels), as.character(EGM:::.labels))
+})
+
+test_that("the Cabrera sequence runs the frontal leads contiguously", {
+
+  cabrera <- ecg_leads("cabrera")
+  expect_equal(
+    as.character(cabrera)[1:6],
+    c("AVL", "I", "AVR", "II", "AVF", "III")
+  )
+
+  # Same twelve leads, and the precordials are untouched
+  expect_setequal(as.character(cabrera), as.character(ecg_leads()))
+  expect_equal(as.character(cabrera)[7:12], paste0("V", 1:6))
+})
+
+test_that("lead_factor puts any labelling onto the display order", {
+
+  # Canonicalised the same way `as_ECG()` canonicalises, then ordered
+  expect_equal(
+    as.character(lead_factor(c("v2", "aVR", "II", "AV-L"))),
+    c("V2", "AVR", "II", "AVL")
+  )
+  expect_equal(
+    as.character(sort(lead_factor(c("V6", "I", "aVF", "V1")))),
+    c("I", "AVF", "V1", "V6")
+  )
+
+  # A label that is not a surface lead is `NA` rather than dropped, so it stays
+  # visible in whatever it was going to be plotted or sorted into
+  mixed <- lead_factor(c("II", "CS 1-2"))
+  expect_length(mixed, 2L)
+  expect_true(is.na(mixed[2]))
+
+  # Every record keeps the same levels by default, which is what lets a cohort
+  # be compared; `drop` is for a plot of a subset
+  expect_length(levels(lead_factor(c("V6", "I"))), 12L)
+  expect_equal(levels(lead_factor(c("V6", "I"), drop = TRUE)), c("I", "V6"))
+
+  expect_equal(levels(lead_factor("I", order = "cabrera")),
+               as.character(ecg_leads("cabrera")))
+
+  # Degenerate input keeps the levels rather than erroring
+  expect_length(lead_factor(character()), 0L)
+  expect_length(levels(lead_factor(character())), 12L)
+  expect_equal(as.character(lead_factor(factor(c("aVF", "I")))), c("AVF", "I"))
+})
+
 test_that("as_ECG extracts the surface leads from an EP study", {
   study <- read_wfdb("egm", test_path())
 

@@ -21,30 +21,34 @@ lead_loc <- c(
   "PROXIMAL"
 )
 
-# Top to bottom should be from high to low, and then from left to right
-.ecg <-
-  factor(
-    c("I", "II", "III", "AVF", "AVL", "AVR", paste0("V", 1:6)),
-    ordered = TRUE
-  )
-.hra <-
-  factor(rev(paste0("RA ", bipoles[1:2])), ordered = TRUE)
-.his <-
-  factor(rev(paste0("HIS ", c(bipoles[1:3], lead_loc))), ordered = TRUE)
-.cs <-
-  factor(rev(paste0("CS ", bipoles[1:5])), ordered = TRUE)
-.dd <-
-  factor(rev(paste0("DD ", bipoles[1:10])), ordered = TRUE)
-.rv <-
-  factor(rev(paste0("RV ", bipoles[1:2])), ordered = TRUE)
-.abl <-
-  factor(
-    rev(paste0("ABL ", c(bipoles[1:2], lead_loc[c(1:3, 7:9)]))),
-    ordered = TRUE
-  )
+# These are display orders, so the levels must be the order written rather than
+# whatever `factor()` sorts to. Without `levels =` an "ordered" factor orders
+# alphabetically, which put AVF before I on the surface leads and DD 11-12
+# before DD 3-4 on the duodecapolar - orders that are not wrong so much as
+# meaningless, and silently so, since the factor still claims to be ordered.
+in_order <- function(x) factor(x, levels = x, ordered = TRUE)
+
+# The surface leads in the AHA/ACCF/HRS display sequence (Kligfield et al.
+# 2007): the three bipolar limb leads, the three augmented limb leads, then the
+# precordials left to right. This is the order PhysioNet's 12-lead databases are
+# written in, and the order every ECG cart prints. The Cabrera sequence (aVL, I,
+# -aVR, II, aVF, III) is the recognised alternative and is deliberately not what
+# this is; see `ecg_leads()`, which offers both.
+.ecg <- in_order(c("I", "II", "III", "AVR", "AVL", "AVF", paste0("V", 1:6)))
+
+# Catheter channels run distal to proximal, which is top to bottom on a display
+.hra <- in_order(rev(paste0("RA ", bipoles[1:2])))
+.his <- in_order(rev(paste0("HIS ", c(bipoles[1:3], lead_loc))))
+.cs <- in_order(rev(paste0("CS ", bipoles[1:5])))
+.dd <- in_order(rev(paste0("DD ", bipoles[1:10])))
+.rv <- in_order(rev(paste0("RV ", bipoles[1:2])))
+.abl <- in_order(rev(paste0("ABL ", c(bipoles[1:2], lead_loc[c(1:3, 7:9)]))))
 
 # Order patterns
-charLabels <- as.character(c(.ecg, .hra, .his, .cs, .dd, .rv, .abl))
+charLabels <- unlist(lapply(
+  list(.ecg, .hra, .his, .cs, .dd, .rv, .abl),
+  as.character
+))
 .labels <- factor(charLabels, levels = charLabels, ordered = TRUE)
 .leads <- list(
   ECG = .ecg,
@@ -55,8 +59,7 @@ charLabels <- as.character(c(.ecg, .hra, .his, .cs, .dd, .rv, .abl))
   RV = .rv,
   ABL = .abl
 )
-.source <-
-  factor(c("ECG", "HRA", "RA", "HIS", "CS", "DD", "RV", "ABL"), ordered = TRUE)
+.source <- in_order(c("ECG", "HRA", "RA", "HIS", "CS", "DD", "RV", "ABL"))
 
 # WFDB Annotations ------------------------------------------
 

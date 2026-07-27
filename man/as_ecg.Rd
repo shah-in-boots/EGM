@@ -12,7 +12,8 @@ as_ECG(x, ...)
 \item{...}{Additional arguments}
 }
 \value{
-An object of class \code{ECG}
+An object of class \code{ECG}, holding its leads in the source record's
+order.
 }
 \description{
 Extracts the surface ECG from a record. Recognised surface leads
@@ -31,8 +32,18 @@ number that looks reasonable and is not.
 Annotation \code{channel} indices refer to positions in the original record. When
 channels are dropped those indices no longer address the leads they name, so
 a warning is raised if any channel-specific annotation is carried across.
+
+For the same reason the kept leads stay in the order the record wrote them,
+rather than being put into display order. A channel index addresses a signal
+column by position, so permuting the columns would repoint every per-lead
+fiducial at a different lead - silently, since the indices remain valid.
+Renumbering them is not open to this function either: whether an annotator
+counted from zero or from one is a property of the file, and channel \code{0} is
+also how a fiducial says it belongs to no particular lead. Order at the
+point of use instead, with \code{\link[=ecg_leads]{ecg_leads()}} and \code{\link[=lead_factor]{lead_factor()}}.
 }
 \seealso{
-\code{\link[=ECG]{ECG()}} for the class, \code{\link[=extract_f_waves]{extract_f_waves()}} and \code{\link[=vectorcardiogram]{vectorcardiogram()}}
-for analyses that require it.
+\code{\link[=ecg_leads]{ecg_leads()}} and \code{\link[=lead_factor]{lead_factor()}} for the display order, \code{\link[=ECG]{ECG()}} for
+the class, \code{\link[=extract_f_waves]{extract_f_waves()}} and \code{\link[=vectorcardiogram]{vectorcardiogram()}} for analyses that
+require it.
 }
