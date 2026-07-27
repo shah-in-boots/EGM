@@ -46,9 +46,11 @@ representative beat is derived (Kligfield et al. 2007).
 
 Beats too near either end of the record for the full span to be cut are
 dropped rather than truncated, since a short window gives up the guarantee
-the strategy exists for. How many were dropped is reported to the console
-and recorded on the returned collection, where \code{\link[=window_dropped]{window_dropped()}} reads it
-back - a message is invisible on a background worker.
+the strategy exists for. How many were dropped is recorded on the returned
+collection, where printing it shows the count and \code{\link[=window_dropped]{window_dropped()}} reads
+it back. It is not also announced: a fixed span overhangs at least one end
+of a short strip almost every time, so the notice carried no information,
+and a message is invisible on a background worker regardless.
 
 The span is given in milliseconds so that one strategy can be reused across
 records of differing sampling frequency.

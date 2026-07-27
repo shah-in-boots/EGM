@@ -408,9 +408,11 @@ by_pwave <- function(
 #'
 #'   Beats too near either end of the record for the full span to be cut are
 #'   dropped rather than truncated, since a short window gives up the guarantee
-#'   the strategy exists for. How many were dropped is reported to the console
-#'   and recorded on the returned collection, where [window_dropped()] reads it
-#'   back - a message is invisible on a background worker.
+#'   the strategy exists for. How many were dropped is recorded on the returned
+#'   collection, where printing it shows the count and [window_dropped()] reads
+#'   it back. It is not also announced: a fixed span overhangs at least one end
+#'   of a short strip almost every time, so the notice carried no information,
+#'   and a message is invisible on a background worker regardless.
 #'
 #'   The span is given in milliseconds so that one strategy can be reused across
 #'   records of differing sampling frequency.
@@ -506,21 +508,13 @@ windows_by_beat <- function(object, params) {
     return(list())
   }
 
-  # A beat without room for the full span is dropped, not truncated. How many is
-  # reported to the console *and* returned, since a message is invisible on a
-  # background worker and the count is what an audit aggregates.
+  # A beat without room for the full span is dropped, not truncated. The count is
+  # returned rather than announced: it is not actionable - a fixed span always
+  # overhangs at least one end of a short strip, so the notice fired on nearly
+  # every record - and a message is invisible on a background worker anyway.
+  # `print()` shows it, and `window_dropped()` is what an audit aggregates.
   limits <- range(object$signal$sample)
   whole <- centres - before >= limits[1] & centres + after <= limits[2]
-  if (any(!whole)) {
-    message(
-      sum(!whole),
-      " of ",
-      length(centres),
-      " beats lie too near the ends of the record for a ",
-      params$before + params$after,
-      " ms window and were dropped"
-    )
-  }
   dropped <- c(incomplete_span = sum(!whole))
   centres <- centres[whole]
 
@@ -647,33 +641,37 @@ get_windows <- function(object, by = "rhythm") {
 #'
 #' `r lifecycle::badge("experimental")`
 #'
-#' How many candidate beats [get_windows()] found but did not return, and why.
-#' The counts are recorded on the collection rather than only reported to the
-#' console, because a message is invisible on a background worker and the drop
-#' rate across a study is exactly what an audit needs.
+#' How many candidate beats an analysis found but did not use, and why. The
+#' counts are recorded on the result rather than reported to the console, because
+#' a message is invisible on a background worker and the drop rate across a study
+#' is exactly what an audit needs.
 #'
-#' @details The reasons are strategy-specific. [by_beat()] reports
-#'   `incomplete_span`, beats lying too near either end of the record for the
-#'   full span to be cut. [by_rhythm()] reports `no_offset` (an onset with no
+#' @details The reasons are specific to whatever did the dropping. [by_beat()]
+#'   reports `incomplete_span`, beats lying too near either end of the record for
+#'   the full span to be cut. [by_rhythm()] reports `no_offset` (an onset with no
 #'   matching offset before the record ends), `no_reference` (no reference
 #'   fiducial inside the window), and `overlapping` (a second onset inside the
 #'   window, which for sinus means the beat was not clean).
+#'   [vectorcardiogram()] reports `incomplete_span` from its own windowing and
+#'   `no_delineation` for beats the annotator did not mark the wave in.
 #'
 #'   Counts are of candidate onsets, so `length(x) + sum(window_dropped(x))` is
 #'   the number of candidates the strategy considered.
 #'
-#' @param x A [windows] collection.
+#' @param x A [windows] collection, or a [vectorcardiogram()] result.
 #'
-#' @return A named `integer` vector of counts, one per reason; empty for a
-#'   collection that was not produced by [get_windows()].
+#' @return A named `integer` vector of counts, one per reason; empty for an
+#'   object that carries no drop accounting.
 #'
 #' @examples
 #' \dontrun{
 #' beats <- get_windows(ecg, by = by_beat(channel = 2))
 #' window_dropped(beats)
+#'
+#' window_dropped(vectorcardiogram(ecg, channel = 2))
 #' }
 #'
-#' @seealso [get_windows()]
+#' @seealso [get_windows()], [vectorcardiogram()]
 #'
 #' @export
 window_dropped <- function(x) {

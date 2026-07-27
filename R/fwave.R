@@ -22,6 +22,45 @@
 #' it deposits energy on heart-rate harmonics -- inside the very band this
 #' function reads. Use [f_wave_diagnostics] to check whether that has happened.
 #'
+#' ## What cancellation cannot separate
+#'
+#' A template built by stacking beats keeps whatever repeats at a fixed phase to
+#' the QRS. That is the ventricular complex, and it is also atrial activity in a
+#' rhythm whose AV conduction ratio is fixed -- typical atrial flutter. The
+#' method has no way to tell the two apart, so the flutter wave joins the
+#' template and is subtracted with the QRST.
+#'
+#' The size of the effect is not marginal. On a synthetic 12-lead record
+#' carrying a 5 Hz (300/min) flutter wave, the fraction of that wave surviving
+#' cancellation is:
+#'
+#' | Ventricular response | Atrial cycles per RR | Surviving | Organisation index |
+#' |---|---|---|---|
+#' | 2:1, fixed | 2.00 | 7% | 0.19 |
+#' | 3:1, fixed | 3.00 | 13% | 0.27 |
+#' | 4:1, fixed | 4.00 | 16% | 0.21 |
+#' | fixed, non-integer ratio | 2.50 | 80% | 0.94 |
+#' | irregular (AF-like) | -- | 57% | 0.58 |
+#'
+#' The uncancelled signal scores 0.95. So a flutter record conducting at a fixed
+#' ratio comes back with an organisation index in the range fibrillation
+#' occupies, and a dominant rate describing whatever survived rather than the
+#' flutter. **A cohort compared on `organization_index` will not separate flutter
+#' from fibrillation, and the failure looks like a null result rather than an
+#' artefact.**
+#'
+#' Nothing in the fit reports this. The template models the beat *better* for
+#' having absorbed the atrial wave, so `cancellation_residual` is small and
+#' reassuring. What does report it is the ventricular response being regular:
+#' `record$rr_regular` is `TRUE` when RR CV is below 0.05, and a warning is
+#' raised. It is deliberately not silenced by `rhythm = "flutter"`, since that is
+#' the case it exists for.
+#'
+#' There is no cancellation method here that avoids this -- `"average_beat"`
+#' shares the assumption and `"adaptive_svd"` is worse. Where flutter is the
+#' question, read the atrial wave from a segment between QRS complexes rather
+#' than from a cancelled signal.
+#'
 #' # Interpretation
 #'
 #' Every spectral feature is returned alongside `on_harmonic`. A contaminated
@@ -127,7 +166,9 @@
 #'       `cancellation_residual`, and `tq_fraction`.}
 #'     \item{`record`}{A one-row `data.table` of record-level values, including
 #'       `n_beats_cancelled`, `n_beats_skipped`, `n_beats_aberrant`,
-#'       `spatial_dispersion`, `heart_rate`, `rr_cv`, and `af_like`.}
+#'       `spatial_dispersion`, `heart_rate`, `rr_cv`, `af_like`, and
+#'       `rr_regular` - the flag that the cancellation may have taken the atrial
+#'       signal with it, described in the cancellation section.}
 #'     \item{`signal`}{The cancelled atrial signals, when `keep_signal = TRUE`.}
 #'   }
 #'
@@ -289,12 +330,28 @@ extract_f_waves <- function(
   qrs_loc <- qrs_loc[qrs_loc >= 1 & qrs_loc <= length(filtered[[1]])]
 
   rhythm_info <- rhythm_summary(qrs_loc, frequency, rhythm)
+
+  # Two ways a record defeats these features, and they need saying apart. An
+  # organised rhythm has no fibrillatory activity to measure. A *regular* one
+  # additionally defeats the cancellation, which is the trap: the fit looks good,
+  # `cancellation_residual` is small, and the numbers are wrong anyway.
   if (verbose && !rhythm_info$af_like) {
     warning(
       "This record does not look like atrial fibrillation (RR CV = ",
       signif(rhythm_info$rr_cv, 2),
       "). Fibrillatory features are only meaningful in AF or flutter; ",
       "in sinus rhythm the estimator returns whatever is largest in the band."
+    )
+  }
+  if (verbose && isTRUE(rhythm_info$rr_regular)) {
+    warning(
+      "The ventricular response is regular (RR CV = ",
+      signif(rhythm_info$rr_cv, 2),
+      "), so atrial activity holding a fixed phase to the QRS - flutter ",
+      "conducting at a fixed ratio - enters the cancellation template and is ",
+      "subtracted with the ventricular complex. `organization_index` then ",
+      "collapses toward the fibrillation range and `dominant_rate` describes ",
+      "whatever survived. See the cancellation section of ?extract_f_waves."
     )
   }
 
@@ -368,6 +425,7 @@ extract_f_waves <- function(
     rr_cv = rhythm_info$rr_cv,
     rr_rmssd = rhythm_info$rr_rmssd,
     af_like = rhythm_info$af_like,
+    rr_regular = rhythm_info$rr_regular,
     rhythm = rhythm_info$rhythm,
     spatial_dispersion = spatial_dispersion(feature_table$f_amplitude_p2p)
   )
@@ -409,6 +467,13 @@ print.f_wave_analysis <- function(x, ...) {
     "\n",
     sep = ""
   )
+  if (isTRUE(x$record$rr_regular)) {
+    cat(
+      "  regular ventricular response -- cancellation may have removed atrial",
+      " activity locked to the QRS\n",
+      sep = ""
+    )
+  }
   if (!is.null(x$features$on_harmonic)) {
     n_contaminated <- sum(x$features$on_harmonic, na.rm = TRUE)
     cat(
@@ -591,6 +656,7 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
       rr_cv = NA_real_,
       rr_rmssd = NA_real_,
       af_like = NA,
+      rr_regular = NA,
       rhythm = if (is.null(rhythm)) NA_character_ else rhythm
     ))
   }
@@ -626,12 +692,21 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
     isTRUE(rr_cv >= 0.12 && rr_rmssd >= 0.10)
   }
 
+  # Read separately from `af_like`, and never overridden by the `rhythm` label,
+  # because it answers a different question: not "is there fibrillatory activity
+  # to measure" but "will the canceller leave it there". Regular RR means atrial
+  # activity can hold a fixed phase to the QRS, and a template built by
+  # stacking beats absorbs anything that does. Labelling a record "flutter" is
+  # precisely when this bites, so it must not be what silences it.
+  rr_regular <- isTRUE(rr_cv < 0.05)
+
   list(
     median_rr = median_rr,
     heart_rate = heart_rate,
     rr_cv = rr_cv,
     rr_rmssd = rr_rmssd,
     af_like = af_like,
+    rr_regular = rr_regular,
     rhythm = if (is.null(rhythm)) NA_character_ else rhythm
   )
 }
@@ -664,6 +739,16 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
 #' models badly is still fitted and subtracted, and the quality of that fit is
 #' reported through `cancellation_residual` rather than being hidden by
 #' replacing the segment with a straight line.
+#'
+#' All three methods share one assumption, and it is worth stating plainly: what
+#' the template holds is whatever repeats at a fixed phase to the QRS. In atrial
+#' fibrillation the atrial signal has no such phase, which is why the method
+#' works. In atrial flutter conducting at a fixed ratio it does, so the flutter
+#' wave is built into the template and subtracted along with the QRST -- around
+#' 90% of it, on a synthetic 2:1 record. The fit is *better* for having absorbed
+#' it, so `cancellation_residual` does not report the loss. See the cancellation
+#' section of [extract_f_waves()], which flags the condition through
+#' `record$rr_regular`.
 #'
 #' @param signals A named list of numeric vectors, one per lead, already
 #'   bandpass filtered and all of the same length.
@@ -2110,7 +2195,17 @@ calculate_apen_r <- function(x, m, r) {
 #'     feature by test-retest reliability will therefore select the artifact.}
 #'   \item{`cancellation_residual`}{Residual energy in a window around each QRS
 #'     as a fraction of that window's energy before cancellation. Model-free, so
-#'     it is independent of any assumption about the atrial spectrum.}
+#'     it is independent of any assumption about the atrial spectrum. It reports
+#'     what cancellation *failed* to remove, never what it removed and should not
+#'     have; see `rr_regular` for that.}
+#'   \item{`rr_regular`}{`TRUE` when the ventricular response is regular (RR CV
+#'     below 0.05). Cancellation subtracts whatever repeats at a fixed phase to
+#'     the QRS, so on a regular rhythm it takes the atrial signal with it -
+#'     flutter conducting at a fixed ratio loses most of its wave, and its
+#'     `organization_index` collapses into the range fibrillation occupies.
+#'     `cancellation_residual` is *small* when this happens, because the template
+#'     fits better for having absorbed the atrial wave, so this is the only field
+#'     that reports it. See the cancellation section of [extract_f_waves()].}
 #'   \item{`tq_fraction`}{Share of the record that was electrically silent and
 #'     therefore usable for amplitude measurement.}
 #'   \item{`n_beats_cancelled`, `n_beats_skipped`, `n_beats_aberrant`}{How much

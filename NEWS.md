@@ -160,6 +160,23 @@ record contained. They now resolve it the same way, documented once in
   it can be inspected and used directly rather than being buried in the function
   that applies it.
 
+* **Beats that do not reach the result are counted on it, and no longer
+  announced.** `window_dropped()` reads back two reasons from a
+  `vectorcardiogram()` result: `incomplete_span`, beats too near an end of the
+  record for the fixed window to be cut, and `no_delineation`, beats the
+  annotator did not mark the wave in. The count had been reported only through
+  `message()`, which goes nowhere on a background worker — across a 14,000-record
+  batch not one of these notices was seen — and it fired on essentially every
+  record, since a 1000 ms window overhangs at least one end of a ten-second
+  strip. This is what `window_dropped()` already did for windowing strategies.
+
+* **An undelineated beat costs that beat rather than the whole record**
+  (**breaking**, for the better). `vectorcardiogram(beats = "all")` raised `No
+  complete QRS wave in this beat` and abandoned the record when any single beat
+  lacked a landmark; a missing wave boundary is common enough that one beat
+  regularly took twelve good ones with it. Such beats are now dropped and
+  counted. A record with no traceable beat at all is still an error.
+
 ## The ECG class
 
 * **`as_ECG()` now extracts the surface ECG rather than relabelling the whole
@@ -206,6 +223,31 @@ record contained. They now resolve it the same way, documented once in
   a contaminated estimate is not noisy but precise, wrong, and highly
   reproducible, so validating the feature by test–retest reliability selects the
   artifact. See `?f_wave_diagnostics`.
+
+* **A regular ventricular response is flagged, because cancellation cannot be
+  trusted on one.** `record$rr_regular` is new, and a warning goes with it.
+
+  What a cancellation template holds is whatever repeats at a fixed phase to the
+  QRS. In fibrillation the atrial signal has no such phase, which is why the
+  method works. In flutter conducting at a fixed ratio it does, so the flutter
+  wave is built into the template and subtracted along with the QRST. On a
+  synthetic 12-lead record carrying a 5 Hz flutter wave, the fraction surviving
+  cancellation is 7% at 2:1, 13% at 3:1 and 16% at 4:1, against 80% when the same
+  fixed rate puts a non-integer number of atrial cycles in each RR interval. The
+  organisation index falls with it, from 0.95 uncancelled to 0.19–0.27 — the
+  range fibrillation occupies. A cohort compared on `organization_index` will not
+  separate flutter from fibrillation, and the failure looks like a null result.
+
+  Nothing in the fit reports this: the template models the beat *better* for
+  having absorbed the atrial wave, so `cancellation_residual` is small and
+  reassuring. Regularity of the ventricular response is what reports it, and it
+  is deliberately **not** silenced by `rhythm = "flutter"` — that is the case it
+  exists for. `af_like` and `rr_regular` answer different questions and are now
+  read separately. Both are covered by a synthetic flutter case in the test
+  suite. This is a property of template subtraction, not of this implementation;
+  `"average_beat"` shares it and `"adaptive_svd"` is worse. Where flutter is the
+  question, read the atrial wave between QRS complexes rather than from a
+  cancelled signal. See the cancellation section of `?extract_f_waves`.
 
 * **Aberrant beats are identified by QRS morphology, not RR interval**
   (**breaking**). The previous rule flagged a beat when its RR interval deviated
@@ -297,6 +339,35 @@ record contained. They now resolve it the same way, documented once in
   nowhere on a background worker — and the drop rate across a study is exactly
   what an audit needs.
 
+  `by_beat()` no longer *also* announces its drops. A fixed span overhangs at
+  least one end of a short strip almost every time, so the notice fired on
+  essentially every record and said nothing actionable. Printing the collection
+  shows the count.
+
+* **`baseline_window()` is new.** It subtracts each window's own isoelectric
+  level from every lead. Nothing else in the chain does: reading, cutting,
+  padding, warping and reducing all preserve whatever DC offset the recording
+  carried, and that offset is not small next to a P wave. It dominates anything
+  that goes looking for variance — a principal components analysis over a set of
+  median beats returns a constant vertical shift of the whole window as its
+  leading components, which is invisible in a scree table and obvious the moment
+  a component is plotted as a waveform.
+
+  The isoelectric segment is named by `reference`: a fiducial (the `width`
+  milliseconds before it, which anchored on a wave onset is the PR or TP
+  segment), `"start"`, `"end"`, or a numeric level. The level is a median rather
+  than a mean, and each lead gets its own. Correct before reducing, which also
+  removes the beat-to-beat wander that would otherwise smear the median:
+
+  ```r
+  get_windows(ecg, by = by_beat(channel = 2)) |>
+    baseline_window(reference = "(", channel = 2) |>
+    median_window()
+  ```
+
+  `?pad_window` and `?median_window` now say in their return values that the
+  offset is preserved and point here.
+
 * **`median_window()` returns the fiducials that produced the beat**
   (**breaking**). It previously discarded them on the grounds that a median of
   many beats has no single set — but it does, in the same sense the signal does:
@@ -307,6 +378,13 @@ record contained. They now resolve it the same way, documented once in
   most windows do not carry is dropped. The header gains a `median_info` string
   recording how many windows went into the beat, and loses the `window_info`
   string naming the single source window it is no longer from.
+
+  They live where every `EGM` keeps its annotations: under `$annotation`, which
+  is a *named list* of `annotation_table`s — one per annotator — and not a table.
+  Read them with `get_annotation()`, which unwraps the single-annotator case.
+  `nrow(beat$annotation)` is `NULL` here for the same reason it is `NULL` on a
+  record straight from `read_wfdb()`, which reads as though the fiducials were
+  lost; `?median_window` now says so in its return value.
 
 * **`by_beat()` is a new windowing strategy.** It cuts the same span of signal
   around every occurrence of a fiducial, so every window is the same length by
@@ -340,6 +418,20 @@ record contained. They now resolve it the same way, documented once in
   Pass `pad_value = 0` where a downstream step cannot carry missing values.
 
   Where padding can be avoided entirely, it now is: see `by_beat()`.
+
+* **`pad_window(pad_value = "edge")` extends the nearest observed sample
+  outward.** `NA` is the right default and stays it, but it means a padded
+  collection cannot go straight into a matrix method, and the obvious handling is
+  the wrong one: where the padded length exceeds the median wave span — as it
+  must, or nothing would be padded — *every* window carries some `NA`, so
+  dropping incomplete cases empties the matrix rather than trimming it. On a
+  250-sample P-wave representation against a median P span of 81, that is 0 rows
+  out of 7,830. Edge extension is the physiologically sensible fill for an
+  isoelectric segment, so it is offered rather than left to be reinvented.
+  `?pad_window` now sets out what each of the three fills claims.
+
+  `pad_value` is also validated now. A mistyped string became `NA` through
+  `as.numeric()` and passed for the default.
 
 * **Windows cut from an `ECG` are `ECG`s.** The class was previously lost at
   extraction, so a windowed beat could not satisfy an analysis gated on it.

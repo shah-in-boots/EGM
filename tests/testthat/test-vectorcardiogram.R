@@ -177,6 +177,64 @@ test_that("every beat can be traced separately", {
   )
 })
 
+# Beats that did not make it ----
+
+test_that("beats that could not be traced are counted rather than announced", {
+  object <- sinus_ecg()
+
+  # Silent: a fixed span overhangs at least one end of a short strip on nearly
+  # every record, so the notice this used to print carried no information and
+  # went nowhere on a background worker in any case
+  expect_silent(traced <- vectorcardiogram(object))
+  expect_named(traced, c("loop", "components"))
+
+  dropped <- window_dropped(traced)
+  expect_type(dropped, "integer")
+  expect_true(all(c("incomplete_span", "no_delineation") %in% names(dropped)))
+})
+
+test_that("an undelineated beat costs that beat rather than the record", {
+  object <- sinus_ecg()
+  whole <- vectorcardiogram(object, beats = "all")
+
+  # Remove one beat's QRS onset. It used to abort the record, which is the wrong
+  # trade when the point of `beats = "all"` is the spread across the beats that
+  # *are* delineated - and a missing landmark is common enough that it took most
+  # records with it.
+  ann <- get_annotation(object)
+  labelled <- EGM:::label_waves(ann)
+  onsets <- which(labelled$type == "(" & labelled$wave == "QRS")
+  damaged <- object
+  damaged$annotation[[1]] <- ann[-onsets[3], ]
+
+  partial <- vectorcardiogram(damaged, beats = "all")
+
+  expect_equal(nrow(partial$components), nrow(whole$components) - 1L)
+  expect_equal(window_dropped(partial)[["no_delineation"]], 1L)
+
+  # Beat numbering is of the beats returned, so the loop table still indexes them
+  expect_equal(
+    sort(unique(partial$loop$beat)),
+    seq_len(nrow(partial$components))
+  )
+})
+
+test_that("a record with nothing traceable is still an error", {
+  object <- sinus_ecg()
+  ann <- get_annotation(object)
+  labelled <- EGM:::label_waves(ann)
+
+  stripped <- object
+  stripped$annotation[[1]] <- ann[
+    !(labelled$type %in% c("(", ")") & labelled$wave == "QRS"),
+  ]
+
+  expect_error(
+    vectorcardiogram(stripped, beats = "all"),
+    "No complete QRS waves could be delineated"
+  )
+})
+
 test_that("the median beat sits among the beats it summarises", {
   object <- sinus_ecg()
   median_beat <- vectorcardiogram(object)$components

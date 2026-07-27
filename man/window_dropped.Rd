@@ -7,27 +7,29 @@
 window_dropped(x)
 }
 \arguments{
-\item{x}{A \link{windows} collection.}
+\item{x}{A \link{windows} collection, or a \code{\link[=vectorcardiogram]{vectorcardiogram()}} result.}
 }
 \value{
-A named \code{integer} vector of counts, one per reason; empty for a
-collection that was not produced by \code{\link[=get_windows]{get_windows()}}.
+A named \code{integer} vector of counts, one per reason; empty for an
+object that carries no drop accounting.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-How many candidate beats \code{\link[=get_windows]{get_windows()}} found but did not return, and why.
-The counts are recorded on the collection rather than only reported to the
-console, because a message is invisible on a background worker and the drop
-rate across a study is exactly what an audit needs.
+How many candidate beats an analysis found but did not use, and why. The
+counts are recorded on the result rather than reported to the console, because
+a message is invisible on a background worker and the drop rate across a study
+is exactly what an audit needs.
 }
 \details{
-The reasons are strategy-specific. \code{\link[=by_beat]{by_beat()}} reports
-\code{incomplete_span}, beats lying too near either end of the record for the
-full span to be cut. \code{\link[=by_rhythm]{by_rhythm()}} reports \code{no_offset} (an onset with no
+The reasons are specific to whatever did the dropping. \code{\link[=by_beat]{by_beat()}}
+reports \code{incomplete_span}, beats lying too near either end of the record for
+the full span to be cut. \code{\link[=by_rhythm]{by_rhythm()}} reports \code{no_offset} (an onset with no
 matching offset before the record ends), \code{no_reference} (no reference
 fiducial inside the window), and \code{overlapping} (a second onset inside the
 window, which for sinus means the beat was not clean).
+\code{\link[=vectorcardiogram]{vectorcardiogram()}} reports \code{incomplete_span} from its own windowing and
+\code{no_delineation} for beats the annotator did not mark the wave in.
 
 Counts are of candidate onsets, so \code{length(x) + sum(window_dropped(x))} is
 the number of candidates the strategy considered.
@@ -36,9 +38,11 @@ the number of candidates the strategy considered.
 \dontrun{
 beats <- get_windows(ecg, by = by_beat(channel = 2))
 window_dropped(beats)
+
+window_dropped(vectorcardiogram(ecg, channel = 2))
 }
 
 }
 \seealso{
-\code{\link[=get_windows]{get_windows()}}
+\code{\link[=get_windows]{get_windows()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}}
 }

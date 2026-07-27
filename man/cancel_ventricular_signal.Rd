@@ -66,6 +66,16 @@ Beats are never blanked or interpolated across. A beat that the template
 models badly is still fitted and subtracted, and the quality of that fit is
 reported through \code{cancellation_residual} rather than being hidden by
 replacing the segment with a straight line.
+
+All three methods share one assumption, and it is worth stating plainly: what
+the template holds is whatever repeats at a fixed phase to the QRS. In atrial
+fibrillation the atrial signal has no such phase, which is why the method
+works. In atrial flutter conducting at a fixed ratio it does, so the flutter
+wave is built into the template and subtracted along with the QRST -- around
+90\% of it, on a synthetic 2:1 record. The fit is \emph{better} for having absorbed
+it, so \code{cancellation_residual} does not report the loss. See the cancellation
+section of \code{\link[=extract_f_waves]{extract_f_waves()}}, which flags the condition through
+\code{record$rr_regular}.
 }
 \references{
 Stridh M, Sornmo L. Spatiotemporal QRST cancellation techniques for analysis

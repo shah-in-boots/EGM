@@ -21,7 +21,17 @@ because heart rate is highly reproducible within a patient. Validating the
 feature by test-retest reliability will therefore select the artifact.}
 \item{\code{cancellation_residual}}{Residual energy in a window around each QRS
 as a fraction of that window's energy before cancellation. Model-free, so
-it is independent of any assumption about the atrial spectrum.}
+it is independent of any assumption about the atrial spectrum. It reports
+what cancellation \emph{failed} to remove, never what it removed and should not
+have; see \code{rr_regular} for that.}
+\item{\code{rr_regular}}{\code{TRUE} when the ventricular response is regular (RR CV
+below 0.05). Cancellation subtracts whatever repeats at a fixed phase to
+the QRS, so on a regular rhythm it takes the atrial signal with it -
+flutter conducting at a fixed ratio loses most of its wave, and its
+\code{organization_index} collapses into the range fibrillation occupies.
+\code{cancellation_residual} is \emph{small} when this happens, because the template
+fits better for having absorbed the atrial wave, so this is the only field
+that reports it. See the cancellation section of \code{\link[=extract_f_waves]{extract_f_waves()}}.}
 \item{\code{tq_fraction}}{Share of the record that was electrically silent and
 therefore usable for amplitude measurement.}
 \item{\code{n_beats_cancelled}, \code{n_beats_skipped}, \code{n_beats_aberrant}}{How much

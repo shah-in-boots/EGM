@@ -52,6 +52,13 @@ A \code{list} of two \code{data.table}s:
 
 Azimuth is measured in the transverse plane from \code{+X} toward \code{+Z}, and
 elevation out of that plane toward \code{+Y}, both in degrees.
+
+Not every beat reaches the result, and \code{\link[=window_dropped]{window_dropped()}} reads back how
+many did not and why: \code{incomplete_span}, beats too near an end of the record
+for the fixed window to be cut, and \code{no_delineation}, beats the annotator
+did not mark the wave in. Both are counted rather than announced, since the
+first is unavoidable on a short strip and neither is visible from a
+background worker.
 }
 \description{
 \code{vectorcardiogram()} traces the ventricular loop and

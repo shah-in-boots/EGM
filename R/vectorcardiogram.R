@@ -150,6 +150,13 @@
 #'   Azimuth is measured in the transverse plane from `+X` toward `+Z`, and
 #'   elevation out of that plane toward `+Y`, both in degrees.
 #'
+#'   Not every beat reaches the result, and [window_dropped()] reads back how
+#'   many did not and why: `incomplete_span`, beats too near an end of the record
+#'   for the fixed window to be cut, and `no_delineation`, beats the annotator
+#'   did not mark the wave in. Both are counted rather than announced, since the
+#'   first is unavoidable on a short strip and neither is visible from a
+#'   background worker.
+#'
 #' @section Components and their units:
 #'
 #'   Half of these components are scale-free and half are not, which matters
@@ -351,6 +358,9 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
     stop("No complete ", waves[1], " waves could be delineated", call. = FALSE)
   }
 
+  # Read before the reduction, which returns a bare beat and with it no accounting
+  dropped <- window_dropped(windows)
+
   # Every window is the same length, so the median needs no padding; the feature
   # is passed only so that fiducials are matched outward from it.
   if (beats == "median" && length(windows) > 1) {
@@ -377,7 +387,7 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
     # beat handed in directly puts it wherever it happens to be.
     anchors <- fiducials$sample[fiducials$type == peaks[[waves[1]]]]
     if (length(anchors) == 0) {
-      stop("No ", waves[1], " peak in this beat", call. = FALSE)
+      return(NULL)
     }
     walk <- anchors[which.min(abs(anchors - before))]
     for (v in waves) {
@@ -398,8 +408,12 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
       mark[[v]] <- c(onset, offset) + 1L
       walk <- offset
     }
+    # A beat the annotator did not delineate is dropped and counted, not fatal.
+    # One undelineated beat among thirteen used to abort the whole record, which
+    # is the wrong trade when the point of `beats = "all"` is the spread across
+    # the beats that *are* delineated.
     if (is.null(mark[[waves[1]]])) {
-      stop("No complete ", waves[1], " wave in this beat", call. = FALSE)
+      return(NULL)
     }
 
     xyz <- as.matrix(
@@ -429,7 +443,17 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
     )
   })
 
-  list(frequency = frequency, beats = traced)
+  undelineated <- vapply(traced, is.null, logical(1))
+  traced <- traced[!undelineated]
+  if (length(traced) == 0) {
+    stop("No complete ", waves[1], " waves could be delineated", call. = FALSE)
+  }
+  dropped <- sum_dropped(list(
+    dropped,
+    c(no_delineation = sum(undelineated))
+  ))
+
+  list(frequency = frequency, beats = traced, dropped = dropped)
 }
 
 # Components -------------------------------------------------------------------
@@ -595,5 +619,11 @@ assemble_loops <- function(traced, wave, repolarization = NULL) {
     )
   }))
 
-  list(loop = loop, components = components)
+  # Carried as an attribute rather than a third element so that `window_dropped()`
+  # is the one accessor for this across the package, and the documented shape of
+  # the result - two tables - does not change
+  structure(
+    list(loop = loop, components = components),
+    dropped = traced$dropped
+  )
 }

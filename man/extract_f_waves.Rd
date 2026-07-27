@@ -112,7 +112,9 @@ per-lead diagnostics \code{harmonic_index}, \code{on_harmonic},
 \code{cancellation_residual}, and \code{tq_fraction}.}
 \item{\code{record}}{A one-row \code{data.table} of record-level values, including
 \code{n_beats_cancelled}, \code{n_beats_skipped}, \code{n_beats_aberrant},
-\code{spatial_dispersion}, \code{heart_rate}, \code{rr_cv}, and \code{af_like}.}
+\code{spatial_dispersion}, \code{heart_rate}, \code{rr_cv}, \code{af_like}, and
+\code{rr_regular} - the flag that the cancellation may have taken the atrial
+signal with it, described in the cancellation section.}
 \item{\code{signal}}{The cancelled atrial signals, when \code{keep_signal = TRUE}.}
 }
 }
@@ -135,6 +137,45 @@ by varying ventricular filling, which is the dominant reason a template fails
 to fit its own beat. What it leaves behind is periodic at the heart rate, so
 it deposits energy on heart-rate harmonics -- inside the very band this
 function reads. Use \link{f_wave_diagnostics} to check whether that has happened.
+\subsection{What cancellation cannot separate}{
+
+A template built by stacking beats keeps whatever repeats at a fixed phase to
+the QRS. That is the ventricular complex, and it is also atrial activity in a
+rhythm whose AV conduction ratio is fixed -- typical atrial flutter. The
+method has no way to tell the two apart, so the flutter wave joins the
+template and is subtracted with the QRST.
+
+The size of the effect is not marginal. On a synthetic 12-lead record
+carrying a 5 Hz (300/min) flutter wave, the fraction of that wave surviving
+cancellation is:\tabular{llll}{
+   Ventricular response \tab Atrial cycles per RR \tab Surviving \tab Organisation index \cr
+   2:1, fixed \tab 2.00 \tab 7\% \tab 0.19 \cr
+   3:1, fixed \tab 3.00 \tab 13\% \tab 0.27 \cr
+   4:1, fixed \tab 4.00 \tab 16\% \tab 0.21 \cr
+   fixed, non-integer ratio \tab 2.50 \tab 80\% \tab 0.94 \cr
+   irregular (AF-like) \tab -- \tab 57\% \tab 0.58 \cr
+}
+
+
+The uncancelled signal scores 0.95. So a flutter record conducting at a fixed
+ratio comes back with an organisation index in the range fibrillation
+occupies, and a dominant rate describing whatever survived rather than the
+flutter. \strong{A cohort compared on \code{organization_index} will not separate flutter
+from fibrillation, and the failure looks like a null result rather than an
+artefact.}
+
+Nothing in the fit reports this. The template models the beat \emph{better} for
+having absorbed the atrial wave, so \code{cancellation_residual} is small and
+reassuring. What does report it is the ventricular response being regular:
+\code{record$rr_regular} is \code{TRUE} when RR CV is below 0.05, and a warning is
+raised. It is deliberately not silenced by \code{rhythm = "flutter"}, since that is
+the case it exists for.
+
+There is no cancellation method here that avoids this -- \code{"average_beat"}
+shares the assumption and \code{"adaptive_svd"} is worse. Where flutter is the
+question, read the atrial wave from a segment between QRS complexes rather
+than from a cancelled signal.
+}
 }
 
 \section{Interpretation}{

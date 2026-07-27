@@ -34,6 +34,17 @@ values are ignored when averaging.}
 }
 \value{
 A single \code{EGM} object representing the median beat.
+
+Its fiducials live where every \code{EGM} keeps them, under \verb{$annotation}, which
+is a \emph{named list} of \code{annotation_table}s - one per annotator - and not a
+table. Reach them with \code{get_annotation(x)}, which unwraps the single
+annotator case; \code{nrow(x$annotation)} is \code{NULL} here for the same reason it
+is \code{NULL} on a record straight from \code{\link[=read_wfdb]{read_wfdb()}}.
+
+Amplitudes are not baseline-corrected. The median of a set of windows that
+all share a DC offset still carries that offset, and it will be the first
+thing any variance-based method finds; \code{\link[=baseline_window]{baseline_window()}} removes it, best
+applied to the windows before they are reduced.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -101,3 +112,7 @@ signal for every channel, which is what makes a windowed beat usable as a
 vectorcardiogram.
 }
 
+\seealso{
+\code{\link[=get_annotation]{get_annotation()}} to read the fiducials, \code{\link[=baseline_window]{baseline_window()}},
+\code{\link[=pad_window]{pad_window()}}, \code{\link[=by_beat]{by_beat()}}
+}

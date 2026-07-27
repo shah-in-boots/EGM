@@ -69,20 +69,47 @@
 #'   a channel number or name. Required when the annotations span more than one
 #'   channel; see the channels section.
 #' @param channel_criteria Superseded name for `channel`, still accepted.
-#' @param pad_value The value used for padding. Defaults to `NA`, which marks
-#'   the added samples as absent rather than as a measurement. Padding with `0`
-#'   states that the potential there was zero, which is a fabricated observation:
-#'   it biases [median_window()] toward the origin at the edges of the beat, and
-#'   with it every measure read off the loop tails. Set it to `0` when a
-#'   downstream step cannot carry missing values.
+#' @param pad_value The value used for padding: `NA` (default), a single number,
+#'   or the string `"edge"`. `NA` marks the added samples as absent rather than
+#'   as a measurement. Padding with `0` states that the potential there was zero,
+#'   which is a fabricated observation: it biases [median_window()] toward the
+#'   origin at the edges of the beat, and with it every measure read off the loop
+#'   tails. `"edge"` extends the nearest observed sample outward instead. See the
+#'   fill section for choosing between them.
 #' @param preserve_class Logical. If TRUE (default), returns a `windows` object;
 #'   if FALSE, returns a plain list of `EGM` objects.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @inheritSection channels Guiding channel
 #'
+#' @section What the fill claims:
+#'
+#'   Every padded sample is a claim about signal that was never recorded, and the
+#'   three fills make different ones.
+#'
+#'   `NA` claims nothing, which is why it is the default. The cost is that a
+#'   padded collection cannot go straight into a matrix method, and the obvious
+#'   handling is the wrong one: where the padded length exceeds the median wave
+#'   span - as it must, or nothing would be padded - *every* window carries some
+#'   `NA`, so dropping incomplete cases empties the matrix rather than trimming
+#'   it.
+#'
+#'   `"edge"` claims the signal held its last observed value. For a window whose
+#'   pad region is isoelectric - the TP and PR segments either side of a P wave,
+#'   say - that is close to true and is the fill to reach for. Across a wave it
+#'   is not, and it flattens the tails it invents.
+#'
+#'   `0` claims the potential was zero there. Because the windows are not
+#'   baseline-corrected (see the return value), zero is not even the isoelectric
+#'   line; it is wherever the recording's DC offset happens to put it.
+#'
 #' @return A `windows` object (or list) of padded `EGM` objects, all sharing the
-#'   same sample length.
+#'   same sample length. Amplitudes are untouched, so whatever DC offset the
+#'   recording carried is still there; [baseline_window()] removes it, and
+#'   variance-based methods find it first if it is left in.
+#'
+#' @seealso [baseline_window()], [median_window()], [normalize_window()],
+#'   [by_beat()] for cutting windows equal in the first place
 #'
 #' @export
 pad_window <- function(
@@ -105,6 +132,20 @@ pad_window <- function(
     channel_criteria,
     fn = "pad_window"
   )
+
+  # Validated here rather than at the fill, where a mistyped string would become
+  # `NA` through `as.numeric()` and pass for the default
+  edge_fill <- identical(pad_value, "edge")
+  if (
+    !edge_fill &&
+      !(length(pad_value) == 1L && (is.numeric(pad_value) || is.na(pad_value)))
+  ) {
+    stop(
+      '`pad_value` must be `NA`, a single number, or "edge"; got ',
+      deparse1(pad_value)
+    )
+  }
+  fill_value <- if (edge_fill) NA_real_ else as.numeric(pad_value)
 
   if (length(windows) == 0) {
     if (preserve_class) {
@@ -200,9 +241,20 @@ pad_window <- function(
     src_idx <- seq_len(nrow(signal_data))
     dst_idx <- place_i + (src_idx - 1L) # 0-based output positions
     keep <- dst_idx >= 0 & dst_idx <= (total - 1L)
+    # The placed samples are contiguous, so the two edges are the ends of that run
+    first_placed <- if (any(keep)) min(dst_idx[keep]) + 1L else NA_integer_
+    last_placed <- if (any(keep)) max(dst_idx[keep]) + 1L else NA_integer_
     for (col in signal_cols) {
-      values <- rep(as.numeric(pad_value), total)
+      values <- rep(fill_value, total)
       values[dst_idx[keep] + 1L] <- signal_data[[col]][src_idx[keep]]
+      if (edge_fill && !is.na(first_placed)) {
+        if (first_placed > 1L) {
+          values[seq_len(first_placed - 1L)] <- values[first_placed]
+        }
+        if (last_placed < total) {
+          values[seq.int(last_placed + 1L, total)] <- values[last_placed]
+        }
+      }
       out[[col]] <- values
     }
     padded_signal <- do.call(
@@ -243,6 +295,202 @@ pad_window <- function(
     return(rewrap_windows(padded, x, "padded"))
   }
   padded
+}
+
+# Baseline correction ----------------------------------------------------------
+
+#' Reference windows to their isoelectric baseline
+#'
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' Subtracts each window's own baseline from every lead, so that the isoelectric
+#' line sits at zero. Nothing else in the windowing chain does this: reading,
+#' cutting, padding, warping and reducing all preserve whatever DC offset the
+#' recording carried, and that offset is not small next to a P wave.
+#'
+#' @details The offset survives every step that does not go looking for it, and
+#'   it dominates the ones that do. Run a principal components analysis over a
+#'   set of median beats without correcting first and the leading components are
+#'   a constant vertical shift of the whole window rather than any morphology -
+#'   the offset is the largest thing varying between records, so a variance-based
+#'   method finds it before anything else. It is invisible in a scree table and
+#'   obvious the moment a component is plotted as a waveform.
+#'
+#'   Correct *before* reducing, not after. A per-beat correction also removes the
+#'   beat-to-beat baseline wander that would otherwise smear the reduction:
+#'
+#'   ```r
+#'   get_windows(ecg, by = by_beat(channel = 2)) |>
+#'     baseline_window(reference = "(", channel = 2) |>
+#'     median_window()
+#'   ```
+#'
+#'   Which samples count as isoelectric depends on `reference`:
+#'
+#'   * A fiducial - given as a type symbol such as `"("`, or a named list of
+#'     annotation criteria - takes the `width` milliseconds *before* it. Anchored
+#'     on a wave onset this is the PR or TP segment, which is the segment a
+#'     clinician would call the baseline.
+#'   * `"start"` takes the first `width` milliseconds of the window, and `"end"`
+#'     the last. Use these where the window has no delineation to anchor to, or
+#'     where it was cut so that its edges are known to be quiet.
+#'   * A `numeric` scalar is subtracted from every lead as given, which is the
+#'     escape hatch for a baseline estimated some other way.
+#'
+#'   The level is the *median* over the reference samples rather than the mean,
+#'   so a single noisy sample cannot displace the whole window. Each lead is
+#'   corrected by its own level; a window whose reference fiducial is missing is
+#'   returned uncorrected with a warning, since shifting it by some other
+#'   window's baseline would be worse than leaving it alone.
+#'
+#' @param x A `windows` object, a list of `EGM` objects, or a single `EGM`.
+#' @param reference What marks the isoelectric segment: a fiducial (a `character`
+#'   type symbol, default `"("`, or a named list of annotation criteria),
+#'   `"start"`, `"end"`, or a `numeric` level to subtract directly.
+#' @param width Milliseconds of signal averaged to estimate the level. Default
+#'   20. Ignored when `reference` is numeric.
+#' @param channel The lead whose annotations locate `reference`, given as a
+#'   channel number or name. Required when the annotations span more than one
+#'   channel; see the channels section.
+#' @param preserve_class Logical. If TRUE (default), a `windows` input returns a
+#'   `windows` object; if FALSE, a plain list of `EGM` objects. A single `EGM`
+#'   always returns a single `EGM`.
+#' @param ... Additional arguments (currently unused).
+#'
+#' @inheritSection channels Guiding channel
+#'
+#' @return The input with every lead shifted so its baseline is zero, in the
+#'   shape it was given: a `windows` object, a list, or a single `EGM`.
+#'
+#' @examples
+#' \dontrun{
+#' ecg <- read_wfdb("ecg", test_path(), "ecgpuwave")
+#' beats <- get_windows(ecg, by = by_beat(channel = 1))
+#'
+#' # The PR segment, taken as the 20 ms before each QRS onset
+#' baseline_window(beats, reference = list(type = "(", wave = "QRS"), channel = 1)
+#'
+#' # A median beat corrected after the fact
+#' median_window(beats) |> baseline_window(reference = "start")
+#' }
+#'
+#' @seealso [pad_window()], [median_window()], [vectorcardiogram()], which
+#'   references each loop to its own onset by the same rule
+#'
+#' @export
+baseline_window <- function(
+  x,
+  reference = "(",
+  width = 20,
+  channel = NULL,
+  preserve_class = TRUE,
+  ...
+) {
+  single <- inherits(x, "EGM")
+  windows <- if (single) list(x) else as_window_list(x)
+
+  if (length(width) != 1L || !is.numeric(width) || !is.finite(width) || width <= 0) {
+    stop("`width` must be one positive number of milliseconds")
+  }
+
+  level <- if (is.numeric(reference)) {
+    if (length(reference) != 1L || !is.finite(reference)) {
+      stop("A numeric `reference` must be a single finite level")
+    }
+    as.numeric(reference)
+  } else {
+    NULL
+  }
+  anchored <- is.null(level) && !(is.character(reference) &&
+    length(reference) == 1L && reference %in% c("start", "end"))
+
+  channel_criteria <- valid_channel(channel)
+  if (anchored) {
+    channel_criteria <- require_window_channel(
+      windows,
+      channel_criteria,
+      what = "Baseline correction"
+    )
+  }
+
+  missing_reference <- 0L
+
+  corrected <- lapply(windows, function(window) {
+    signal_data <- window$signal
+    signal_cols <- setdiff(names(signal_data), "sample")
+    n <- nrow(signal_data)
+    span <- max(1L, as.integer(round(width / 1000 * stats::frequency(window))))
+
+    rows <- if (!is.null(level)) {
+      NULL
+    } else if (identical(reference, "start")) {
+      seq_len(min(span, n))
+    } else if (identical(reference, "end")) {
+      seq.int(max(1L, n - span + 1L), n)
+    } else {
+      at <- locate_feature(
+        get_single_annotation(window),
+        reference,
+        channel_criteria
+      )
+      # Matched against the `sample` column rather than used as a row number:
+      # windows cut with `adjust_sample_indices = FALSE` keep the record's own
+      # indices, and a fiducial at sample 4000 is not row 4000 of a 300-row window
+      row <- if (is.na(at)) NA_integer_ else match(at, signal_data$sample)
+      if (is.na(row)) {
+        missing_reference <<- missing_reference + 1L
+        NULL
+      } else {
+        # The segment ends just before the fiducial, so the fiducial's own row is
+        # excluded and `span` rows precede it
+        seq.int(max(1L, row - span), max(1L, row - 1L))
+      }
+    }
+
+    if (is.null(rows) && is.null(level)) {
+      return(window)
+    }
+
+    out <- data.frame(sample = as.integer(signal_data$sample))
+    for (col in signal_cols) {
+      values <- as.numeric(signal_data[[col]])
+      offset <- if (is.null(level)) {
+        stats::median(values[rows], na.rm = TRUE)
+      } else {
+        level
+      }
+      out[[col]] <- if (is.finite(offset)) values - offset else values
+    }
+
+    keep_ECG(
+      new_EGM(
+        signal = do.call(
+          signal_table,
+          c(as.list(out), list(units = signal_units(signal_data)))
+        ),
+        header = data.table::copy(window$header),
+        annotation = get_single_annotation(window)
+      ),
+      windows = list(window)
+    )
+  })
+
+  if (missing_reference > 0) {
+    warning(
+      missing_reference,
+      " window(s) do not carry the reference fiducial and were left uncorrected"
+    )
+  }
+
+  if (single) {
+    return(corrected[[1]])
+  }
+  if (preserve_class) {
+    return(rewrap_windows(corrected, x, "baselined"))
+  }
+  corrected
 }
 
 # Median beats -----------------------------------------------------------------
@@ -294,6 +542,20 @@ pad_window <- function(
 #' @inheritSection channels Guiding channel
 #'
 #' @return A single `EGM` object representing the median beat.
+#'
+#'   Its fiducials live where every `EGM` keeps them, under `$annotation`, which
+#'   is a *named list* of `annotation_table`s - one per annotator - and not a
+#'   table. Reach them with `get_annotation(x)`, which unwraps the single
+#'   annotator case; `nrow(x$annotation)` is `NULL` here for the same reason it
+#'   is `NULL` on a record straight from [read_wfdb()].
+#'
+#'   Amplitudes are not baseline-corrected. The median of a set of windows that
+#'   all share a DC offset still carries that offset, and it will be the first
+#'   thing any variance-based method finds; [baseline_window()] removes it, best
+#'   applied to the windows before they are reduced.
+#'
+#' @seealso [get_annotation()] to read the fiducials, [baseline_window()],
+#'   [pad_window()], [by_beat()]
 #'
 #' @export
 median_window <- function(

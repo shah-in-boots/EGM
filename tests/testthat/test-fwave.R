@@ -58,6 +58,68 @@ simulate_af <- function(
   list(signals = signals, qrs_loc = loc, frequency = frequency, atrial = atrial)
 }
 
+#' Synthesise a multi-lead flutter ECG conducting at a fixed ratio
+#'
+#' Unlike [simulate_af()] the beats are exactly evenly spaced, which is the
+#' point: `rr_ms` sets how many atrial cycles fall in each RR interval, and a
+#' whole number of them is what makes the flutter wave phase-locked to the QRS.
+#' The atrial wave is returned per lead so that what survives cancellation can be
+#' regressed on what went in.
+simulate_flutter <- function(
+  rr_ms = 400,
+  f_hz = 5,
+  frequency = 500,
+  duration = 10,
+  n_leads = 12,
+  f_amplitude = 0.15,
+  seed = 42
+) {
+  set.seed(seed)
+  n <- as.integer(frequency * duration)
+  t <- seq_len(n) / frequency
+
+  # Sawtooth with a harmonic, which is what makes flutter look like flutter
+  saw <- 2 * ((t * f_hz) %% 1) - 1
+  wave <- -saw - 0.35 * sin(2 * pi * 2 * f_hz * t)
+
+  rr <- as.integer(rr_ms / 1000 * frequency)
+  loc <- seq.int(
+    as.integer(0.6 * frequency),
+    n - as.integer(0.6 * frequency),
+    by = rr
+  )
+
+  width <- as.integer(0.5 * frequency)
+  s <- (seq_len(width) - 1) / frequency
+  qrst <- exp(-((s - 0.10)^2) / (2 * 0.010^2)) +
+    0.25 * exp(-((s - 0.30)^2) / (2 * 0.045^2))
+
+  # Both the ventricular and the atrial contribution vary by lead, so the
+  # cross-lead fit has real spatial structure to work with
+  v_gain <- seq(-1.0, 1.4, length.out = n_leads)
+  a_gain <- f_amplitude * seq(0.3, 1.3, length.out = n_leads) * c(1, -1)
+
+  atrial <- lapply(seq_len(n_leads), function(j) a_gain[j] * wave)
+  signals <- lapply(seq_len(n_leads), function(j) {
+    x <- atrial[[j]] + stats::rnorm(n, sd = 0.01)
+    for (p in loc) {
+      idx <- p - as.integer(0.10 * frequency) + seq_len(width) - 1L
+      keep <- idx >= 1 & idx <= n
+      x[idx[keep]] <- x[idx[keep]] + v_gain[j] * qrst[keep]
+    }
+    x
+  })
+  names(signals) <- names(atrial) <- paste0("L", seq_len(n_leads))
+
+  list(
+    signals = signals,
+    atrial = atrial,
+    qrs_loc = loc,
+    frequency = frequency,
+    cycles_per_rr = rr_ms / 1000 * f_hz
+  )
+}
+
 # Core API ----
 
 test_that("extract_f_waves returns features and diagnostics per lead", {
@@ -339,6 +401,72 @@ test_that("low-rank beat model never reconstructs a group exactly", {
   }
 })
 
+test_that("cancellation absorbs flutter conducting at a fixed ratio", {
+
+  # The one case where the method's own assumption works against it: a template
+  # built by stacking beats keeps whatever repeats at a fixed phase to the QRS,
+  # and in fixed-ratio flutter the atrial wave does. Ground truth is known here,
+  # so how much of it survives can be measured rather than argued about.
+  surviving <- function(rr_ms, f_hz = 5, frequency = 500, duration = 10) {
+    sim <- simulate_flutter(
+      rr_ms = rr_ms,
+      f_hz = f_hz,
+      frequency = frequency,
+      duration = duration
+    )
+    out <- cancel_ventricular_signal(
+      sim$signals,
+      frequency = frequency,
+      qrs_loc = sim$qrs_loc
+    )
+    # Regress each recovered lead on the atrial wave that went in: 1 is fully
+    # preserved, 0 fully removed
+    stats::median(vapply(
+      names(sim$signals),
+      function(l) {
+        truth <- sim$atrial[[l]]
+        sum(truth * out$atrial[[l]]) / sum(truth^2)
+      },
+      numeric(1)
+    ))
+  }
+
+  # 2:1 and 4:1 put a whole number of atrial cycles in every RR interval, so the
+  # flutter wave sits at the same phase in every beat and joins the template
+  expect_lt(surviving(rr_ms = 400), 0.25) # 2 cycles per RR
+  expect_lt(surviving(rr_ms = 800), 0.35) # 4 cycles per RR
+
+  # Half a cycle out, consecutive beats are in antiphase and the median template
+  # holds no atrial signal to subtract
+  expect_gt(surviving(rr_ms = 500), 0.6) # 2.5 cycles per RR
+})
+
+test_that("an absorbed flutter wave still reports a small cancellation residual", {
+
+  # The trap worth a test of its own. The fit is *better* for having taken the
+  # atrial wave with it, so nothing in the residual says the signal is gone; the
+  # regularity of the ventricular response is what says it.
+  locked <- simulate_flutter(rr_ms = 400)
+  free <- simulate_flutter(rr_ms = 500)
+
+  residual <- function(sim) {
+    out <- cancel_ventricular_signal(
+      sim$signals,
+      frequency = 500,
+      qrs_loc = sim$qrs_loc
+    )
+    stats::median(vapply(
+      names(sim$signals),
+      function(l) {
+        stats::sd(out$atrial[[l]]) / stats::sd(sim$signals[[l]])
+      },
+      numeric(1)
+    ))
+  }
+
+  expect_lt(residual(locked), residual(free))
+})
+
 # Spectral estimation ----
 
 test_that("Welch spectrum recovers a known frequency", {
@@ -485,11 +613,18 @@ test_that("a regular rhythm is flagged and warned about", {
   skip_on_ci()
 
   sinus <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"))
+
+  # Sinus trips both gates: nothing fibrillatory to measure, and regular enough
+  # that cancellation would have taken it anyway
   expect_warning(
-    res <- suppressMessages(extract_f_waves(sinus, verbose = TRUE)),
-    "does not look like atrial fibrillation"
+    expect_warning(
+      res <- suppressMessages(extract_f_waves(sinus, verbose = TRUE)),
+      "does not look like atrial fibrillation"
+    ),
+    "ventricular response is regular"
   )
   expect_false(res$record$af_like)
+  expect_true(res$record$rr_regular)
 })
 
 test_that("rhythm_summary distinguishes regular from irregular", {
@@ -502,6 +637,58 @@ test_that("rhythm_summary distinguishes regular from irregular", {
 
   # An explicit rhythm overrides inference
   expect_true(EGM:::rhythm_summary(regular, fs, rhythm = "af")$af_like)
+})
+
+test_that("rr_regular flags the rhythm the canceller cannot be trusted on", {
+  fs <- 500
+  regular <- as.integer(seq(100, 4900, by = 325))
+  irregular <- as.integer(cumsum(c(100, stats::runif(14, 200, 600))))
+
+  expect_true(EGM:::rhythm_summary(regular, fs)$rr_regular)
+  expect_false(EGM:::rhythm_summary(irregular, fs)$rr_regular)
+
+  # `af_like` answers whether there is fibrillatory activity to measure;
+  # `rr_regular` answers whether cancellation will leave it there. Labelling a
+  # record must not silence the second - fixed-ratio flutter is exactly the case
+  # it exists for, and it is exactly the case someone labels "flutter".
+  labelled <- EGM:::rhythm_summary(regular, fs, rhythm = "flutter")
+  expect_true(labelled$af_like)
+  expect_true(labelled$rr_regular)
+})
+
+test_that("a regular ventricular response warns about what cancellation takes", {
+  sim <- simulate_flutter(rr_ms = 400)
+  leads <- c(
+    "I", "II", "III", "AVR", "AVL", "AVF",
+    "V1", "V2", "V3", "V4", "V5", "V6"
+  )
+
+  object <- EGM(
+    signal = do.call(
+      signal_table,
+      c(
+        list(sample = seq_along(sim$signals[[1]]) - 1L),
+        stats::setNames(sim$signals[seq_along(leads)], leads)
+      )
+    ),
+    header = header_table(
+      record_name = "flutter",
+      number_of_channels = length(leads),
+      frequency = sim$frequency,
+      samples = length(sim$signals[[1]]),
+      label = leads
+    )
+  )
+
+  # `rhythm = "flutter"` settles the other warning, so this one stands alone -
+  # which is the behaviour under test: a label must not silence it
+  expect_warning(
+    res <- suppressMessages(
+      extract_f_waves(object, qrs_loc = sim$qrs_loc, rhythm = "flutter")
+    ),
+    "ventricular response is regular"
+  )
+  expect_true(res$record$rr_regular)
 })
 
 # Entropy ----

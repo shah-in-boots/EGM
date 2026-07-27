@@ -44,12 +44,13 @@ centre.}
 a channel number or name. Required when the annotations span more than one
 channel; see the channels section.}
 
-\item{pad_value}{The value used for padding. Defaults to \code{NA}, which marks
-the added samples as absent rather than as a measurement. Padding with \code{0}
-states that the potential there was zero, which is a fabricated observation:
-it biases \code{\link[=median_window]{median_window()}} toward the origin at the edges of the beat, and
-with it every measure read off the loop tails. Set it to \code{0} when a
-downstream step cannot carry missing values.}
+\item{pad_value}{The value used for padding: \code{NA} (default), a single number,
+or the string \code{"edge"}. \code{NA} marks the added samples as absent rather than
+as a measurement. Padding with \code{0} states that the potential there was zero,
+which is a fabricated observation: it biases \code{\link[=median_window]{median_window()}} toward the
+origin at the edges of the beat, and with it every measure read off the loop
+tails. \code{"edge"} extends the nearest observed sample outward instead. See the
+fill section for choosing between them.}
 
 \item{preserve_class}{Logical. If TRUE (default), returns a \code{windows} object;
 if FALSE, returns a plain list of \code{EGM} objects.}
@@ -60,7 +61,9 @@ if FALSE, returns a plain list of \code{EGM} objects.}
 }
 \value{
 A \code{windows} object (or list) of padded \code{EGM} objects, all sharing the
-same sample length.
+same sample length. Amplitudes are untouched, so whatever DC offset the
+recording carried is still there; \code{\link[=baseline_window]{baseline_window()}} removes it, and
+variance-based methods find it first if it is left in.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -95,6 +98,29 @@ the feature is anchored at that common pre-feature offset. When
 (default: the window centre) and any samples that fall outside the target
 are truncated.
 }
+\section{What the fill claims}{
+
+
+Every padded sample is a claim about signal that was never recorded, and the
+three fills make different ones.
+
+\code{NA} claims nothing, which is why it is the default. The cost is that a
+padded collection cannot go straight into a matrix method, and the obvious
+handling is the wrong one: where the padded length exceeds the median wave
+span - as it must, or nothing would be padded - \emph{every} window carries some
+\code{NA}, so dropping incomplete cases empties the matrix rather than trimming
+it.
+
+\code{"edge"} claims the signal held its last observed value. For a window whose
+pad region is isoelectric - the TP and PR segments either side of a P wave,
+say - that is close to true and is the fill to reach for. Across a wave it
+is not, and it flattens the tails it invents.
+
+\code{0} claims the potential was zero there. Because the windows are not
+baseline-corrected (see the return value), zero is not even the isoelectric
+line; it is wherever the recording's DC offset happens to put it.
+}
+
 \section{Guiding channel}{
 
 
@@ -132,3 +158,7 @@ signal for every channel, which is what makes a windowed beat usable as a
 vectorcardiogram.
 }
 
+\seealso{
+\code{\link[=baseline_window]{baseline_window()}}, \code{\link[=median_window]{median_window()}}, \code{\link[=normalize_window]{normalize_window()}},
+\code{\link[=by_beat]{by_beat()}} for cutting windows equal in the first place
+}

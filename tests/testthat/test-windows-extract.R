@@ -183,13 +183,20 @@ test_that("by_beat drops beats without room rather than truncating them", {
                       "ecgpuwave")
   beats <- length(EGM:::locate_features(object$annotation[[1]], "N"))
 
-  # A span wider than the record's margins costs beats at each end
-  expect_message(
-    windows <- get_windows(object, by = by_beat(before = 2000, after = 2000)),
-    "too near the ends of the record"
+  # A span wider than the record's margins costs beats at each end. The count is
+  # recorded rather than announced: it is unavoidable on a short strip, so a
+  # message would fire on nearly every record and say nothing actionable.
+  expect_silent(
+    windows <- get_windows(object, by = by_beat(before = 2000, after = 2000))
   )
   expect_lt(length(windows), beats)
   expect_length(unique(vapply(windows, function(w) nrow(w$signal), integer(1))), 1)
+
+  # Every candidate is accounted for, either returned or counted as dropped
+  expect_equal(
+    window_dropped(windows)[["incomplete_span"]],
+    beats - length(windows)
+  )
 })
 
 test_that("by_beat validates its arguments where they are written", {
