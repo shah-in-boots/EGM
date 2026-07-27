@@ -4,12 +4,17 @@
 \alias{median_annotations}
 \title{Fiducials of a median beat}
 \usage{
-median_annotations(windows, frequency)
+median_annotations(windows, frequency, anchor = NULL, channel_criteria = NULL)
 }
 \arguments{
 \item{windows}{A list of aligned \code{EGM} objects sharing a common length.}
 
 \item{frequency}{Sampling frequency in Hz, used to fill annotation times.}
+
+\item{anchor}{Optional fiducial that ranks are counted outward from, given as
+for \code{\link[=locate_feature]{locate_feature()}}.}
+
+\item{channel_criteria}{Optional guiding channel used to locate \code{anchor}.}
 }
 \value{
 An \code{annotation_table}, empty when the windows carry no annotations.
@@ -20,11 +25,14 @@ way the signal itself is collapsed: each fiducial is placed at the median of
 its positions.
 }
 \details{
-Annotations are matched between windows by channel, type, and how
-many of that pair came before them within their own window, so the first QRS
-onset of one beat lines up with the first of every other rather than with
-whichever bracket happens to sort alongside it. A fiducial carried by no more
-than half the windows is dropped; it is not part of what the median beat
-describes.
+Annotations are matched between windows by channel, type, wave, and
+rank among others of that kind in the same window. Wave identity and rank
+both matter because a fixed-span window (see \code{\link[=by_beat]{by_beat()}}) reaches into the
+neighbouring beats, and which of their fiducials fall inside varies with the
+rate. Given an \code{anchor}, ranks are counted outward from it, so "the first T
+offset after the fiducial" names the same fiducial in every window however
+many neighbours drifted into the span; without one they are counted from the
+window start. A fiducial carried by no more than half the windows is dropped;
+it is not part of what the median beat describes.
 }
 \keyword{internal}

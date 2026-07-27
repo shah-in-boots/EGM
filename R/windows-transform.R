@@ -366,7 +366,12 @@ median_window <- function(
     new_EGM(
       signal = median_signal,
       header = median_header,
-      annotation = median_annotations(windows, rl$frequency)
+      annotation = median_annotations(
+      windows,
+      rl$frequency,
+      anchor = align_feature,
+      channel_criteria = channel_criteria
+    )
     ),
     windows = windows
   )
@@ -378,31 +383,48 @@ median_window <- function(
 #'   way the signal itself is collapsed: each fiducial is placed at the median of
 #'   its positions.
 #'
-#' @details Annotations are matched between windows by channel, type, and how
-#'   many of that pair came before them within their own window, so the first QRS
-#'   onset of one beat lines up with the first of every other rather than with
-#'   whichever bracket happens to sort alongside it. A fiducial carried by no more
-#'   than half the windows is dropped; it is not part of what the median beat
-#'   describes.
+#' @details Annotations are matched between windows by channel, type, wave, and
+#'   rank among others of that kind in the same window. Wave identity and rank
+#'   both matter because a fixed-span window (see [by_beat()]) reaches into the
+#'   neighbouring beats, and which of their fiducials fall inside varies with the
+#'   rate. Given an `anchor`, ranks are counted outward from it, so "the first T
+#'   offset after the fiducial" names the same fiducial in every window however
+#'   many neighbours drifted into the span; without one they are counted from the
+#'   window start. A fiducial carried by no more than half the windows is dropped;
+#'   it is not part of what the median beat describes.
 #'
 #' @param windows A list of aligned `EGM` objects sharing a common length.
 #' @param frequency Sampling frequency in Hz, used to fill annotation times.
+#' @param anchor Optional fiducial that ranks are counted outward from, given as
+#'   for [locate_feature()].
+#' @param channel_criteria Optional guiding channel used to locate `anchor`.
 #'
 #' @return An `annotation_table`, empty when the windows carry no annotations.
 #'
 #' @keywords internal
-median_annotations <- function(windows, frequency) {
+median_annotations <- function(
+  windows,
+  frequency,
+  anchor = NULL,
+  channel_criteria = NULL
+) {
   fiducials <- data.table::rbindlist(lapply(windows, function(w) {
-    ann <- as.data.frame(get_single_annotation(w))
+    ann <- as.data.frame(label_waves(get_single_annotation(w)))
     if (nrow(ann) == 0) {
       return(NULL)
     }
     ann <- ann[order(ann$sample), , drop = FALSE]
 
-    # Key: the channel and type, plus the rank of this annotation among others
-    # of that pair in the same window
-    pair <- paste(ann$channel, ann$type)
-    ann$key <- paste(pair, stats::ave(seq_along(pair), pair, FUN = seq_along))
+    at <- if (is.null(anchor)) {
+      NA_integer_
+    } else {
+      locate_feature(get_single_annotation(w), anchor, channel_criteria)
+    }
+
+    kind <- paste(ann$channel, ann$type, ann$wave)
+    ann$key <- paste(kind, stats::ave(ann$sample, kind, FUN = function(s) {
+      seq_along(s) - if (is.na(at)) 0L else sum(s < at)
+    }))
     ann
   }))
 

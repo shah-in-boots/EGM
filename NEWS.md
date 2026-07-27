@@ -169,6 +169,27 @@
   recording how many windows went into the beat, and loses the `window_info`
   string naming the single source window it is no longer from.
 
+* **`by_beat()` is a new windowing strategy.** It cuts the same span of signal
+  around every occurrence of a fiducial, so every window is the same length by
+  construction. That is what a representative beat needs: reducing ragged windows
+  means padding them onto a common grid first, and a padded sample is a
+  fabricated one. Cutting a fixed span out of the continuous recording leaves
+  nothing to pad, which is how the standard representative beat is derived
+  (Kligfield et al., 2007). Beats too near either end of the record for the full
+  span are dropped rather than truncated, and how many is reported.
+
+  `vectorcardiogram()` and `atrial_vectorcardiogram()` use it, so their median
+  beat no longer contains any fabricated sample. On the bundled AF record, where
+  T-offset wanders by 158 ms and only 57% of a padded grid was backed by every
+  beat, the GEH components are now computable at all.
+
+* **`median_window()` matches fiducials by wave identity and by rank counted
+  outward from `align_feature`.** A fixed span reaches into the neighbouring
+  beats, and which of their fiducials fall inside varies with the rate, so rank
+  counted from the window start named a different fiducial in each window — on
+  the AF record it placed the T onset before the QRS it belonged to, and the
+  spatial QRS-T angle came back `NA`.
+
 * **`pad_window()` pads with `NA` rather than `0`** (**breaking**). Zero is a
   fabricated observation: it states that the potential at those samples was zero,
   and it drags `median_window()` toward the origin wherever the windows do not
@@ -179,10 +200,7 @@
   the bundled AF record only 57% of the padded grid is backed by every beat.
   Pass `pad_value = 0` where a downstream step cannot carry missing values.
 
-  This is a mitigation, not the fix. The standard construction (AHA/ACCF/HRS
-  Part I, Kligfield et al. 2007) forms the representative beat over a fixed span
-  of the continuous recording, so nothing is cut short and nothing needs
-  padding; a fixed-width windowing strategy would remove the question entirely.
+  Where padding can be avoided entirely, it now is: see `by_beat()`.
 
 * **Windows cut from an `ECG` are `ECG`s.** The class was previously lost at
   extraction, so a windowed beat could not satisfy an analysis gated on it.

@@ -351,32 +351,39 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
     }
   }
 
-  # A beat runs to the last wave the record actually delineates. Without a T
-  # wave the ventricular loop still stands; its GEH components come back NA.
-  labelled <- label_waves(ann)
-  closed <- waves[vapply(waves, function(v) {
-    any(labelled$type == ")" & labelled$wave %in% v)
-  }, logical(1))]
-  if (length(closed) == 0 || closed[1] != waves[1]) {
+  # A fixed span around the fiducial, wide enough to hold the waves at any
+  # physiological rate. Equal-length windows are what let the median be taken
+  # without padding, which would fabricate the very samples the loop tails are
+  # read from.
+  span <- if (waves[1] == "P") c(200, 200) else c(400, 600)
+  before <- ceiling(span[1] / 1000 * frequency)
+
+  # An object holding a single beat - a window, or a median of them - is taken as
+  # it stands. There is no room in it for a span, and nothing left to reduce.
+  centres <- locate_features(ann, peaks[[waves[1]]], channel)
+  if (length(centres) == 0) {
     stop("No complete ", waves[1], " waves could be delineated", call. = FALSE)
   }
 
-  windows <- get_windows(
-    object,
-    by = by_rhythm(
-      rhythm = "sinus",
-      onset = list(type = "(", wave = waves[1]),
-      offset = list(type = ")", wave = closed[length(closed)]),
-      reference = list(type = peaks[[waves[1]]]),
-      channel = channel
+  windows <- if (length(centres) == 1) {
+    list(object)
+  } else {
+    get_windows(
+      object,
+      by = by_beat(
+        before = span[1],
+        after = span[2],
+        feature = peaks[[waves[1]]],
+        channel = channel
+      )
     )
-  )
+  }
   if (length(windows) == 0) {
     stop("No complete ", waves[1], " waves could be delineated", call. = FALSE)
   }
 
-  # A median beat is a beat, and it carries the fiducials that produced it, so
-  # both paths converge here. An object that was already one beat is left alone.
+  # Every window is the same length, so the median needs no padding; the feature
+  # is passed only so that fiducials are matched outward from it.
   if (beats == "median" && length(windows) > 1) {
     windows <- list(median_window(
       windows,
@@ -391,17 +398,30 @@ trace_loops <- function(object, waves, beats, channel, baseline, what) {
       fiducials <- fiducials[fiducials$channel %in% c(as.integer(channel), 0L), ]
     }
 
-    # Row range of each wave within the beat
-    mark <- lapply(waves, function(v) {
-      onset <- fiducials$sample[fiducials$type == "(" & fiducials$wave %in% v]
-      offset <- fiducials$sample[fiducials$type == ")" & fiducials$wave %in% v]
-      if (length(onset) == 0 || length(offset) == 0) {
-        NULL
-      } else {
-        c(min(onset), max(offset)) + 1L
-      }
-    })
-    names(mark) <- waves
+    # Row range of each wave. The window reaches into the neighbouring beats, so
+    # the waves are walked outward from the fiducial: the first is the bracket
+    # pair enclosing it, and each later one the first pair to open after the wave
+    # before it.
+    mark <- stats::setNames(vector("list", length(waves)), waves)
+
+    # Where the fiducial sits in this window. `by_beat()` puts it at `before`; a
+    # beat handed in directly puts it wherever it happens to be.
+    anchors <- fiducials$sample[fiducials$type == peaks[[waves[1]]]]
+    if (length(anchors) == 0) {
+      stop("No ", waves[1], " peak in this beat", call. = FALSE)
+    }
+    walk <- anchors[which.min(abs(anchors - before))]
+    for (v in waves) {
+      opens <- sort(fiducials$sample[fiducials$type == "(" & fiducials$wave %in% v])
+      closes <- sort(fiducials$sample[fiducials$type == ")" & fiducials$wave %in% v])
+      opens <- if (v == waves[1]) opens[opens <= walk] else opens[opens > walk]
+      if (length(opens) == 0) next
+      onset <- if (v == waves[1]) opens[length(opens)] else opens[1]
+      offset <- closes[closes > onset][1]
+      if (is.na(offset)) next
+      mark[[v]] <- c(onset, offset) + 1L
+      walk <- offset
+    }
     if (is.null(mark[[waves[1]]])) {
       stop("No complete ", waves[1], " wave in this beat", call. = FALSE)
     }

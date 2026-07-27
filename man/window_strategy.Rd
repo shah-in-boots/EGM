@@ -22,9 +22,10 @@ the search. Strategy objects are values: build one once and reuse it across
 every record in a study. Pass one to \code{\link[=get_windows]{get_windows()}}.
 
 Strategies are created by the \verb{by_*()} constructors, which validate their own
-arguments; this class only carries the resolved result. Currently
-\code{\link[=by_rhythm]{by_rhythm()}} is the only strategy.
+arguments; this class only carries the resolved result. \code{\link[=by_rhythm]{by_rhythm()}} follows
+the signal and returns windows of differing length; \code{\link[=by_beat]{by_beat()}} cuts a fixed
+span around a fiducial and returns windows that are all the same length.
 }
 \seealso{
-\code{\link[=by_rhythm]{by_rhythm()}}, \code{\link[=get_windows]{get_windows()}}
+\code{\link[=by_rhythm]{by_rhythm()}}, \code{\link[=by_beat]{by_beat()}}, \code{\link[=get_windows]{get_windows()}}
 }

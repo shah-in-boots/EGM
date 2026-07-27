@@ -147,3 +147,106 @@ test_that("label_waves recovers wave identity positionally", {
   expect_true(any(brackets$wave == "P", na.rm = TRUE))
   expect_true(any(brackets$wave == "T", na.rm = TRUE))
 })
+
+# Beat strategy ----
+
+test_that("by_beat cuts a fixed span around every fiducial", {
+
+  object <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"),
+                      "ecgpuwave")
+  windows <- get_windows(object, by = by_beat(before = 300, after = 500))
+
+  expect_s3_class(windows, "windows")
+  expect_gt(length(windows), 1)
+
+  # Every window is the same length, which is the whole point: 800 ms at 500 Hz
+  lengths <- vapply(windows, function(w) nrow(w$signal), integer(1))
+  expect_length(unique(lengths), 1)
+  expect_equal(unique(lengths), 401L)
+
+  # The fiducial lands at the same index in each, `before` samples in
+  qrs <- vapply(windows, function(w) {
+    a <- EGM:::get_single_annotation(w)
+    as.numeric(a$sample[a$type == "N"][1])
+  }, numeric(1))
+  expect_equal(unique(qrs), 150)
+
+  # Ragged rhythm windows of the same record are, by contrast, not uniform
+  ragged <- get_windows(object, by = by_rhythm())
+  expect_gt(length(unique(vapply(ragged, function(w) nrow(w$signal), integer(1)))), 1)
+})
+
+test_that("by_beat drops beats without room rather than truncating them", {
+
+  object <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"),
+                      "ecgpuwave")
+  beats <- length(EGM:::locate_features(object$annotation[[1]], "N"))
+
+  # A span wider than the record's margins costs beats at each end
+  expect_message(
+    windows <- get_windows(object, by = by_beat(before = 2000, after = 2000)),
+    "too near the ends of the record"
+  )
+  expect_lt(length(windows), beats)
+  expect_length(unique(vapply(windows, function(w) nrow(w$signal), integer(1))), 1)
+})
+
+test_that("by_beat validates its arguments where they are written", {
+
+  expect_s3_class(by_beat(), "EGM::window_strategy")
+  expect_equal(by_beat()@method, "beat")
+  expect_equal(by_beat(feature = "p", channel = 2)@params$channel, 2L)
+
+  expect_error(by_beat(before = -1), "non-negative")
+  expect_error(by_beat(after = c(1, 2)), "non-negative")
+  expect_error(by_beat(feature = 3), "type symbol")
+  expect_error(by_beat(channel = -1), "non-negative whole number")
+  expect_error(by_beat(adjust_sample_indices = NA), "TRUE or FALSE")
+
+  out <- capture.output(print(by_beat()))
+  expect_true(any(grepl("<window_strategy: beat>", out)))
+})
+
+test_that("fixed-span windows need no padding to be reduced", {
+
+  object <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"),
+                      "ecgpuwave")
+  windows <- get_windows(object, by = by_beat())
+
+  # No alignment argument is needed, and nothing comes back missing
+  beat <- median_window(windows)
+  expect_equal(nrow(beat$signal), nrow(windows[[1]]$signal))
+  expect_false(anyNA(beat$signal$II))
+
+  # Each sample of the median is backed by every window
+  mat <- vapply(windows, function(w) w$signal$II, numeric(nrow(beat$signal)))
+  expect_false(anyNA(mat))
+  expect_true(all(beat$signal$II >= apply(mat, 1, min) - 1e-8))
+  expect_true(all(beat$signal$II <= apply(mat, 1, max) + 1e-8))
+})
+
+test_that("median fiducials are matched outward from an anchor", {
+
+  # In atrial fibrillation the neighbouring beats drift in and out of a fixed
+  # span, so rank counted from the window start names a different fiducial in
+  # each window. Counted from the anchor, it names the same one.
+  object <- read_wfdb("muse-af", system.file("extdata", package = "EGM"),
+                      "ecgpuwave")
+  windows <- get_windows(object, by = by_beat(before = 400, after = 600))
+
+  anchored <- EGM:::label_waves(EGM:::median_annotations(
+    windows, frequency = 500, anchor = "N"
+  ))
+  unanchored <- EGM:::label_waves(EGM:::median_annotations(windows, frequency = 500))
+
+  qrs_peak <- anchored$sample[anchored$type == "N"][1]
+  t_onset <- anchored$sample[anchored$type == "(" & anchored$wave %in% "T"]
+
+  # The T wave of the anchored beat opens after its QRS, where it belongs
+  expect_length(t_onset, 1)
+  expect_gt(t_onset, qrs_peak)
+
+  # Without the anchor it does not
+  loose <- unanchored$sample[unanchored$type == "(" & unanchored$wave %in% "T"]
+  expect_false(length(loose) == 1 && loose > qrs_peak)
+})
