@@ -15,6 +15,7 @@ annotation_table(
   channel = integer(),
   number = integer(),
   aux = character(),
+  channel_zero = c("global", "signal"),
   ...
 )
 
@@ -47,6 +48,11 @@ annotation, or a \code{character} representing the channel name}
 
 \item{number}{An additional \code{integer} value or number that classifies the
 annotation (allows for compatibility with multiple annotation types)}
+
+\item{channel_zero}{What the value \code{0} in the \code{channel} column means, either
+\code{"global"} (default) or \code{"signal"}. See \link{channels} for which one a file
+wants; the default is right for every annotator that does not populate the
+field.}
 
 \item{...}{Additional arguments to be passed to the function}
 

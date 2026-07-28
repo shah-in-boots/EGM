@@ -13,7 +13,8 @@ read_annotation(
   begin = NULL,
   end = NULL,
   header = NULL,
-  interval = NULL
+  interval = NULL,
+  channel_zero = c("global", "signal")
 )
 
 write_annotation(data, annotator, record, record_dir = ".")
@@ -52,6 +53,13 @@ calculated):
 \item{interval}{A duration after \code{begin} that takes precedence over \code{end}.
 Numeric values are seconds; character shortcuts such as \code{"30s"},
 \code{"100 ms"}, and \code{"2 min"} are supported.}
+
+\item{channel_zero}{What the value \code{0} in an annotation's \code{channel} column
+means: \code{"global"} (default), a fiducial belonging to no lead in particular,
+or \code{"signal"}, the first signal. The default is right for every annotator
+that does not populate the field, which is most of them; see \link{channels}.
+A file that numbers its channels \verb{0 .. nsig-1} is reported when read as
+global, since its first lead would otherwise be silently unselectable.}
 
 \item{data}{An \code{annotation_table} containing the 6 invariant columns required
 by the \code{\link[=annotation_table]{annotation_table()}} function}

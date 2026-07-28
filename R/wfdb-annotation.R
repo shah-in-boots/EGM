@@ -72,8 +72,10 @@ read_annotation <- function(
   begin = NULL,
   end = NULL,
   header = NULL,
-  interval = NULL
+  interval = NULL,
+  channel_zero = c("global", "signal")
 ) {
+  channel_zero <- match.arg(channel_zero)
   stopifnot(
     "`record` must be a single character string" = is.character(
       record
@@ -112,7 +114,8 @@ read_annotation <- function(
         begin = begin,
         end = end,
         interval = interval,
-        header = header
+        header = header,
+        channel_zero = channel_zero
       )
     })
     names(annotations) <- annotator
@@ -128,7 +131,8 @@ read_annotation <- function(
     begin = begin,
     end = end,
     interval = interval,
-    header = header
+    header = header,
+    channel_zero = channel_zero
   )
 }
 
@@ -140,7 +144,8 @@ read_annotation_single <- function(
   begin = NULL,
   end = NULL,
   header = NULL,
-  interval = NULL
+  interval = NULL,
+  channel_zero = "global"
 ) {
   if (is.null(header)) {
     header <- read_header(
@@ -223,6 +228,8 @@ read_annotation_single <- function(
     rep("", length(samples))
   }
 
+  warn_channel_convention(channel, header, channel_zero, record, annotator)
+
   annotation_table(
     annotator = annotator,
     time = time_strings,
@@ -231,8 +238,59 @@ read_annotation_single <- function(
     subtype = subtype,
     channel = channel,
     number = number,
-    aux = aux
+    aux = aux,
+    channel_zero = channel_zero
   )
+}
+
+#' Report a channel column that looks signal-numbered while read as global
+#'
+#' @description The one place the two conventions can be told apart, because it
+#'   is the only one holding both the channels and the number of signals the
+#'   header declares. Channels running `0 .. nsig-1` exactly fill the signals, so
+#'   the `0` in them is the first lead and not an absence of information.
+#'
+#' @details Read as global, such a file loses its first lead: those annotations
+#'   are treated as belonging to no lead, so they are retained alongside every
+#'   other channel rather than being selectable as one. Nothing downstream can
+#'   notice, which is why it is said here, once, where the file is opened.
+#'
+#' @param channel The channel column as read.
+#' @param header The record's `header_table`, or `NULL`.
+#' @param channel_zero The convention the caller declared.
+#' @param record,annotator Named in the message.
+#'
+#' @return Nothing, called for the warning.
+#'
+#' @keywords internal
+warn_channel_convention <- function(
+  channel,
+  header,
+  channel_zero,
+  record,
+  annotator
+) {
+  if (!identical(channel_zero, "global") || is.null(header)) {
+    return(invisible(NULL))
+  }
+  observed <- sort(unique(channel[!is.na(channel)]))
+  nsig <- attr(header, "record_line")$number_of_channels
+  if (length(nsig) == 0 || is.na(nsig[1]) || length(observed) < 2L) {
+    return(invisible(NULL))
+  }
+  if (!identical(as.integer(observed), seq_len(as.integer(nsig[1])) - 1L)) {
+    return(invisible(NULL))
+  }
+
+  warning(
+    "The `channel` column of ", record, ".", annotator, " runs 0 to ", nsig[1] - 1,
+    ", which is one channel per signal, so its 0 is the first lead rather than ",
+    "the global channel. Read as global that lead cannot be selected, and ",
+    "nothing downstream can notice. Pass `channel_zero = \"signal\"` if that is ",
+    "what the annotator meant.",
+    call. = FALSE
+  )
+  invisible(NULL)
 }
 
 #' @rdname wfdb_annotations

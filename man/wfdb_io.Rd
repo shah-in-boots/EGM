@@ -27,6 +27,7 @@ read_wfdb(
   interval = NULL,
   units = c("digital", "physical"),
   channels = character(),
+  channel_zero = c("global", "signal"),
   ...
 )
 
@@ -117,6 +118,13 @@ Numeric values are seconds; character shortcuts such as \code{"30s"},
 \item{channels}{Either the signal/channel in a \code{character} vector as a name or number.
 Allows for duplication of signal or to re-order signal if needed. If
 nothing is given, will default to all channels available.}
+
+\item{channel_zero}{What the value \code{0} in an annotation's \code{channel} column
+means: \code{"global"} (default), a fiducial belonging to no lead in particular,
+or \code{"signal"}, the first signal. The default is right for every annotator
+that does not populate the field, which is most of them; see \link{channels}.
+A file that numbers its channels \verb{0 .. nsig-1} is reported when read as
+global, since its first lead would otherwise be silently unselectable.}
 }
 \value{
 Depends on if it is a reading or writing function. For writing, will

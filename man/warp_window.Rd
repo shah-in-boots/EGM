@@ -105,8 +105,7 @@ and is always kept alongside the chosen lead.
 The channel may be a number or a channel name (\code{"II"}), resolved against the
 record's own header. A number is matched literally against the \code{channel}
 column, and the numbering there belongs to the annotator that wrote the
-file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
-the record rather than assuming:
+file. Read it off the record rather than assuming:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
 }\if{html}{\out{</div>}}

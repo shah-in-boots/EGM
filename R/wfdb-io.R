@@ -142,6 +142,13 @@ NULL
 #'   Allows for duplication of signal or to re-order signal if needed. If
 #'   nothing is given, will default to all channels available.
 #'
+#' @param channel_zero What the value `0` in an annotation's `channel` column
+#'   means: `"global"` (default), a fiducial belonging to no lead in particular,
+#'   or `"signal"`, the first signal. The default is right for every annotator
+#'   that does not populate the field, which is most of them; see [channels].
+#'   A file that numbers its channels `0 .. nsig-1` is reported when read as
+#'   global, since its first lead would otherwise be silently unselectable.
+#'
 #' @param info_strings A `list` of strings that will be written as an appendix
 #'   to the header file, usually containing information about the channels,
 #'   (e.g. list of colors, extra labels, etc).
@@ -417,9 +424,11 @@ read_wfdb <- function(
   interval = NULL,
   units = c("digital", "physical"),
   channels = character(),
+  channel_zero = c("global", "signal"),
   ...
 ) {
   units <- match.arg(units)
+  channel_zero <- match.arg(channel_zero)
 
   # Load the shared header once so it can be passed to both the signal and
   # optional annotation readers without re-parsing the file.
@@ -445,7 +454,8 @@ read_wfdb <- function(
       header = header,
       begin = begin,
       end = end,
-      interval = interval
+      interval = interval,
+      channel_zero = channel_zero
     )
     # read_annotation returns annotation_table for single, list for multiple
     # EGM() will convert to list format automatically

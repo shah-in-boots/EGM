@@ -117,7 +117,8 @@ match_features <- function(ann, feature, channel_criteria = NULL) {
   # A requested channel is exact when that channel contains a matching feature.
   # Global channel 0 is a feature-level fallback only; including both and taking
   # the first can accidentally select a global event instead of the requested
-  # lead.
+  # lead. Where the table numbers its channels by signal there is no global
+  # channel to fall back to, and 0 is a lead like any other.
   if (
     !is.null(channel_criteria) && "channel" %in% colnames(work) &&
       !("channel" %in% names(criteria))
@@ -125,7 +126,7 @@ match_features <- function(ann, feature, channel_criteria = NULL) {
     requested <- filter_criteria(
       work[work$channel == as.integer(channel_criteria), ]
     )
-    if (nrow(requested) > 0) {
+    if (nrow(requested) > 0 || identical(channel_zero(ann), "signal")) {
       return(requested)
     }
     return(filter_criteria(work[work$channel == 0L, ]))

@@ -233,6 +233,11 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #'
 #' @param frequency An `integer` that represents the sampling frequency in Hertz
 #'
+#' @param channel_zero What the value `0` in the `channel` column means, either
+#'   `"global"` (default) or `"signal"`. See [channels] for which one a file
+#'   wants; the default is right for every annotator that does not populate the
+#'   field.
+#'
 #' @export
 annotation_table <- function(
   annotator = character(),
@@ -244,8 +249,10 @@ annotation_table <- function(
   channel = integer(),
   number = integer(),
   aux = character(),
+  channel_zero = c("global", "signal"),
   ...
 ) {
+  channel_zero <- match.arg(channel_zero)
   # Invariant rules:
   # 	Can add and remove rows (each row is an annotation)
   # 	Rows CAN be re-ordered
@@ -330,11 +337,15 @@ annotation_table <- function(
     aux = aux
   )
 
-  new_annotation_table(x, annotator)
+  new_annotation_table(x, annotator, channel_zero)
 }
 
 #' @keywords internal
-new_annotation_table <- function(x = list(), annotator = character()) {
+new_annotation_table <- function(
+  x = list(),
+  annotator = character(),
+  channel_zero = "global"
+) {
   if (length(x) > 0) {
     checkmate::assert_list(
       x,
@@ -350,6 +361,7 @@ new_annotation_table <- function(x = list(), annotator = character()) {
   new_data_frame(
     x,
     annotator = annotator,
+    channel_zero = channel_zero,
     class = c("annotation_table", "data.table")
   )
 }
@@ -357,11 +369,28 @@ new_annotation_table <- function(x = list(), annotator = character()) {
 #' @export
 print.annotation_table <- function(x, ...) {
   if (nrow(x) > 0) {
+    # A table built by hand carries no annotator, and `sprintf()` fed a
+    # zero-length argument returns `character(0)` - which printed the whole
+    # header as nothing at all rather than as a header without a name
+    annotator <- attributes(x)$annotator
+    annotator <- if (length(annotator) == 0 || !nzchar(annotator[1])) {
+      ""
+    } else {
+      paste0(" `", annotator[1], "`")
+    }
+
+    # The channel convention is named only when it is the unusual one, so that
+    # an ordinary table prints as it always has
     cat(sprintf(
-      '<%s: %s `%s` annotations>\n',
+      '<%s: %s%s annotations%s>\n',
       class(x)[[1]],
       dim(x)[1],
-      attributes(x)$annotator
+      annotator,
+      if (identical(channel_zero(x), "signal")) {
+        ", channel 0 is the first signal"
+      } else {
+        ""
+      }
     ))
     if (lengths(x)[1] > 0) {
       NextMethod()
@@ -381,6 +410,59 @@ vec_ptype_full.annotation_table <- function(x, ...) "annotation_table"
 #' @rdname annotation_table
 is_annotation_table <- function(x) {
   inherits(x, "annotation_table")
+}
+
+#' What the value zero means in an annotation's channel column
+#'
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#'
+#' Reports which convention an annotation table follows: `"global"`, where `0`
+#' marks a fiducial belonging to no lead in particular, or `"signal"`, where `0`
+#' is the first signal like any other channel number.
+#'
+#' @details The WFDB specification settles neither reading. `annot(5)` says only
+#'   that the `chan` field starts at `0` and persists until a `CHN` record
+#'   changes it; nothing reserves a value for "no particular signal", and nothing
+#'   requires the field to name a real signal. So the convention belongs to
+#'   whatever wrote the file, and the package has to be told rather than guess.
+#'
+#'   `"global"` is the default because it is what the files say. Every annotator
+#'   that does not populate the field leaves it at `0` throughout - `ecgpuwave`,
+#'   `wqrs`, and the twelve per-lead files of the bundled LUDB record, which
+#'   carry the lead in the *file extension* and `0` in every annotation. An
+#'   all-zero channel column is an absence of information, not a claim that every
+#'   fiducial belongs to the first signal.
+#'
+#'   Declare `"signal"` for a file that numbers its channels `0 .. nsig-1`, where
+#'   `0` is a lead and there is no global channel. Set it at [read_annotation()]
+#'   or [read_wfdb()]; the label rides on the table from there, so every function
+#'   that resolves a channel reads the same answer.
+#'
+#' @param x An `annotation_table`, or an `EGM` carrying one.
+#'
+#' @return A single `character`, `"global"` or `"signal"`.
+#'
+#' @examples
+#' \dontrun{
+#' channel_zero(get_annotation(read_wfdb("ecg", test_path(), "ecgpuwave")))
+#' #> [1] "global"
+#' }
+#'
+#' @seealso [channels] for how the answer is used, [read_annotation()] to declare
+#'   it.
+#'
+#' @export
+channel_zero <- function(x) {
+  ann <- if (is_annotation_table(x) || is.data.frame(x)) x else get_single_annotation(x)
+  value <- attr(ann, "channel_zero")
+  # Anything built before the label existed, or by a route that dropped it,
+  # follows the convention every annotator in the wild actually writes
+  if (is.null(value) || !identical(as.character(value)[1], "signal")) {
+    return("global")
+  }
+  "signal"
 }
 
 #' @keywords internal

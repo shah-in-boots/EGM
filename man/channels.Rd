@@ -35,8 +35,7 @@ and is always kept alongside the chosen lead.
 The channel may be a number or a channel name (\code{"II"}), resolved against the
 record's own header. A number is matched literally against the \code{channel}
 column, and the numbering there belongs to the annotator that wrote the
-file - the WFDB tools number channels from \code{0}, others from \code{1}. Read it off
-the record rather than assuming:
+file. Read it off the record rather than assuming:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{table(get_annotation(x)$channel)
 }\if{html}{\out{</div>}}
@@ -46,6 +45,44 @@ signal for every channel, which is what makes a windowed beat usable as a
 vectorcardiogram.
 }
 
+\section{What channel zero means}{
+
+
+Zero is the one value the WFDB specification leaves undecided. \code{annot(5)}
+says the \code{chan} field starts at \code{0} and persists until a \code{CHN} record
+changes it; nothing reserves a value for "no particular signal", and nothing
+requires the field to name a real one. So \code{0} may mean the first signal, or
+it may mean the annotator never said.
+
+\strong{This package reads it as global by default}, because that is what the
+files say. Every annotator that does not populate the field leaves it at \code{0}
+throughout: \code{ecgpuwave}, \code{wqrs}, and the twelve per-lead files of the
+bundled LUDB record, whose delineations genuinely do differ lead to lead and
+which carry the lead in the \emph{file extension} rather than in \code{chan}. An
+all-zero channel column is an absence of information, not a claim that every
+fiducial belongs to the first signal, and reading it as global is what lets
+such a file be windowed without a \code{channel} at all.
+
+A file that numbers its channels \verb{0 .. nsig-1} means the other thing, and
+says so with \code{\link[=read_annotation]{read_annotation()}} or \code{\link[=read_wfdb]{read_wfdb()}}:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ecg <- read_wfdb("record", dir, "ann", channel_zero = "signal")
+}\if{html}{\out{</div>}}
+
+Then \code{0} is a lead like any other: it counts toward the span, it can be
+asked for, and there is no global channel to fall back on. The declaration
+rides on the annotation table - read it back with \code{\link[=channel_zero]{channel_zero()}} - so
+every function that resolves a channel gets the same answer, including the
+resolution of a lead \emph{name}, which is one lower under this convention.
+
+Reading such a file as global would cost it its first lead: those
+annotations would be treated as belonging to no lead, retained alongside
+every other channel and selectable as none. Nothing downstream can notice,
+so it is reported at the point of reading instead - a channel column running
+\verb{0 .. nsig-1} earns a warning naming the argument that fixes it.
+}
+
 \seealso{
-\code{\link[=get_windows]{get_windows()}}, \code{\link[=label_waves]{label_waves()}}, \code{\link[=get_annotation]{get_annotation()}}
+\code{\link[=get_windows]{get_windows()}}, \code{\link[=label_waves]{label_waves()}}, \code{\link[=get_annotation]{get_annotation()}},
+\code{\link[=channel_zero]{channel_zero()}}
 }

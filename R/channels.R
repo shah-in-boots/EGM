@@ -49,8 +49,7 @@ identify_channel_source <- function(x) {
 #'   The channel may be a number or a channel name (`"II"`), resolved against the
 #'   record's own header. A number is matched literally against the `channel`
 #'   column, and the numbering there belongs to the annotator that wrote the
-#'   file - the WFDB tools number channels from `0`, others from `1`. Read it off
-#'   the record rather than assuming:
+#'   file. Read it off the record rather than assuming:
 #'
 #'   ```r
 #'   table(get_annotation(x)$channel)
@@ -60,7 +59,44 @@ identify_channel_source <- function(x) {
 #'   signal for every channel, which is what makes a windowed beat usable as a
 #'   vectorcardiogram.
 #'
-#' @seealso [get_windows()], [label_waves()], [get_annotation()]
+#' @section What channel zero means:
+#'
+#'   Zero is the one value the WFDB specification leaves undecided. `annot(5)`
+#'   says the `chan` field starts at `0` and persists until a `CHN` record
+#'   changes it; nothing reserves a value for "no particular signal", and nothing
+#'   requires the field to name a real one. So `0` may mean the first signal, or
+#'   it may mean the annotator never said.
+#'
+#'   **This package reads it as global by default**, because that is what the
+#'   files say. Every annotator that does not populate the field leaves it at `0`
+#'   throughout: `ecgpuwave`, `wqrs`, and the twelve per-lead files of the
+#'   bundled LUDB record, whose delineations genuinely do differ lead to lead and
+#'   which carry the lead in the *file extension* rather than in `chan`. An
+#'   all-zero channel column is an absence of information, not a claim that every
+#'   fiducial belongs to the first signal, and reading it as global is what lets
+#'   such a file be windowed without a `channel` at all.
+#'
+#'   A file that numbers its channels `0 .. nsig-1` means the other thing, and
+#'   says so with [read_annotation()] or [read_wfdb()]:
+#'
+#'   ```r
+#'   ecg <- read_wfdb("record", dir, "ann", channel_zero = "signal")
+#'   ```
+#'
+#'   Then `0` is a lead like any other: it counts toward the span, it can be
+#'   asked for, and there is no global channel to fall back on. The declaration
+#'   rides on the annotation table - read it back with [channel_zero()] - so
+#'   every function that resolves a channel gets the same answer, including the
+#'   resolution of a lead *name*, which is one lower under this convention.
+#'
+#'   Reading such a file as global would cost it its first lead: those
+#'   annotations would be treated as belonging to no lead, retained alongside
+#'   every other channel and selectable as none. Nothing downstream can notice,
+#'   so it is reported at the point of reading instead - a channel column running
+#'   `0 .. nsig-1` earns a warning naming the argument that fixes it.
+#'
+#' @seealso [get_windows()], [label_waves()], [get_annotation()],
+#'   [channel_zero()]
 #'
 #' @name channels
 NULL
@@ -81,14 +117,16 @@ NULL
 #     falls back to the global channel and quietly returns the wrong fiducials,
 #     which is how an off-by-one in the numbering convention would go unnoticed.
 #
-# Channel `0` is the WFDB global channel rather than a lead of its own, so it is
-# excluded from the span and always retained by a restriction.
+# Channel `0` is the global channel rather than a lead of its own, so it is
+# excluded from the span and always retained by a restriction - unless the table
+# says otherwise, which is what `channel_zero()` reports.
 
 #' Channels an annotation table spans
 #'
 #' @description The distinct lead-specific channels present in an annotation
-#'   table. The global channel `0` is excluded, so a table that carries only
-#'   global annotations spans no channels and needs no guiding lead.
+#'   table. Under the default `"global"` convention channel `0` is excluded, so a
+#'   table that carries only global annotations spans no channels and needs no
+#'   guiding lead; a table declared `"signal"` counts `0` as the lead it is.
 #'
 #' @param ann An `annotation_table` (or compatible `data.table`).
 #'
@@ -101,7 +139,11 @@ annotation_channels <- function(ann) {
     return(integer())
   }
   channels <- unique(suppressWarnings(as.integer(ann$channel)))
-  sort(channels[!is.na(channels) & channels != 0L])
+  channels <- channels[!is.na(channels)]
+  if (identical(channel_zero(ann), "global")) {
+    channels <- channels[channels != 0L]
+  }
+  sort(channels)
 }
 
 #' Validate a channel argument
@@ -211,9 +253,17 @@ resolve_annotation_channel <- function(
       channel,
       ", which these annotations do not carry; they hold channel(s) ",
       paste(present, collapse = ", "),
-      ". The numbering is the annotator's own - WFDB's tools number channels ",
-      "from 0, others from 1 - so check it with ",
-      "`table(get_annotation(x)$channel)`.",
+      ". The numbering is the annotator's own - some count leads from 0 and ",
+      "some from 1 - so check it with `table(get_annotation(x)$channel)`",
+      if (channel == 0L) {
+        paste0(
+          ". Channel 0 is read as the global channel here; if this file means ",
+          "it as the first lead, read it with `channel_zero = \"signal\"`"
+        )
+      } else {
+        ""
+      },
+      ".",
       call. = FALSE
     )
   }

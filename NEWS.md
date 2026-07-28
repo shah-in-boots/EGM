@@ -55,6 +55,38 @@ record contained. They now resolve it the same way, documented once in
   looks disqualifying and is not. The contract is now stated in `?label_waves`
   and `?annotators` rather than reachable only by reading the source with `:::`.
 
+* **What channel `0` means is now stated rather than assumed, and can be
+  declared.** The WFDB specification settles it neither way: `annot(5)` says only
+  that the `chan` field starts at `0` and persists until a `CHN` record changes
+  it, nothing reserves a value for "no particular signal", and nothing requires
+  the field to name a real one.
+
+  The package reads `0` as the global channel, and that stays the default,
+  because it is what the files say. Every annotator bundled here that does not
+  populate the field leaves it at `0` throughout — `ecgpuwave`, `wqrs`, and the
+  twelve per-lead files of the LUDB record, whose delineations genuinely do
+  differ lead to lead (QRS positions spread up to 19 samples, each landing on its
+  own lead's steepest deflection) and which carry the lead in the *file
+  extension*. An all-zero channel column is an absence of information, not a
+  claim that every fiducial belongs to the first signal.
+
+  A file that numbers its channels `0 .. nsig-1` means the other thing, and now
+  says so: `read_annotation()` and `read_wfdb()` take `channel_zero = "signal"`,
+  and the declaration rides on the annotation table for every function that
+  resolves a channel to read — including the resolution of a lead *name*, which
+  is one lower under that convention. `channel_zero()` reads it back.
+
+  Read as global, such a file lost its first lead: those annotations were treated
+  as belonging to no lead, retained alongside every other channel and selectable
+  as none, while `locate_features()` resolved them correctly all along. Nothing
+  downstream could notice, so a channel column running `0 .. nsig-1` is now
+  reported when the file is opened, which is the one place holding both the
+  channels and the signal count.
+
+* **An `annotation_table` with no annotator prints its header again.** The header
+  was built with `sprintf()`, which returns `character(0)` when fed a zero-length
+  argument, so a table built by hand printed its rows with no header at all.
+
 ## Signal units
 
 * **`read_wfdb()` and `read_signal()` label the units they return.** Read them
