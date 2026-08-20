@@ -1,5 +1,34 @@
 # EGM (development version)
 
+## MUSE records were given the wrong ADC gain
+
+`read_muse()` applies `LeadAmplitudeUnitsPerBit` to every sample as it reads,
+so the signal it returns is in the units MUSE names — microvolts, on every GE
+export seen — rather than raw ADC counts. The header it built alongside said
+nothing about the gain, so the WFDB default of 200 stood, and reading the
+signal in physical units divided microvolts by 200 and called the answer
+millivolts.
+
+* **`read_muse()` now sets `ADC_gain` from `<LeadAmplitudeUnits>`** — 1000 for
+  a microvolt payload, 1 for a millivolt one — and refuses a record whose units
+  it does not recognise or that mixes them across leads. Nothing about the
+  values changes; only the header now describes them correctly.
+
+* **Every record converted through `read_muse()` before this is off by a factor
+  of five in physical units.** Lead II of the bundled `muse-sinus` has a
+  peak-to-peak amplitude of 0.93 mV and was read as 4.64 mV. Neither
+  `write_wfdb()` nor `signal_units()` could catch it: the values genuinely were
+  the stored ones and the `"digital"` label genuinely was right, so the labels
+  agreed with each other and only the gain disagreed with the data. Re-read the
+  XML, or edit the gain field of the affected `.hea` files in place — the
+  `.dat` payload was always correct.
+
+* **The bundled `muse-sinus`, `muse-af`, `ecg` and `ecg-sinus` records carry a
+  gain of 1000.** They were written from `read_muse()` output and inherited the
+  same header. Scale-free measures — angles, `planarity`, `organization_index`,
+  `f_ratio` — were never affected; `magnitude_*`, `area`, `sai_qrst` and
+  `f_amplitude_p2p` were.
+
 ## Per-lead annotations
 
 An annotator run once per lead writes twelve independent copies of every

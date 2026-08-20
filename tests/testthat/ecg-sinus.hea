@@ -1,16 +1,16 @@
 ecg-sinus 12 500 5000 09:16:39 25/07/2023
-ecg-sinus.dat	16	200(0)/mV	16	0	-24	1431	0	I
-ecg-sinus.dat	16	200(0)/mV	16	0	-20	-1764	0	II
-ecg-sinus.dat	16	200(0)/mV	16	0	5	-2892	0	III
-ecg-sinus.dat	16	200(0)/mV	16	0	-7	-2508	0	AVF
-ecg-sinus.dat	16	200(0)/mV	16	0	-15	2255	0	AVL
-ecg-sinus.dat	16	200(0)/mV	16	0	22	77	0	AVR
-ecg-sinus.dat	16	200(0)/mV	16	0	0	-13218	0	V1
-ecg-sinus.dat	16	200(0)/mV	16	0	-29	-6001	0	V2
-ecg-sinus.dat	16	200(0)/mV	16	0	-29	-7319	0	V3
-ecg-sinus.dat	16	200(0)/mV	16	0	-34	-7805	0	V4
-ecg-sinus.dat	16	200(0)/mV	16	0	-39	-4135	0	V5
-ecg-sinus.dat	16	200(0)/mV	16	0	-39	-3545	0	V6
+ecg-sinus.dat	16	1000(0)/mV	16	0	-24	1431	0	I
+ecg-sinus.dat	16	1000(0)/mV	16	0	-20	-1764	0	II
+ecg-sinus.dat	16	1000(0)/mV	16	0	5	-2892	0	III
+ecg-sinus.dat	16	1000(0)/mV	16	0	-7	-2508	0	AVF
+ecg-sinus.dat	16	1000(0)/mV	16	0	-15	2255	0	AVL
+ecg-sinus.dat	16	1000(0)/mV	16	0	22	77	0	AVR
+ecg-sinus.dat	16	1000(0)/mV	16	0	0	-13218	0	V1
+ecg-sinus.dat	16	1000(0)/mV	16	0	-29	-6001	0	V2
+ecg-sinus.dat	16	1000(0)/mV	16	0	-29	-7319	0	V3
+ecg-sinus.dat	16	1000(0)/mV	16	0	-34	-7805	0	V4
+ecg-sinus.dat	16	1000(0)/mV	16	0	-39	-4135	0	V5
+ecg-sinus.dat	16	1000(0)/mV	16	0	-39	-3545	0	V6
 # source ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG ECG
 # additional_gain 1 1 1 1 1 1 1 1 1 1 1 1
 # color #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000 #000000

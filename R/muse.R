@@ -10,6 +10,22 @@
 #' GE Healthcare MUSE v9 is currently the model that is being used. These
 #' functions have not been tested in older versions.
 #'
+#' # Units and gain
+#'
+#' MUSE stores each sample as an ADC count together with the scale that converts
+#' it, `LeadAmplitudeUnitsPerBit`, and the units that scale is in,
+#' `LeadAmplitudeUnits`. The scale is applied while reading, so the returned
+#' signal holds those units — microvolts on every export seen — and the header
+#' gets the `ADC_gain` that carries them back to millivolts, 1000 for a
+#' microvolt payload. A record whose units are unrecognised, or that names
+#' different units on different leads, is refused rather than given a gain that
+#' would put its amplitudes on an unknown scale.
+#'
+#' The samples are deliberately left on the microvolt scale rather than returned
+#' to raw counts. The augmented limb leads are derived here as halves of the
+#' recorded ones, so they fall between counts, and rounding them back onto the
+#' count grid would throw that precision away.
+#'
 #' @return An `EGM` class object that is a list of surface ECG signals the
 #'   format of a `data.table`, with an attached __header__ attribute that
 #'   contains additional recording data.
@@ -61,10 +77,18 @@ read_muse <- function(file) {
   colnames(leadMatrix) <- leadNames
 
   # Each lead must have data extracted
+  # MUSE names the units its per-bit scale is in alongside the scale itself, and
+  # both are collected here because the scale is applied to the samples below.
+  ampUnits <- character()
+
   for (l in leadPositions) {
     lead <- xml2::as_list(rhythmData[l][[1]])
     id <- lead$LeadID[[1]]
     ampPerByte <- as.numeric(lead$LeadAmplitudeUnitsPerBit[[1]])
+    ampUnits <- c(
+      ampUnits,
+      toupper(as.character(unlist(lead$LeadAmplitudeUnits)))
+    )
     waveform <- lead$WaveFormData[[1]]
     bin <- base64enc::base64decode(waveform)
     sigData <- readBin(bin, integer(), sampleCount, size = 2) * ampPerByte
@@ -178,12 +202,37 @@ read_muse <- function(file) {
     }() |>
     trimws()
 
+  # `LeadAmplitudeUnitsPerBit` has already been applied to every sample, so the
+  # matrix holds the units MUSE named rather than raw ADC counts.  The WFDB gain
+  # is what carries them back to millivolts, and the WFDB default of 200 reads a
+  # microvolt payload as though it were counts - a five-fold inflation of every
+  # amplitude that nothing downstream can catch, because the values and their
+  # "digital" label agree with each other and only the header disagrees.
+  # Do not rescale the payload back to counts instead: the limb leads derived
+  # above are halves, and land between counts.
+  ADC_gain <- c(MICROVOLTS = 1000, MILLIVOLTS = 1)[unique(ampUnits)]
+  if (length(ADC_gain) != 1 || is.na(ADC_gain)) {
+    stop(
+      "`LeadAmplitudeUnits` was read as ",
+      if (length(ampUnits) == 0) {
+        "absent"
+      } else {
+        paste(unique(ampUnits), collapse = ", ")
+      },
+      ", and only a single MICROVOLTS or MILLIVOLTS record can be given an ",
+      "ADC gain. Reading it anyway would put every amplitude in this record ",
+      "on an unknown scale.",
+      call. = FALSE
+    )
+  }
+
   hea <- header_table(
     record_name = file_nm,
     number_of_channels = leadCount,
     samples = sampleCount,
     frequency = hz,
     start_time = timeStamp,
+    ADC_gain = unname(ADC_gain),
     label = leadNames,
     info_strings = list(
       mrn = mrn,

@@ -25,3 +25,19 @@ options into XML.
 GE Healthcare MUSE v9 is currently the model that is being used. These
 functions have not been tested in older versions.
 }
+\section{Units and gain}{
+MUSE stores each sample as an ADC count together with the scale that converts
+it, \code{LeadAmplitudeUnitsPerBit}, and the units that scale is in,
+\code{LeadAmplitudeUnits}. The scale is applied while reading, so the returned
+signal holds those units — microvolts on every export seen — and the header
+gets the \code{ADC_gain} that carries them back to millivolts, 1000 for a
+microvolt payload. A record whose units are unrecognised, or that names
+different units on different leads, is refused rather than given a gain that
+would put its amplitudes on an unknown scale.
+
+The samples are deliberately left on the microvolt scale rather than returned
+to raw counts. The augmented limb leads are derived here as halves of the
+recorded ones, so they fall between counts, and rounding them back onto the
+count grid would throw that precision away.
+}
+
