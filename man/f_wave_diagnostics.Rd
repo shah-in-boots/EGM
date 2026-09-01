@@ -16,29 +16,34 @@ the provenance is stated here rather than left to be inferred.
 
 \strong{Published, and computed as published.} \code{dominant_rate} is the atrial
 fibrillatory rate, reported in fibrillations per minute as the literature
-does. \code{sample_entropy} is Richman and Moorman's statistic, with the embedding
-dimension, tolerance and sampling rate that Alcaraz et al. tuned for this
-task. \code{f_amplitude_p2p} is fibrillatory wave amplitude, the measure behind
-the coarse-versus-fine distinction: Li et al. called atrial fibrillation
-coarse at a peak-to-peak amplitude of 1 mm or more in V1, and found left
-atrial appendage dysfunction and thrombus more common in those patients.
-\code{rr_cv} is the coefficient of variation of the RR interval, which Tateno and
-Glass used to detect atrial fibrillation at 86.6\% sensitivity and 84.3\%
-specificity.
+does and read from lead V1 by default as the literature does (Bollmann et
+al. 2006; An et al. 2024; Escribano et al. 2024). \code{f_amplitude_p2p} is
+fibrillatory wave amplitude, the measure behind the coarse-versus-fine
+distinction: Li et al. called atrial fibrillation coarse at a peak-to-peak
+amplitude of 1 mm or more in V1, and found left atrial appendage dysfunction
+and thrombus more common in those patients. \code{rr_cv} is the coefficient of
+variation of the RR interval, which Tateno and Glass used to detect atrial
+fibrillation at 86.6\% sensitivity and 84.3\% specificity.
 
-\strong{Adapted from a published quantity.} \code{organization_index} follows Everett's
-definition and An's surface implementation but is not on their scale; see
+\strong{Adapted from a published quantity.} \code{sample_entropy} is Richman and
+Moorman's statistic with the embedding dimension, tolerance and sampling
+rate that Alcaraz et al. tuned for atrial fibrillation -- but they tuned
+them on the \emph{main atrial wave}, lead V1's atrial signal narrowed to a band
+around its dominant frequency, and by default it is computed here on the
+broadband cancelled signal, which reads higher (0.16 against 0.12 on
+\code{muse-af} V1). \code{entropy_input = "main_atrial_wave"} computes it on that wave
+through the 3 Hz band they selected, and with \code{entropy_tolerance = 0.25} on
+their exact parameter set. \code{f_ratio} is the
+Alcaraz-Rieta group's normalised f-wave amplitude, the RMS f-wave amplitude
+over the R-peak magnitude, with the peak-to-peak QRS excursion as the
+denominator and as a fraction rather than a percentage, so proportional to
+theirs and not equal. \code{organization_index} follows Everett's definition and
+An's surface implementation but is not on their scale; see
 \code{\link[=calculate_organization_index]{calculate_organization_index()}}. \code{cancellation_residual} is a variant of the
 published ventricular residue index, on a different normalisation.
 
 \strong{Specific to this package, with no published definition.}
-\code{harmonic_overlap} and \code{on_harmonic}, described below, and \code{f_ratio}, which
-divides the fibrillatory amplitude by the QRS excursion in the same lead. The
-f-wave amplitude in the numerator is thoroughly established; dividing it by
-the QRS is not, and was introduced here to make amplitudes comparable between
-patients of different body habitus, on the reasoning that the ventricular
-signal traverses the same thorax and so carries the same attenuation. That is
-a stated rationale, not a validated one.
+\code{harmonic_overlap} and \code{on_harmonic}, described below.
 
 \strong{Package operating points, not published cut-points.} \code{af_like} fires at an
 RR coefficient of variation of 0.12 with a normalised RMSSD of 0.10, and
@@ -115,4 +120,28 @@ Alcaraz R, Sornmo L, Rieta JJ. Reference database and performance evaluation
 of methods for extraction of atrial fibrillatory waves in the ECG.
 \emph{Physiological Measurement}. 2019;40(7):075011.
 \doi{10.1088/1361-6579/ab2b17}
+
+Alcaraz R, Rieta JJ. Sample entropy of the main atrial wave predicts
+spontaneous termination of paroxysmal atrial fibrillation. \emph{Medical
+Engineering & Physics}. 2009;31(8):917-922.
+\doi{10.1016/j.medengphy.2009.05.002}
+
+Alcaraz R, Abasolo D, Hornero R, Rieta JJ. Optimal parameters study for
+sample entropy-based atrial fibrillation organization analysis. \emph{Computer
+Methods and Programs in Biomedicine}. 2010;99(1):124-132.
+\doi{10.1016/j.cmpb.2010.02.009}
+
+Escribano P, Rodenas J, Garcia M, et al. Combination of frequency- and
+time-domain characteristics of the fibrillatory waves for enhanced
+prediction of persistent atrial fibrillation recurrence after catheter
+ablation. \emph{Heliyon}. 2024;10(3):e25295. \doi{10.1016/j.heliyon.2024.e25295}
+
+Bollmann A, Husser D, Mainardi L, et al. Analysis of surface
+electrocardiograms in atrial fibrillation: techniques, research, and clinical
+applications. \emph{Europace}. 2006;8(11):911-926. \doi{10.1093/europace/eul113}
+
+An K, Li H, Yu C, Zheng Z. Surface electrocardiogram f wave analysis in
+patients with atrial fibrillation undergoing thoracoscopic epicardial
+ablation. \emph{Interdisciplinary CardioVascular and Thoracic Surgery}.
+2024;38(5):ivae057. \doi{10.1093/icvts/ivae057}
 }

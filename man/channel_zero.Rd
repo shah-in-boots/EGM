@@ -2,7 +2,7 @@
 % Please edit documentation in R/wfdb-structures.R
 \name{channel_zero}
 \alias{channel_zero}
-\title{What the value zero means in an annotation's channel column}
+\title{How the file behind an annotation table counts its signals}
 \usage{
 channel_zero(x)
 }
@@ -15,28 +15,18 @@ A single \code{character}, \code{"global"} or \code{"signal"}.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-Reports which convention an annotation table follows: \code{"global"}, where \code{0}
-marks a fiducial belonging to no lead in particular, or \code{"signal"}, where \code{0}
-is the first signal like any other channel number.
+Reports the convention of the file an annotation table was read from, and
+will be written back to: \code{"global"}, where channels count signals from \code{1}
+and \code{0} marks a fiducial belonging to no lead in particular, or \code{"signal"},
+where they count from \code{0} as the WFDB tools do.
 }
 \details{
-The WFDB specification settles neither reading. \code{annot(5)} says only
-that the \code{chan} field starts at \code{0} and persists until a \code{CHN} record
-changes it; nothing reserves a value for "no particular signal", and nothing
-requires the field to name a real signal. So the convention belongs to
-whatever wrote the file, and the package has to be told rather than guess.
-
-\code{"global"} is the default because it is what the files say. Every annotator
-that does not populate the field leaves it at \code{0} throughout - \code{ecgpuwave},
-\code{wqrs}, and the twelve per-lead files of the bundled LUDB record, which
-carry the lead in the \emph{file extension} and \code{0} in every annotation. An
-all-zero channel column is an absence of information, not a claim that every
-fiducial belongs to the first signal.
-
-Declare \code{"signal"} for a file that numbers its channels \verb{0 .. nsig-1}, where
-\code{0} is a lead and there is no global channel. Set it at \code{\link[=read_annotation]{read_annotation()}}
-or \code{\link[=read_wfdb]{read_wfdb()}}; the label rides on the table from there, so every function
-that resolves a channel reads the same answer.
+In memory every table counts from \code{1}, with \code{0} the global channel.
+A file declared \code{"signal"} at \code{\link[=read_annotation]{read_annotation()}} or \code{\link[=read_wfdb]{read_wfdb()}} has one
+added to each channel as it is read, so the label here says nothing about
+the numbers in the table; it says how \code{\link[=write_annotation]{write_annotation()}} should number
+them on the way out, which it does by default. See \link{channels} for why the
+WFDB specification leaves the two readings open.
 }
 \examples{
 \dontrun{
@@ -46,6 +36,6 @@ channel_zero(get_annotation(read_wfdb("ecg", test_path(), "ecgpuwave")))
 
 }
 \seealso{
-\link{channels} for how the answer is used, \code{\link[=read_annotation]{read_annotation()}} to declare
-it.
+\link{channels} for the policy, \code{\link[=read_annotation]{read_annotation()}} to declare it,
+\code{\link[=write_annotation]{write_annotation()}} to override it on the way out.
 }

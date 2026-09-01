@@ -142,12 +142,21 @@ NULL
 #'   Allows for duplication of signal or to re-order signal if needed. If
 #'   nothing is given, will default to all channels available.
 #'
-#' @param channel_zero What the value `0` in an annotation's `channel` column
-#'   means: `"global"` (default), a fiducial belonging to no lead in particular,
-#'   or `"signal"`, the first signal. The default is right for every annotator
-#'   that does not populate the field, which is most of them; see [channels].
-#'   A file that numbers its channels `0 .. nsig-1` is reported when read as
-#'   global, since its first lead would otherwise be silently unselectable.
+#' @param channel_zero How the annotation file counts its signals. In memory a
+#'   `channel` always counts them from `1`, as `header$number` does, with `0`
+#'   the global channel for a fiducial belonging to no lead; this argument says
+#'   how the file does. On reading, `"auto"` (default) takes a column as
+#'   counting from `1` - which an all-zero column and a `1 .. nsig` column both
+#'   do - and refuses the one column that could count either way, running
+#'   `0 .. nsig-1` exactly, with a message naming the two declarations.
+#'   `"global"` reads every column as counting from `1`; `"signal"` reads it as
+#'   counting from `0`, as the WFDB tools do, and adds one to each channel so
+#'   the table counts from `1` like every other. The table remembers which,
+#'   readable with [channel_zero()], and [write_annotation()] uses that by
+#'   default (`NULL`) to number the file the way it came in; give `"global"` or
+#'   `"signal"` there to choose. A table holding a global annotation cannot be
+#'   written under `"signal"`, since the value it would take is the first
+#'   signal's, and that is an error. See [channels].
 #'
 #' @param info_strings A `list` of strings that will be written as an appendix
 #'   to the header file, usually containing information about the channels,
@@ -424,7 +433,7 @@ read_wfdb <- function(
   interval = NULL,
   units = c("digital", "physical"),
   channels = character(),
-  channel_zero = c("global", "signal"),
+  channel_zero = c("auto", "global", "signal"),
   ...
 ) {
   units <- match.arg(units)

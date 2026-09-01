@@ -14,10 +14,16 @@ read_annotation(
   end = NULL,
   header = NULL,
   interval = NULL,
-  channel_zero = c("global", "signal")
+  channel_zero = c("auto", "global", "signal")
 )
 
-write_annotation(data, annotator, record, record_dir = ".")
+write_annotation(
+  data,
+  annotator,
+  record,
+  record_dir = ".",
+  channel_zero = NULL
+)
 }
 \arguments{
 \item{record}{String that will be used to name the WFDB record. Cannot
@@ -54,12 +60,21 @@ calculated):
 Numeric values are seconds; character shortcuts such as \code{"30s"},
 \code{"100 ms"}, and \code{"2 min"} are supported.}
 
-\item{channel_zero}{What the value \code{0} in an annotation's \code{channel} column
-means: \code{"global"} (default), a fiducial belonging to no lead in particular,
-or \code{"signal"}, the first signal. The default is right for every annotator
-that does not populate the field, which is most of them; see \link{channels}.
-A file that numbers its channels \verb{0 .. nsig-1} is reported when read as
-global, since its first lead would otherwise be silently unselectable.}
+\item{channel_zero}{How the annotation file counts its signals. In memory a
+\code{channel} always counts them from \code{1}, as \code{header$number} does, with \code{0}
+the global channel for a fiducial belonging to no lead; this argument says
+how the file does. On reading, \code{"auto"} (default) takes a column as
+counting from \code{1} - which an all-zero column and a \verb{1 .. nsig} column both
+do - and refuses the one column that could count either way, running
+\verb{0 .. nsig-1} exactly, with a message naming the two declarations.
+\code{"global"} reads every column as counting from \code{1}; \code{"signal"} reads it as
+counting from \code{0}, as the WFDB tools do, and adds one to each channel so
+the table counts from \code{1} like every other. The table remembers which,
+readable with \code{\link[=channel_zero]{channel_zero()}}, and \code{\link[=write_annotation]{write_annotation()}} uses that by
+default (\code{NULL}) to number the file the way it came in; give \code{"global"} or
+\code{"signal"} there to choose. A table holding a global annotation cannot be
+written under \code{"signal"}, since the value it would take is the first
+signal's, and that is an error. See \link{channels}.}
 
 \item{data}{An \code{annotation_table} containing the 6 invariant columns required
 by the \code{\link[=annotation_table]{annotation_table()}} function}

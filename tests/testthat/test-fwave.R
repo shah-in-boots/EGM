@@ -122,11 +122,14 @@ simulate_flutter <- function(
 
 #' Wrap a simulated multi-lead signal as an `ECG`, so the exported entry points
 #' can be exercised without a bundled record and therefore without `skip_on_ci()`
-as_simulated_ecg <- function(sim, record_name = "sim") {
-  leads <- c(
+as_simulated_ecg <- function(
+  sim,
+  record_name = "sim",
+  leads = c(
     "I", "II", "III", "AVR", "AVL", "AVF",
     "V1", "V2", "V3", "V4", "V5", "V6"
   )
+) {
   n <- length(sim$signals[[1]])
 
   EGM(
@@ -349,6 +352,88 @@ test_that("spatiotemporal cancellation beats per-lead cancellation on residual",
   }
 
   expect_lt(residual_for("spatiotemporal"), residual_for("average_beat"))
+})
+
+test_that("each lead is fitted against its own and adjacent templates only", {
+  # Stridh and Sornmo's model. Every lead's template would give the fit enough
+  # freedom to absorb the atrial signal lying in the window.
+  twelve <- c(
+    "I", "II", "III", "AVR", "AVL", "AVF",
+    "V1", "V2", "V3", "V4", "V5", "V6"
+  )
+  adj <- EGM:::adjacent_leads(twelve)
+
+  # Precordials chain V1 to V6, and the chain ends are not wrapped
+  expect_equal(twelve[adj$V1], c("V1", "V2"))
+  expect_equal(twelve[adj$V3], c("V2", "V3", "V4"))
+  expect_equal(twelve[adj$V6], c("V5", "V6"))
+
+  # Frontal leads chain in Cabrera order: aVL, I, -aVR, II, aVF, III
+  expect_equal(twelve[adj$II], c("AVR", "II", "AVF"))
+  expect_equal(twelve[adj$AVL], c("AVL", "I"))
+  expect_equal(twelve[adj$III], c("AVF", "III"))
+
+  # The two chains are not joined
+  expect_false("V1" %in% twelve[adj$III])
+
+  # A missing lead is stepped over, and a lead that is not a surface lead
+  # takes its neighbours in the order given
+  some <- c("V1", "V3", "lead3", "CS 1-2")
+  adj <- EGM:::adjacent_leads(some)
+  expect_equal(some[adj$V1], c("V1", "V3"))
+  expect_equal(some[adj$lead3], c("V3", "lead3", "CS 1-2"))
+  expect_equal(some[adj[["CS 1-2"]]], c("lead3", "CS 1-2"))
+})
+
+test_that("VALIDATION cancellation leaves the atrial signal inside the beat windows", {
+  skip_on_ci()
+
+  # Ground truth by construction: a real sinus record, so the QRST morphology
+  # and its beat-to-beat variation are real, with a fibrillatory wave of known
+  # amplitude added. At 4.25 cycles per RR the wave is not phase-locked to the
+  # beats, so what the cancellation removes is over-fitting and nothing else.
+  sinus <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"))
+  fs <- frequency(sinus)
+  leads <- names(sinus$signal)[-1]
+  filtered <- lapply(leads, function(l) {
+    EGM:::filter_bandpass(as.numeric(sinus$signal[[l]]), frequency = fs)
+  })
+  names(filtered) <- leads
+  n <- length(filtered[[1]])
+  t <- seq_len(n) / fs
+
+  qrs <- EGM:::shared_qrs_positions(NULL, filtered, fs)
+  rr <- stats::median(diff(qrs))
+  f_hz <- 4.25 * fs / rr
+  wave <- 50 * sin(2 * pi * f_hz * t + 0.4 * sin(2 * pi * 0.3 * t))
+  signals <- lapply(filtered, function(x) x + wave)
+
+  pre <- round(0.2 * fs)
+  post <- round(min(0.5 * fs, max(0.25 * fs, 0.65 * rr)))
+  inside <- logical(n)
+  for (p in qrs) {
+    inside[max(1, p - pre):min(n, p + post)] <- TRUE
+  }
+
+  surviving <- function(method) {
+    out <- cancel_ventricular_signal(
+      signals,
+      frequency = fs,
+      qrs_loc = qrs,
+      method = method
+    )
+    stats::median(vapply(
+      leads,
+      function(l) {
+        sum(wave[inside] * out$atrial[[l]][inside]) / sum(wave[inside]^2)
+      },
+      numeric(1)
+    ))
+  }
+
+  # The all-lead fit this replaced kept 43-62% on this record
+  expect_gt(surviving("spatiotemporal"), 0.75)
+  expect_gt(surviving("average_beat"), 0.75)
 })
 
 test_that("subtraction is tapered at the edge of a singly-covered window", {
@@ -653,7 +738,9 @@ test_that("TQ amplitude excludes the QRS and reports its coverage", {
   expect_lt(amp$f_amplitude_p2p, all_amp$f_amplitude_p2p)
 
   expect_true(is.finite(amp$qrs_amplitude))
-  expect_equal(amp$f_ratio, amp$f_amplitude_p2p / amp$qrs_amplitude)
+  # The ratio is the Alcaraz-Rieta group's normalised amplitude: RMS over the
+  # QRS, not the length-confounded peak-to-peak
+  expect_equal(amp$f_ratio, amp$f_amplitude_rms / amp$qrs_amplitude)
 })
 
 test_that("TQ segments are read from a wave-typed annotation", {
@@ -748,25 +835,20 @@ test_that("several usable annotators are refused rather than chosen between", {
   )
 })
 
-test_that("channel 0 is kept only where the table means it globally", {
-  # A table numbering its channels `0 .. nsig-1` has no global channel: 0 is a
-  # lead like any other, and keeping it alongside the requested one pools two
-  # leads' fiducials -- the doubling this guard exists to prevent.
+test_that("channel 0 rides along as the global channel", {
+  # Every table counts signals from 1 - a file that counted from 0 is renumbered
+  # as it is read - so 0 is never a lead, and keeping it beside the requested
+  # one cannot pool two leads' fiducials.
   ann <- get_annotation(read_wfdb("ecg-sinus", test_path(), "ann"))
   ann$channel[seq_len(20)] <- 0L
 
-  global <- EGM(
+  record <- EGM(
     signal = signal_table(sample = 0:9, I = rnorm(10)),
     header = header_table(record_name = "x", number_of_channels = 1, frequency = 500),
     annotation = list(ann = ann)
   )
-  kept <- EGM:::resolve_fwave_annotation(global, channel = 2)
-  expect_true(0L %in% kept$channel)
-
-  by_signal <- global
-  attr(by_signal$annotation$ann, "channel_zero") <- "signal"
-  dropped <- EGM:::resolve_fwave_annotation(by_signal, channel = 2)
-  expect_false(0L %in% dropped$channel)
+  kept <- EGM:::resolve_fwave_annotation(record, channel = 2)
+  expect_setequal(unique(kept$channel), c(0L, 2L))
 })
 
 test_that("TQ segments are found when the annotator leaves `number` at zero", {
@@ -955,6 +1037,125 @@ test_that("asking for organisation returns organisation", {
   expect_true(all(is.finite(res$features$organization_index)))
 })
 
+test_that("the dominant frequency is read from V1 and shared by every lead", {
+  sim <- simulate_af()
+  object <- as_simulated_ecg(sim)
+
+  v1 <- suppressMessages(suppressWarnings(
+    extract_f_waves(object, qrs_loc = sim$qrs_loc, verbose = FALSE)
+  ))
+  expect_length(unique(v1$features$dominant_rate), 1L)
+
+  # And it is V1's own estimate, not a pooled one
+  own <- suppressMessages(suppressWarnings(extract_f_waves(
+    object,
+    qrs_loc = sim$qrs_loc,
+    spectrum = "lead",
+    keep_signal = TRUE,
+    verbose = FALSE
+  )))
+  expect_equal(
+    v1$features$dominant_rate[1],
+    own$features$dominant_rate[own$features$lead == "V1"]
+  )
+  expect_equal(
+    own$features$dominant_rate,
+    vapply(
+      own$features$lead,
+      function(l) 60 * calculate_dominant_frequency(own$signal[[l]], sim$frequency),
+      numeric(1)
+    ),
+    ignore_attr = TRUE
+  )
+})
+
+test_that("a record without V1 is refused only where the frequency is needed", {
+  sim <- simulate_af()
+  limb <- as_simulated_ecg(sim, leads = c("I", "II", "III", "AVR", "AVL", "AVF"))
+
+  expect_error(
+    suppressMessages(suppressWarnings(
+      extract_f_waves(limb, qrs_loc = sim$qrs_loc, verbose = FALSE)
+    )),
+    "does not carry"
+  )
+
+  # Amplitude alone consults no spectrum, so no V1 is needed for it
+  amp <- suppressMessages(suppressWarnings(extract_f_waves(
+    limb,
+    qrs_loc = sim$qrs_loc,
+    f_characteristics = "amplitude",
+    amplitude_window = "all",
+    verbose = FALSE
+  )))
+  expect_true(all(is.finite(amp$features$f_amplitude)))
+
+  # And the other spectra do not need it either
+  pooled <- suppressMessages(suppressWarnings(extract_f_waves(
+    limb,
+    qrs_loc = sim$qrs_loc,
+    spectrum = "pooled",
+    verbose = FALSE
+  )))
+  expect_length(unique(pooled$features$dominant_rate), 1L)
+})
+
+test_that("pooled_spectrum still works, and says so once", {
+  sim <- simulate_af()
+  object <- as_simulated_ecg(sim)
+  suppressWarnings(
+    rm("extract_f_waves.pooled_spectrum", envir = EGM:::deprecation_state)
+  )
+
+  # Every warning but the one under test is muffled; the rhythm warnings are
+  # tested elsewhere
+  only_superseded <- function(expr) {
+    withCallingHandlers(
+      expr,
+      warning = function(w) {
+        if (!grepl("superseded", conditionMessage(w))) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
+  }
+
+  old <- NULL
+  only_superseded(expect_warning(
+    old <- suppressMessages(extract_f_waves(
+      object,
+      qrs_loc = sim$qrs_loc,
+      pooled_spectrum = FALSE,
+      keep_signal = TRUE,
+      verbose = FALSE
+    )),
+    "superseded"
+  ))
+  # `FALSE` maps to `"lead"`: each lead its own estimate
+  expect_equal(
+    old$features$dominant_rate,
+    vapply(
+      old$features$lead,
+      function(l) 60 * calculate_dominant_frequency(old$signal[[l]], sim$frequency),
+      numeric(1)
+    ),
+    ignore_attr = TRUE
+  )
+
+  # Second use in the session says nothing
+  expect_no_warning(only_superseded(suppressMessages(extract_f_waves(
+    object,
+    qrs_loc = sim$qrs_loc,
+    pooled_spectrum = TRUE,
+    verbose = FALSE
+  ))))
+
+  expect_error(
+    extract_f_waves(object, spectrum = "lead", pooled_spectrum = TRUE),
+    "not both"
+  )
+})
+
 test_that("an annotation is demanded only where something will read it", {
   # `qrs_loc` supplied and amplitude measured over the whole record means
   # nothing consults the annotations, so requiring a `channel` for them would be
@@ -1069,6 +1270,81 @@ test_that("entropy decimates to the rate its parameters were tuned at", {
   fs <- 500
   x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / fs)) + rnorm(5001, sd = 0.3)
   expect_equal(length(EGM:::decimate_for_entropy(x, fs, 256)), 2561)
+})
+
+test_that("the main atrial wave is the band around the dominant frequency", {
+  # Alcaraz and Rieta's parameters were tuned on this, not on a broadband
+  # signal. Narrowing a noisy 6 Hz wave to the band around 6 Hz leaves
+  # something far more regular, so the entropy falls.
+  set.seed(7)
+  fs <- 500
+  x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / fs)) + rnorm(5001, sd = 0.5)
+  maw <- EGM:::main_atrial_wave(x, fs, dominant_frequency = 6, bandwidth = 3)
+  expect_length(maw, length(x))
+
+  psd <- calculate_welch_spectrum(maw, fs)
+  outside <- psd$freq < 4 | psd$freq > 8
+  expect_lt(sum(psd$spec[outside]), 0.05 * sum(psd$spec))
+
+  decimated <- function(v) EGM:::decimate_for_entropy(v, fs, 256)
+  expect_lt(
+    calculate_sample_entropy(decimated(maw)),
+    calculate_sample_entropy(decimated(x))
+  )
+
+  # No dominant frequency, no main atrial wave; and a band that reaches below
+  # 0 Hz is refused rather than clipped into a low-pass
+  expect_null(EGM:::main_atrial_wave(x, fs, dominant_frequency = NA_real_))
+  expect_error(
+    EGM:::main_atrial_wave(x, fs, dominant_frequency = 1, bandwidth = 3),
+    "outside"
+  )
+})
+
+test_that("entropy_input reaches the entropy, and is NA without a frequency", {
+  sim <- simulate_af()
+  broad <- analyze_atrial_signal(
+    sim$atrial,
+    sim$frequency,
+    characteristics = "sample_entropy"
+  )
+  narrow <- analyze_atrial_signal(
+    sim$atrial,
+    sim$frequency,
+    characteristics = "sample_entropy",
+    entropy_input = "main_atrial_wave"
+  )
+  expect_false(isTRUE(all.equal(broad$sample_entropy, narrow$sample_entropy)))
+
+  none <- analyze_atrial_signal(
+    sim$atrial,
+    sim$frequency,
+    characteristics = "sample_entropy",
+    entropy_input = "main_atrial_wave",
+    dominant_frequency = NA_real_
+  )
+  expect_true(is.na(none$sample_entropy))
+
+  object <- as_simulated_ecg(sim)
+  res <- suppressMessages(suppressWarnings(extract_f_waves(
+    object,
+    qrs_loc = sim$qrs_loc,
+    entropy_input = "main_atrial_wave",
+    verbose = FALSE
+  )))
+  expect_true(all(is.finite(res$features$sample_entropy)))
+  expect_error(extract_f_waves(object, entropy_bandwidth = -1), "positive")
+
+  # The tolerance reaches the entropy too: Alcaraz and Rieta selected 0.25 on
+  # the main atrial wave, and the default is 0.2
+  loose <- analyze_atrial_signal(
+    sim$atrial,
+    sim$frequency,
+    characteristics = "sample_entropy",
+    entropy_tolerance = 0.25
+  )
+  expect_false(isTRUE(all.equal(broad$sample_entropy, loose$sample_entropy)))
+  expect_error(extract_f_waves(object, entropy_tolerance = 0), "positive")
 })
 
 test_that("entropy is decimated before it is computed", {

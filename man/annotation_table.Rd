@@ -49,10 +49,11 @@ annotation, or a \code{character} representing the channel name}
 \item{number}{An additional \code{integer} value or number that classifies the
 annotation (allows for compatibility with multiple annotation types)}
 
-\item{channel_zero}{What the value \code{0} in the \code{channel} column means, either
-\code{"global"} (default) or \code{"signal"}. See \link{channels} for which one a file
-wants; the default is right for every annotator that does not populate the
-field.}
+\item{channel_zero}{How the \code{channel} values given count signals: \code{"global"}
+(default), from \code{1} with \code{0} the global channel, which is how the table
+holds them; or \code{"signal"}, from \code{0} as the WFDB tools count, in which case
+one is added to each so the table counts from \code{1} like every other, and
+\code{\link[=write_annotation]{write_annotation()}} takes it off again by default. See \link{channels}.}
 
 \item{...}{Additional arguments to be passed to the function}
 

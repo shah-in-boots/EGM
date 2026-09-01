@@ -16,7 +16,11 @@ extract_f_waves(
   normalize = c("none", "qrs"),
   band = c(4, 10),
   entropy_rate = 256,
-  pooled_spectrum = TRUE,
+  entropy_input = c("broadband", "main_atrial_wave"),
+  entropy_bandwidth = 3,
+  entropy_tolerance = 0.2,
+  spectrum = c("V1", "pooled", "lead"),
+  pooled_spectrum = NULL,
   rhythm = NULL,
   tol = 0.15,
   min_beats = 3L,
@@ -69,33 +73,41 @@ fails to remove is concentrated at the QRS.}
 
 \item{normalize}{Amplitude normalisation. \code{"none"} (default) leaves
 \code{f_amplitude} as \code{f_amplitude_rms}, in raw signal units. \code{"qrs"} points it
-at \code{f_ratio} instead, which divides the peak-to-peak amplitude by the QRS
-excursion in the same lead. The intent is to cancel the thoracic transfer
-function to first order -- the ventricular signal crosses the same tissue,
-so it carries the same attenuation -- and so make amplitudes comparable
-\emph{between} patients of different body habitus. Every amplitude column is
-always returned, and this argument only sets which one \code{f_amplitude} refers
-to.
+at \code{f_ratio} instead, which divides the root-mean-square amplitude by the
+QRS excursion in the same lead. The intent is to cancel the thoracic
+transfer function to first order -- the ventricular signal crosses the same
+tissue, so it carries the same attenuation -- and so make amplitudes
+comparable \emph{between} patients of different body habitus. Every amplitude
+column is always returned, and this argument only sets which one
+\code{f_amplitude} refers to.
 
-\code{f_ratio} is specific to this package. Fibrillatory wave amplitude itself
-is well established, and Li et al. tied a coarse f-wave -- 1 mm or more in
-V1 -- to left atrial appendage dysfunction and thrombus. Normalising it by
-the QRS is not published, and the reasoning above is the whole of the case
-for it.
+\code{f_ratio} is the package's form of the \emph{normalised f-wave amplitude} of the
+Alcaraz-Rieta group, who express the root-mean-square f-wave amplitude as a
+percentage of the R-peak magnitude to remove recording gain, skin
+conductivity and electrode impedance (Escribano et al. 2024). It differs in
+the denominator -- the peak-to-peak QRS excursion within 60 ms of the R
+peak on the unfiltered lead, which does not depend on the polarity of the
+QRS -- and in being a fraction rather than a percentage, so the two are
+proportional and not equal. Earlier versions divided the peak-to-peak
+amplitude instead, which put the length confound below into the one
+measure meant for comparison between patients.
 
 RMS is the default because peak-to-peak is a maximum over the segment and
 so grows with the segment's length: on white noise its expectation rises
 58\% between a 20-sample and a 400-sample window. TQ segments are as long as
 the RR interval lets them be, which is irregular within an AF record by
 definition and shorter at higher rates between patients, so
-\code{f_amplitude_p2p} and \code{f_ratio} both carry a heart-rate confound that
-\code{f_amplitude_rms} does not.}
+\code{f_amplitude_p2p} carries a heart-rate confound that \code{f_amplitude_rms} and
+\code{f_ratio} do not. Peak-to-peak is nonetheless the measure the coarse-
+versus-fine literature uses: Li et al. tied a coarse f-wave -- 1 mm or
+more in V1 -- to left atrial appendage dysfunction and thrombus.}
 
 \item{band}{Numeric length-2 vector giving the frequency band searched for the
 dominant fibrillatory frequency, in Hz. Default \code{c(4, 10)}. Sustained atrial
 fibrillation is usually quoted at 4-10 Hz. Typical atrial flutter is
 4-5.5 Hz, and slow or drug-modified flutter falls below 4 Hz, so widen this
-when flutter is expected.}
+when flutter is expected. Alcaraz and Rieta take the largest peak in
+3-9 Hz as the main atrial frequency.}
 
 \item{entropy_rate}{Sampling rate in Hz to which the atrial signal is
 decimated before entropy is computed, or \code{NULL} to compute at the record's
@@ -108,18 +120,65 @@ which is why that is the default rather than a rate chosen from the
 fibrillatory bandwidth. A lower value returns a number that is cheaper and
 outside the range the parameter set was validated on.}
 
-\item{pooled_spectrum}{Logical. If \code{TRUE} (default), the dominant frequency is
-taken from a spectrum pooled across all analysed leads, each normalised to
-unit power in 2.5-15 Hz before averaging. Normalising before pooling stops
-one high-amplitude lead dictating the peak.
+\item{entropy_input}{What the entropy is computed on. \code{"broadband"}
+(default) uses the cancelled signal in its 0.5-30 Hz passband.
+\code{"main_atrial_wave"} first band-pass filters it to \code{entropy_bandwidth} Hz
+centred on the dominant frequency, which is the \emph{main atrial wave} that
+Alcaraz and Rieta compute sample entropy on, and on which the \code{m}, \code{r} and
+256 Hz defaults were tuned (Alcaraz and Rieta 2009; Alcaraz et al. 2010);
+see \code{entropy_bandwidth} and \code{entropy_tolerance} for their exact settings.
+The two are not on one scale: on \code{muse-af} lead V1 the broadband value is
+0.16 and the main-atrial-wave value 0.12. The broadband default is kept
+because the narrow band inherits whatever is wrong with the dominant
+frequency -- a peak sitting on a heart-rate harmonic filters out the atrial
+signal and keeps the residual -- so read the main-atrial-wave entropy only
+with \code{on_harmonic} beside it.}
 
-Pooling helps, but by much less than the lead count suggests, and it is
-worth knowing by how much. Four of the twelve leads are exact linear
-combinations of I and II, so at most eight can be independent; and the
-atrial signal is close to a single dipole, so fewer are. On the bundled
-\code{muse-af} record the correlation matrix of the twelve cancelled leads has a
-participation ratio of 1.7, making the variance reduction about 1.3-fold
-rather than the 3.5-fold that twelve independent leads would give.}
+\item{entropy_bandwidth}{Width in Hz of the band kept around the dominant
+frequency for \code{entropy_input = "main_atrial_wave"}. Default 3, the value
+Alcaraz and Rieta (2009, section 3.3) selected: the band has to be
+narrower than 6 Hz so that the first harmonic is excluded, and of the
+bandwidths and filter orders they tried, 3 Hz with a 768-coefficient
+linear-phase FIR at 1 kHz classified terminating from non-terminating
+episodes best. The filter here is a third-order Butterworth band-pass run
+forwards and backwards, zero-phase as theirs was linear-phase, and at
+least as selective: for a 6 Hz dominant frequency it is about 27 dB down
+1.5 Hz outside the band and about 57 dB down at the first harmonic.}
+
+\item{entropy_tolerance}{The sample entropy tolerance \code{r}, as a multiple of
+the standard deviation of the signal the entropy is taken of. Default 0.2.
+Alcaraz and Rieta (2009) tested 0.1, 0.15, 0.2 and 0.25 with \code{m} of 1 and
+2 on the main atrial wave, found the outcomes very similar, and selected
+\code{m = 2} with 0.25; pass \code{entropy_tolerance = 0.25} with
+\code{entropy_input = "main_atrial_wave"} to match them exactly.}
+
+\item{spectrum}{Where the dominant frequency is read from. \code{"V1"} (default)
+takes it from the cancelled lead V1 and shares it with every lead, which is
+how the atrial fibrillatory rate is reported: V1 lies nearest the right
+atrium and carries the largest f-waves relative to the ventricular signal,
+so it is the lead the surface-ECG literature analyses (Bollmann et al.
+2006; An et al. 2024; Escribano et al. 2024). A record without V1 is an
+error when something needs the frequency -- pass \code{"pooled"} or \code{"lead"}.
+
+\code{"pooled"} takes it from a spectrum averaged across the analysed leads,
+each normalised to unit power in 2.5-15 Hz first so that one
+high-amplitude lead does not dictate the peak. This is not a published
+procedure, and it weights a lead carrying no atrial signal the same as V1.
+It also buys less than the lead count suggests: four of the twelve leads
+are exact linear combinations of I and II, so at most eight can be
+independent, and the atrial signal is close to a single dipole, so fewer
+are. On the bundled \code{muse-af} record the correlation matrix of the twelve
+cancelled leads has a participation ratio of 1.7, making the variance
+reduction about 1.3-fold rather than the 3.5-fold twelve independent leads
+would give.
+
+\code{"lead"} estimates it in each lead separately, so \code{dominant_rate} differs
+from row to row; on \code{muse-af} it spans 313 to 465 per minute across the
+twelve. Whichever is chosen, \code{organization_index} and the main atrial wave
+are computed at the same frequency as \code{dominant_rate} reports.}
+
+\item{pooled_spectrum}{Superseded by \code{spectrum}: \code{TRUE} is \code{"pooled"} and
+\code{FALSE} is \code{"lead"}. Still accepted, and reported once per session.}
 
 \item{rhythm}{Optional character string naming the rhythm, e.g. \code{"af"},
 \code{"flutter"}, \code{"sinus"}. Used only to decide whether to warn. If \code{NULL}
@@ -178,20 +237,46 @@ The default \code{cancel_method = "spatiotemporal"} implements the \emph{spatial
 of Stridh and Sornmo (2001). A single set of QRS positions is shared by every
 lead, and a template beat is formed for each lead by taking the \emph{median}
 across beats. Each individual beat, in each lead, is then fitted by least
-squares to a linear combination of the templates from \emph{all} leads plus an
-intercept, and the fit is subtracted.
+squares to a linear combination of the templates of that lead and its
+\emph{adjacent} leads plus an intercept, and the fit is subtracted. Adjacency runs
+along the two chains the leads sit on -- the frontal leads in Cabrera order
+(aVL, I, -aVR, II, aVF, III) and the precordials V1 to V6 -- so a lead is
+fitted against at most three templates. A lead that is not a surface lead
+takes its neighbours in the order it was given.
 
-The published method estimates a per-beat time shift and time scaling of the
-template as well, which is what the \emph{temporal} in its name refers to. That
-step is not implemented here. Its absence shows up as a larger
-\code{cancellation_residual} on records whose QRS width varies beat to beat.
+Adjacent, and not all twelve, is the published model, and the difference is
+not academic. A single-lead template cannot absorb the beat-to-beat rotation
+of the heart's electrical axis caused by respiration and by varying
+ventricular filling, which is the dominant reason a template fails to fit its
+own beat; what it leaves behind is periodic at the heart rate and lands on
+heart-rate harmonics, inside the band this function reads. Two neighbouring
+templates are enough freedom to follow that rotation. Twelve are enough to
+follow the atrial signal lying in the beat window as well, and to subtract
+it. Measured on the bundled \code{muse-sinus} record with a fibrillatory wave of
+known amplitude added at 5.3, 6.4 and 7.7 Hz (heart rate 90, beat windows
+covering 95\% of the record), the share of that wave surviving inside the
+beat windows was:\tabular{lll}{
+   Templates fitted \tab Surviving \tab Residual at the QRS \cr
+   all twelve \tab 43-62\% \tab 0.066-0.075 \cr
+   own and adjacent \tab 82-88\% \tab 0.074-0.084 \cr
+   own only (\code{"average_beat"}) \tab 91\% \tab 0.079-0.086 \cr
+}
 
-The extra degrees of freedom matter. A single-lead template cannot absorb the
-beat-to-beat rotation of the heart's electrical axis caused by respiration and
-by varying ventricular filling, which is the dominant reason a template fails
-to fit its own beat. What it leaves behind is periodic at the heart rate, so
-it deposits energy on heart-rate harmonics -- inside the very band this
-function reads. Use \link{f_wave_diagnostics} to check whether that has happened.
+
+At fibrillation rates the beat windows cover the whole record, so the
+all-lead fit -- which earlier versions used -- was discarding about half the
+atrial signal for a tenth less residual. \code{f_amplitude} was never affected,
+being measured in the TQ segments; \code{dominant_rate}, \code{organization_index} and
+\code{sample_entropy} were.
+
+Two parts of the published method are not implemented. It estimates a
+per-beat time shift and time scaling of the template as well, which is what
+the \emph{temporal} in its name refers to; the absence shows up as a larger
+\code{cancellation_residual} on records whose QRS width varies beat to beat. And
+it estimates the f-wave around each beat and subtracts it before the
+templates are averaged, so that less of it is built into them; here the
+median across beats is relied on for that. Use \link{f_wave_diagnostics} to check
+what the cancellation left behind.
 \subsection{What cancellation cannot separate}{
 
 A template built by stacking beats keeps whatever repeats at a fixed phase to
@@ -202,17 +287,18 @@ template and is subtracted with the QRST.
 
 The size of the effect is not marginal. On a synthetic 12-lead record
 carrying a 5 Hz (300/min) flutter wave, the fraction of that wave surviving
-cancellation is:\tabular{llll}{
+cancellation (median over leads) and the organisation index lead V1 then
+reports are:\tabular{llll}{
    Ventricular response \tab Atrial cycles per RR \tab Surviving \tab Organisation index \cr
-   2:1, fixed \tab 2.00 \tab 7\% \tab 0.19 \cr
-   3:1, fixed \tab 3.00 \tab 13\% \tab 0.27 \cr
-   4:1, fixed \tab 4.00 \tab 16\% \tab 0.21 \cr
-   fixed, non-integer ratio \tab 2.50 \tab 80\% \tab 0.94 \cr
-   irregular (AF-like) \tab -- \tab 57\% \tab 0.58 \cr
+   2:1, fixed \tab 2.00 \tab 8\% \tab 0.18 \cr
+   3:1, fixed \tab 3.00 \tab 23\% \tab 0.23 \cr
+   4:1, fixed \tab 4.00 \tab 24\% \tab 0.21 \cr
+   fixed, non-integer ratio \tab 2.50 \tab 88\% \tab 0.96 \cr
+   irregular (AF-like) \tab -- \tab 76\% \tab 0.80 \cr
 }
 
 
-The uncancelled signal scores 0.95. So a flutter record conducting at a fixed
+The uncancelled signal scores 0.94. So a flutter record conducting at a fixed
 ratio comes back with an organisation index in the range fibrillation
 occupies, and a dominant rate describing whatever survived rather than the
 flutter. \strong{A cohort compared on \code{organization_index} will not separate flutter
@@ -320,6 +406,31 @@ Alcaraz R, Abasolo D, Hornero R, Rieta JJ. Optimized assessment of atrial
 fibrillation organization through suitable parameters of sample entropy.
 \emph{Annual International Conference of the IEEE Engineering in Medicine and
 Biology Society}. 2010;2010:118-121. \doi{10.1109/IEMBS.2010.5627169}
+
+Alcaraz R, Abasolo D, Hornero R, Rieta JJ. Optimal parameters study for
+sample entropy-based atrial fibrillation organization analysis. \emph{Computer
+Methods and Programs in Biomedicine}. 2010;99(1):124-132.
+\doi{10.1016/j.cmpb.2010.02.009}
+
+Alcaraz R, Rieta JJ. Sample entropy of the main atrial wave predicts
+spontaneous termination of paroxysmal atrial fibrillation. \emph{Medical
+Engineering & Physics}. 2009;31(8):917-922.
+\doi{10.1016/j.medengphy.2009.05.002}
+
+Escribano P, Rodenas J, Garcia M, et al. Combination of frequency- and
+time-domain characteristics of the fibrillatory waves for enhanced
+prediction of persistent atrial fibrillation recurrence after catheter
+ablation. \emph{Heliyon}. 2024;10(3):e25295. \doi{10.1016/j.heliyon.2024.e25295}
+
+An K, Li H, Yu C, Zheng Z. Surface electrocardiogram f wave analysis in
+patients with atrial fibrillation undergoing thoracoscopic epicardial
+ablation. \emph{Interdisciplinary CardioVascular and Thoracic Surgery}.
+2024;38(5):ivae057. \doi{10.1093/icvts/ivae057}
+
+Li YH, Hwang JJ, Tseng YZ, Kuan P, Lien WP. Clinical significance of
+fibrillatory wave amplitude. A clue to left atrial appendage function in
+nonrheumatic atrial fibrillation. \emph{Chest}. 1995;108(2):359-363.
+\doi{10.1378/chest.108.2.359}
 }
 \seealso{
 \code{\link[=cancel_ventricular_signal]{cancel_ventricular_signal()}}, \code{\link[=calculate_dominant_frequency]{calculate_dominant_frequency()}},

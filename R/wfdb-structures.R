@@ -233,10 +233,11 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #'
 #' @param frequency An `integer` that represents the sampling frequency in Hertz
 #'
-#' @param channel_zero What the value `0` in the `channel` column means, either
-#'   `"global"` (default) or `"signal"`. See [channels] for which one a file
-#'   wants; the default is right for every annotator that does not populate the
-#'   field.
+#' @param channel_zero How the `channel` values given count signals: `"global"`
+#'   (default), from `1` with `0` the global channel, which is how the table
+#'   holds them; or `"signal"`, from `0` as the WFDB tools count, in which case
+#'   one is added to each so the table counts from `1` like every other, and
+#'   [write_annotation()] takes it off again by default. See [channels].
 #'
 #' @export
 annotation_table <- function(
@@ -288,9 +289,21 @@ annotation_table <- function(
     number <- vector(mode = "integer", length = n)
   }
 
-  # Channel
+  # Channel. A file that counts signals from 0 is renumbered here, once, so that
+  # every table in memory counts from 1 with 0 the global channel and no
+  # consumer has to ask which convention it is looking at.
   if (length(channel) == 0) {
     channel <- vector(mode = "integer", length = n)
+  }
+  if (identical(channel_zero, "signal")) {
+    if (!is.numeric(channel)) {
+      stop(
+        "`channel_zero = \"signal\"` renumbers channel numbers, so `channel` ",
+        "must be numeric, not ", class(channel)[1],
+        call. = FALSE
+      )
+    }
+    channel <- as.integer(channel) + 1L
   }
 
   # Auxiliary data
@@ -387,7 +400,7 @@ print.annotation_table <- function(x, ...) {
       dim(x)[1],
       annotator,
       if (identical(channel_zero(x), "signal")) {
-        ", channel 0 is the first signal"
+        ", file counts signals from 0"
       } else {
         ""
       }
@@ -412,33 +425,23 @@ is_annotation_table <- function(x) {
   inherits(x, "annotation_table")
 }
 
-#' What the value zero means in an annotation's channel column
+#' How the file behind an annotation table counts its signals
 #'
 #' @description
 #'
 #' `r lifecycle::badge("experimental")`
 #'
-#' Reports which convention an annotation table follows: `"global"`, where `0`
-#' marks a fiducial belonging to no lead in particular, or `"signal"`, where `0`
-#' is the first signal like any other channel number.
+#' Reports the convention of the file an annotation table was read from, and
+#' will be written back to: `"global"`, where channels count signals from `1`
+#' and `0` marks a fiducial belonging to no lead in particular, or `"signal"`,
+#' where they count from `0` as the WFDB tools do.
 #'
-#' @details The WFDB specification settles neither reading. `annot(5)` says only
-#'   that the `chan` field starts at `0` and persists until a `CHN` record
-#'   changes it; nothing reserves a value for "no particular signal", and nothing
-#'   requires the field to name a real signal. So the convention belongs to
-#'   whatever wrote the file, and the package has to be told rather than guess.
-#'
-#'   `"global"` is the default because it is what the files say. Every annotator
-#'   that does not populate the field leaves it at `0` throughout - `ecgpuwave`,
-#'   `wqrs`, and the twelve per-lead files of the bundled LUDB record, which
-#'   carry the lead in the *file extension* and `0` in every annotation. An
-#'   all-zero channel column is an absence of information, not a claim that every
-#'   fiducial belongs to the first signal.
-#'
-#'   Declare `"signal"` for a file that numbers its channels `0 .. nsig-1`, where
-#'   `0` is a lead and there is no global channel. Set it at [read_annotation()]
-#'   or [read_wfdb()]; the label rides on the table from there, so every function
-#'   that resolves a channel reads the same answer.
+#' @details In memory every table counts from `1`, with `0` the global channel.
+#'   A file declared `"signal"` at [read_annotation()] or [read_wfdb()] has one
+#'   added to each channel as it is read, so the label here says nothing about
+#'   the numbers in the table; it says how [write_annotation()] should number
+#'   them on the way out, which it does by default. See [channels] for why the
+#'   WFDB specification leaves the two readings open.
 #'
 #' @param x An `annotation_table`, or an `EGM` carrying one.
 #'
@@ -450,15 +453,15 @@ is_annotation_table <- function(x) {
 #' #> [1] "global"
 #' }
 #'
-#' @seealso [channels] for how the answer is used, [read_annotation()] to declare
-#'   it.
+#' @seealso [channels] for the policy, [read_annotation()] to declare it,
+#'   [write_annotation()] to override it on the way out.
 #'
 #' @export
 channel_zero <- function(x) {
   ann <- if (is_annotation_table(x) || is.data.frame(x)) x else get_single_annotation(x)
   value <- attr(ann, "channel_zero")
-  # Anything built before the label existed, or by a route that dropped it,
-  # follows the convention every annotator in the wild actually writes
+  # A table built without the label, or by a route that dropped it, is written
+  # the way it is held: counting signals from 1
   if (is.null(value) || !identical(as.character(value)[1], "signal")) {
     return("global")
   }

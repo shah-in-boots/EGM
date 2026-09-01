@@ -73,7 +73,7 @@ read_annotation <- function(
   end = NULL,
   header = NULL,
   interval = NULL,
-  channel_zero = c("global", "signal")
+  channel_zero = c("auto", "global", "signal")
 ) {
   channel_zero <- match.arg(channel_zero)
   stopifnot(
@@ -145,7 +145,7 @@ read_annotation_single <- function(
   end = NULL,
   header = NULL,
   interval = NULL,
-  channel_zero = "global"
+  channel_zero = "auto"
 ) {
   if (is.null(header)) {
     header <- read_header(
@@ -228,7 +228,9 @@ read_annotation_single <- function(
     rep("", length(samples))
   }
 
-  warn_channel_convention(channel, header, channel_zero, record, annotator)
+  if (identical(channel_zero, "auto")) {
+    channel_zero <- resolve_channel_convention(channel, header, record, annotator)
+  }
 
   annotation_table(
     annotator = annotator,
@@ -243,54 +245,54 @@ read_annotation_single <- function(
   )
 }
 
-#' Report a channel column that looks signal-numbered while read as global
+#' Settle how a channel column counts its signals
 #'
 #' @description The one place the two conventions can be told apart, because it
 #'   is the only one holding both the channels and the number of signals the
-#'   header declares. Channels running `0 .. nsig-1` exactly fill the signals, so
-#'   the `0` in them is the first lead and not an absence of information.
+#'   header declares. Channels running `0 .. nsig-1` exactly fill the signals if
+#'   `0` is the first of them, and are a global channel plus every lead but the
+#'   last otherwise; nothing in the file says which.
 #'
-#' @details Read as global, such a file loses its first lead: those annotations
-#'   are treated as belonging to no lead, so they are retained alongside every
-#'   other channel rather than being selectable as one. Nothing downstream can
-#'   notice, which is why it is said here, once, where the file is opened.
+#' @details Read the wrong way round, such a file misplaces every lead by one -
+#'   as global, its first lead becomes unselectable and rides along with every
+#'   other; as signal, a real global channel becomes lead I - and nothing
+#'   downstream can notice. So it is refused here, once, where the file is
+#'   opened, with a message naming both declarations. Every other column is
+#'   unambiguous: all zero is an absence of information, and one that reaches
+#'   `nsig` already counts from one.
 #'
 #' @param channel The channel column as read.
 #' @param header The record's `header_table`, or `NULL`.
-#' @param channel_zero The convention the caller declared.
 #' @param record,annotator Named in the message.
 #'
-#' @return Nothing, called for the warning.
+#' @return `"global"`, the convention every unambiguous file is read under.
 #'
 #' @keywords internal
-warn_channel_convention <- function(
-  channel,
-  header,
-  channel_zero,
-  record,
-  annotator
-) {
-  if (!identical(channel_zero, "global") || is.null(header)) {
-    return(invisible(NULL))
-  }
+resolve_channel_convention <- function(channel, header, record, annotator) {
   observed <- sort(unique(channel[!is.na(channel)]))
-  nsig <- attr(header, "record_line")$number_of_channels
-  if (length(nsig) == 0 || is.na(nsig[1]) || length(observed) < 2L) {
-    return(invisible(NULL))
+  nsig <- if (is.null(header)) {
+    NULL
+  } else {
+    attr(header, "record_line")$number_of_channels
   }
-  if (!identical(as.integer(observed), seq_len(as.integer(nsig[1])) - 1L)) {
-    return(invisible(NULL))
+  if (
+    length(nsig) == 0 || is.na(nsig[1]) || length(observed) < 2L ||
+      !identical(as.integer(observed), seq_len(as.integer(nsig[1])) - 1L)
+  ) {
+    return("global")
   }
 
-  warning(
-    "The `channel` column of ", record, ".", annotator, " runs 0 to ", nsig[1] - 1,
-    ", which is one channel per signal, so its 0 is the first lead rather than ",
-    "the global channel. Read as global that lead cannot be selected, and ",
-    "nothing downstream can notice. Pass `channel_zero = \"signal\"` if that is ",
-    "what the annotator meant.",
+  stop(
+    "The `channel` column of ", record, ".", annotator, " runs 0 to ",
+    nsig[1] - 1, " on a record of ", nsig[1], " signals, which counts them ",
+    "from 0 if it is one channel per signal, and is a global channel plus ",
+    "every lead but the last if it counts from 1. Nothing in the file says ",
+    "which, and each reading misplaces a lead under the other. Pass ",
+    "`channel_zero = \"signal\"` if the annotator numbered signals from 0, as ",
+    "the WFDB tools do, or `channel_zero = \"global\"` if 0 marks annotations ",
+    "belonging to no lead.",
     call. = FALSE
   )
-  invisible(NULL)
 }
 
 #' @rdname wfdb_annotations
@@ -299,7 +301,8 @@ write_annotation <- function(
   data,
   annotator,
   record,
-  record_dir = "."
+  record_dir = ".",
+  channel_zero = NULL
 ) {
   stopifnot(
     "`record` must be a single character string" = is.character(
@@ -361,6 +364,13 @@ write_annotation <- function(
     )
   }
 
+  # The table counts signals from 1 with 0 the global channel; the file goes out
+  # the way it came in unless told otherwise
+  if (is.null(channel_zero)) {
+    channel_zero <- channel_zero(data)
+  }
+  channel_zero <- match.arg(channel_zero, c("global", "signal"))
+
   ann_dt <- data.table::as.data.table(data)
   if (!"sample" %in% names(ann_dt)) {
     stop("`data` must contain a `sample` column")
@@ -393,6 +403,22 @@ write_annotation <- function(
   subtype_vals <- parse_optional_int(ann_dt$subtype)
   channel_vals <- parse_optional_int(ann_dt$channel)
   number_vals <- parse_optional_int(ann_dt$number)
+
+  # A file counting from 0 has no place for a global annotation: the value it
+  # would take is the first signal's, and the native writer would refuse the
+  # -1 with a message that names neither.
+  if (identical(channel_zero, "signal")) {
+    if (any(channel_vals == 0L)) {
+      stop(
+        "`channel_zero = \"signal\"` writes channels counted from 0, and ",
+        sum(channel_vals == 0L), " annotation(s) sit on the global channel 0, ",
+        "which that convention cannot hold. Write with ",
+        "`channel_zero = \"global\"` to keep them, or drop them first.",
+        call. = FALSE
+      )
+    }
+    channel_vals <- channel_vals - 1L
+  }
 
   # Extract auxiliary data strings if present in the annotation table
   aux_vals <- if ("aux" %in% names(ann_dt)) {

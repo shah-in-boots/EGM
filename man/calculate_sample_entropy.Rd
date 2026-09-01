@@ -36,6 +36,16 @@ found classification degraded below 256 Hz, with \code{m} of 1 or 2 and \code{r}
 between 0.1 and 0.25 times the standard deviation. The defaults here sit
 inside that, and \code{\link[=extract_f_waves]{extract_f_waves()}} decimates to 256 Hz rather than to
 something derived from the fibrillatory bandwidth.
+
+They tuned them on the \emph{main atrial wave} -- lead V1's atrial signal
+narrowed by selective filtering to a 3 Hz band around its dominant
+frequency -- and not on a broadband signal, and on that wave Alcaraz and
+Rieta (2009) tested \code{m} of 1 and 2 with \code{r} of 0.1, 0.15, 0.2 and 0.25,
+found the outcomes very similar, and selected \code{m = 2} and a tolerance of
+0.25 standard deviations.
+\code{\link[=extract_f_waves]{extract_f_waves()}} computes on the broadband cancelled signal by default
+and offers the main atrial wave through \code{entropy_input}; the two are not
+on one scale.
 }
 \examples{
 set.seed(123)
@@ -52,4 +62,9 @@ Alcaraz R, Abasolo D, Hornero R, Rieta JJ. Optimized assessment of atrial
 fibrillation organization through suitable parameters of sample entropy.
 \emph{Annual International Conference of the IEEE Engineering in Medicine and
 Biology Society}. 2010;2010:118-121. \doi{10.1109/IEMBS.2010.5627169}
+
+Alcaraz R, Rieta JJ. Sample entropy of the main atrial wave predicts
+spontaneous termination of paroxysmal atrial fibrillation. \emph{Medical
+Engineering & Physics}. 2009;31(8):917-922.
+\doi{10.1016/j.medengphy.2009.05.002}
 }

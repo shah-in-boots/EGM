@@ -15,7 +15,11 @@ analyze_atrial_signal(
   annotation = NULL,
   amplitude_window = c("tq", "all"),
   band = c(4, 10),
+  dominant_frequency = NULL,
   entropy_rate = 256,
+  entropy_input = c("broadband", "main_atrial_wave"),
+  entropy_bandwidth = 3,
+  entropy_tolerance = 0.2,
   tol = 0.15
 )
 }
@@ -47,7 +51,17 @@ must already be resolved to a single lead; see \code{\link[=extract_f_waves]{ext
 
 \item{band}{Numeric length-2 frequency band in Hz}
 
+\item{dominant_frequency}{Dominant frequency in Hz to use for the rate, the
+organisation index and the main atrial wave, or \code{NULL} (default) to
+estimate it from \code{atrial_signal}. \code{\link[=extract_f_waves]{extract_f_waves()}} passes the record's
+in, so every lead is read at one frequency.}
+
 \item{entropy_rate}{Rate in Hz to decimate to before computing entropy}
+
+\item{entropy_input, entropy_bandwidth, entropy_tolerance}{What the entropy is
+taken of, how wide a band around \code{dominant_frequency} the main atrial wave
+keeps, and the tolerance \code{r} as a multiple of the standard deviation; see
+\code{\link[=extract_f_waves]{extract_f_waves()}}.}
 
 \item{tol}{Tolerance for the harmonic coincidence test}
 }

@@ -22,7 +22,7 @@ calculate_organization_index(
 \code{NULL}.}
 
 \item{n_harmonics}{Number of harmonics summed with the dominant peak.
-Default 4, as in Everett et al. and An et al.}
+Default 4, as in An et al.; Everett's four peaks are \code{n_harmonics = 3}.}
 
 \item{band}{Numeric length-2 vector for the total-power reference band.
 Default \code{c(0.5, 50)}, following An et al., and clipped below the Nyquist
@@ -49,11 +49,13 @@ wavefronts the atrium is holding.
 
 The definition follows the published one: the area under the dominant peak
 and its first \code{n_harmonics} harmonics, over the total area of the spectrum.
-Everett et al. introduced it on an interatrial electrogram, taking the
-first four harmonic peaks; An et al. give the clearest surface-ECG
-implementation, taking the highest peak and its first four harmonics over
-the total area from 0 to 50 Hz on a QRST-cancelled lead. The defaults here
-are theirs.
+Everett et al. introduced it on an interatrial electrogram as "the ratio of
+the area under the first four harmonic peaks to the total area of the
+spectrum" -- four peaks in all, the dominant and three harmonics. An et al.
+give the clearest surface-ECG implementation, "the area under the highest
+peak and its first 4 harmonics" over the total area from 0 to 50 Hz on a
+QRST-cancelled lead V1 -- five peaks. The defaults here are An's, and on a
+surface record the fifth peak is immaterial, as the next section says.
 }
 \section{What the value can be compared with}{
 Not a published cut-point, and the gap is not small. An et al. report a

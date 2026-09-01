@@ -236,11 +236,10 @@ local({
 
 # Resolve a stable signal name to the integer annotation channel used by one
 # EGM. Numeric channel specifications pass through unchanged - they are matched
-# literally against the `channel` column, whose numbering belongs to the file.
-# A *name* has to be turned into a number, and that is where the file's
-# convention matters: `header$number` counts signals from one, so under the
-# signal-numbered convention the annotation channel is one less. Shared by
-# template learning and window warping.
+# literally against the `channel` column. A *name* is turned into its signal
+# number, which is the annotation channel because every table counts signals
+# from one: a file that counted from zero was renumbered as it was read. Shared
+# by template learning and window warping.
 resolve_channel_spec <- function(egm, channel) {
   if (channel_is_unset(channel)) {
     return(NULL)
@@ -249,12 +248,10 @@ resolve_channel_spec <- function(egm, channel) {
     return(as.integer(channel))
   }
 
-  offset <- if (identical(channel_zero(egm), "signal")) 1L else 0L
-
   signal_names <- setdiff(names(egm$signal), "sample")
   idx <- match(channel, signal_names)
   if (!is.na(idx)) {
-    return(as.integer(idx) - offset)
+    return(as.integer(idx))
   }
 
   header <- egm$header
@@ -263,9 +260,9 @@ resolve_channel_spec <- function(egm, channel) {
       idx <- match(channel, as.character(header[[field]]))
       if (!is.na(idx)) {
         if ("number" %in% names(header)) {
-          return(as.integer(header$number[[idx]]) - offset)
+          return(as.integer(header$number[[idx]]))
         }
-        return(as.integer(idx) - offset)
+        return(as.integer(idx))
       }
     }
   }

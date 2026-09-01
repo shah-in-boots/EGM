@@ -15,8 +15,8 @@ column or holds only global annotations.
 }
 \description{
 The distinct lead-specific channels present in an annotation
-table. Under the default \code{"global"} convention channel \code{0} is excluded, so a
-table that carries only global annotations spans no channels and needs no
-guiding lead; a table declared \code{"signal"} counts \code{0} as the lead it is.
+table. Channel \code{0} is the global channel and is excluded, so a table that
+carries only global annotations spans no channels and needs no guiding
+lead.
 }
 \keyword{internal}

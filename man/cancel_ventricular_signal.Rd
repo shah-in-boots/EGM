@@ -41,14 +41,21 @@ A list with \code{atrial} (named list of cancelled signals), \code{qrs_loc},
 }
 \description{
 Removes the QRST complex from each lead so that the atrial
-signal can be measured. Three methods are available.
+signal can be measured. Two methods are available.
 }
 \details{
 \code{"spatiotemporal"} fits each beat, in each lead, to a linear combination of
-the median beat template from \emph{every} lead plus an intercept, and subtracts
-the fit (Stridh and Sornmo, 2001). The cross-lead terms give the model enough
-freedom to absorb beat-to-beat rotation of the electrical axis, which a
-single-lead template cannot represent.
+the median beat templates of that lead and its \emph{adjacent} leads plus an
+intercept, and subtracts the fit (Stridh and Sornmo, 2001). Adjacency runs
+along the frontal leads in Cabrera order and along V1 to V6; a lead that is
+not a surface lead takes its neighbours in the order given. The cross-lead
+terms give the model enough freedom to absorb beat-to-beat rotation of the
+electrical axis, which a single-lead template cannot represent. They are
+deliberately few: fitted against every lead's template, as earlier versions
+did, the model absorbs the atrial signal in the window as well, and on
+\code{muse-sinus} with a known f-wave added it kept 43-62\% of that wave inside
+the beat windows against 82-88\% for the adjacent-lead fit. The cancellation
+section of \code{\link[=extract_f_waves]{extract_f_waves()}} has the table.
 
 \code{"average_beat"} subtracts each lead's own median template, scaled by a single
 least-squares coefficient. This is the Slocum average-beat predecessor and is
@@ -59,7 +66,7 @@ models badly is still fitted and subtracted, and the quality of that fit is
 reported through \code{cancellation_residual} rather than being hidden by
 replacing the segment with a straight line.
 
-All three methods share one assumption, and it is worth stating plainly: what
+Both methods share one assumption, and it is worth stating plainly: what
 the template holds is whatever repeats at a fixed phase to the QRS. In atrial
 fibrillation the atrial signal has no such phase, which is why the method
 works. In atrial flutter conducting at a fixed ratio it does, so the flutter

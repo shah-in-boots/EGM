@@ -8,11 +8,55 @@
   `muse-af`, `ecg`, `ecg-sinus` corrected.
 * Annotations spanning more than one channel need a `channel`, and one they do
   not carry is an error. Everywhere; see `?channels`.
+* An annotation file whose `channel` column runs `0 .. nsig-1` exactly is
+  refused until `channel_zero` says whether it counts signals from 0 or from 1;
+  each reading misplaces a lead under the other. Every other column reads
+  without a declaration.
 * `extract_f_waves()` gains `channel` and no longer pools across channels;
   loses `.force_all`; returns an `f_wave_analysis` object. Cancellation is
   spatiotemporal across leads (Stridh & Sörnmo, 2001); aberrant beats scored by
   QRS correlation, not RR deviation; amplitude measured in TQ segments; entropy
   tolerance 0.2 SD (was 3.5), `m` 2, band `c(4, 10)`.
+* **`extract_f_waves()` cancellation fits each lead against its own and its
+  adjacent leads' templates, not every lead's.** Adjacent leads is Stridh and
+  Sörnmo's model; every lead was not, and it over-fitted. On `muse-sinus` with
+  a fibrillatory wave of known amplitude added at 5.3, 6.4 and 7.7 Hz, the
+  all-lead fit kept 43–62% of the wave inside the beat windows, the
+  adjacent-lead fit 82–88%, `"average_beat"` 91%, for QRS residuals of
+  0.066–0.075, 0.074–0.084 and 0.079–0.086. At fibrillation rates the beat
+  windows cover the whole record, so about half the atrial signal was being
+  discarded for a tenth less residual. `f_amplitude` was never affected;
+  `dominant_rate`, `organization_index` and `sample_entropy` move — `muse-af`
+  V1's rate goes 465 → 436 per minute. Adjacency runs along the frontal leads
+  in Cabrera order and along V1–V6; a lead that is not a surface lead takes its
+  neighbours in the order given.
+* **`spectrum` replaces `pooled_spectrum`, and the dominant frequency is read
+  from V1 by default.** V1 is where the surface-ECG literature reads the atrial
+  fibrillatory rate (Bollmann et al. 2006; An et al. 2024; Escribano et al.
+  2024); pooling unit-power spectra across all twelve leads was not a published
+  procedure and weighted a lead with no atrial signal the same as V1.
+  `spectrum = "pooled"` keeps the old default, `"lead"` estimates one per lead,
+  and a record without V1 is an error where something needs the frequency.
+  `pooled_spectrum` still works and is reported once per session.
+* **`f_ratio` divides the RMS amplitude by the QRS excursion, not the
+  peak-to-peak.** It was documented as unpublished; it is the Alcaraz–Rieta
+  group's normalised f-wave amplitude — RMS f-wave amplitude as a percentage of
+  the R-peak magnitude (Escribano et al. 2024) — up to the denominator and a
+  factor of 100. Using the RMS also keeps the segment-length confound of the
+  peak-to-peak out of the one measure meant for comparison between patients.
+* **`sample_entropy` is documented as adapted, not as computed as published.**
+  Alcaraz et al. tuned `m`, `r` and the 256 Hz rate on the *main atrial wave* —
+  lead V1's atrial signal narrowed to a band around its dominant frequency —
+  and the package computed it on the broadband cancelled signal, which reads
+  higher (0.16 against 0.12 on `muse-af` V1). New
+  `entropy_input = "main_atrial_wave"` computes it their way, through the 3 Hz
+  band they selected (Alcaraz & Rieta 2009, section 3.3), and new
+  `entropy_tolerance` reaches their `r = 0.25`; the default stays 0.2, inside
+  the 0.1–0.25 they found equivalent. The broadband default is kept because the
+  narrow band inherits whatever is wrong with the dominant frequency.
+* `?calculate_organization_index` now says that Everett's "first four harmonic
+  peaks" are four peaks in all and An's "highest peak and its first 4
+  harmonics" five, and that the defaults follow An.
 * **`f_amplitude` is now the root-mean-square amplitude, not the peak-to-peak
   one.** Peak-to-peak is a maximum over its segment, so it grows with the
   segment's length — on white noise its expectation rises 58% between a
@@ -105,8 +149,10 @@
 * `signal_units()` — digital or physical, carried through every transform.
   `write_wfdb()` refuses a signal contradicting its `units`.
 * `window_dropped()` — candidates a strategy did not return, by reason.
-* `channel_zero()`, `read_wfdb(channel_zero = "signal")` — declares a file
-  numbering channels `0 .. nsig-1`; default stays global.
+* `channel_zero()`, `read_wfdb(channel_zero = "signal")`,
+  `write_annotation(channel_zero =)` — a file counting signals from 0 is
+  renumbered from 1 as it is read, so every table in memory counts the same way
+  with 0 the global channel, and is renumbered back as it is written.
 * `ecg_leads()`, `lead_factor()` — display order and canonical lead names.
 * `label_waves()` exported — wave identity is the peak symbol inside each
   `(`…`)`, not the WFDB `number` column.
@@ -200,11 +246,6 @@
   harmonic share of 2.5–15 Hz atrial power shifts by 0.0005 on `muse-af`, and by
   as little on a synthetic record slow enough that no two beat windows overlap —
   so this is a correctness fix rather than one with a demonstrated effect.
-* `extract_f_waves()` keeps annotation channel `0` alongside the requested
-  channel only where the table means it globally. On a table declared
-  `channel_zero = "signal"` there is no global channel — `0` is a lead like any
-  other — so keeping it pooled two leads' fiducials, which is the doubling the
-  `channel` guard exists to prevent.
 * `f_characteristics = "organization"` returns an organisation index. It was
   computed only when `"dominant_frequency"` was also asked for, so asking for it
   alone returned a table with no such column and said nothing.
