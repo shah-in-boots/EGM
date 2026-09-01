@@ -32,14 +32,21 @@ in ECG signals. This implementation follows these steps:
 \item Differentiation to highlight the steep slopes of QRS complexes
 \item Squaring to amplify high-frequency components
 \item Moving window integration to consider the overall QRS morphology
-\item Adaptive thresholding to identify peaks
+\item Thresholding at the mean plus half a standard deviation of the integrated
+signal to identify peaks
 \item Application of a refractory period to prevent multiple detections of the
 same QRS complex
 }
 
+The threshold is a single static one over the whole record, not the pair of
+adaptive signal and noise thresholds with searchback that Pan and Tompkins
+describe. That is enough on a clean ten-second strip and will drop beats on a
+record whose amplitude drifts.
+
 Positions are reported at the peak of the integration window, which lags the
-true R peak. Where beat alignment matters, refine them against the raw signal
-before use.
+true R peak by roughly half the integration width. \code{\link[=extract_f_waves]{extract_f_waves()}}
+refines them against the signal before use, and anything else that needs beat
+alignment should do the same.
 }
 \examples{
 \dontrun{

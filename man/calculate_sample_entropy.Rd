@@ -29,10 +29,13 @@ it depend on record length, which are the two problems sample entropy was
 introduced to fix. Prefer this over \code{\link[=calculate_approximate_entropy]{calculate_approximate_entropy()}},
 particularly when record length varies.
 
-The calculation is O(n^2). Decimate the signal to a rate matched to the
-analysis band before calling; for a fibrillatory band below 10 Hz, 50 Hz is
-still five times oversampled and is hundreds of times cheaper than the raw
-rate.
+The calculation is O(n^2), which is a standing temptation to decimate
+further than the measurement tolerates. Alcaraz et al. tuned \code{m}, \code{r} and
+the sampling rate for atrial fibrillation organisation specifically and
+found classification degraded below 256 Hz, with \code{m} of 1 or 2 and \code{r}
+between 0.1 and 0.25 times the standard deviation. The defaults here sit
+inside that, and \code{\link[=extract_f_waves]{extract_f_waves()}} decimates to 256 Hz rather than to
+something derived from the fibrillatory bandwidth.
 }
 \examples{
 set.seed(123)
@@ -44,4 +47,9 @@ Richman JS, Moorman JR. Physiological time-series analysis using
 approximate entropy and sample entropy. \emph{American Journal of Physiology.
 Heart and Circulatory Physiology}. 2000;278(6):H2039-H2049.
 \doi{10.1152/ajpheart.2000.278.6.H2039}
+
+Alcaraz R, Abasolo D, Hornero R, Rieta JJ. Optimized assessment of atrial
+fibrillation organization through suitable parameters of sample entropy.
+\emph{Annual International Conference of the IEEE Engineering in Medicine and
+Biology Society}. 2010;2010:118-121. \doi{10.1109/IEMBS.2010.5627169}
 }

@@ -120,6 +120,33 @@ simulate_flutter <- function(
   )
 }
 
+#' Wrap a simulated multi-lead signal as an `ECG`, so the exported entry points
+#' can be exercised without a bundled record and therefore without `skip_on_ci()`
+as_simulated_ecg <- function(sim, record_name = "sim") {
+  leads <- c(
+    "I", "II", "III", "AVR", "AVL", "AVF",
+    "V1", "V2", "V3", "V4", "V5", "V6"
+  )
+  n <- length(sim$signals[[1]])
+
+  EGM(
+    signal = do.call(
+      signal_table,
+      c(
+        list(sample = seq_len(n) - 1L),
+        stats::setNames(sim$signals[seq_along(leads)], leads)
+      )
+    ),
+    header = header_table(
+      record_name = record_name,
+      number_of_channels = length(leads),
+      frequency = sim$frequency,
+      samples = n,
+      label = leads
+    )
+  )
+}
+
 # Core API ----
 
 test_that("extract_f_waves returns features and diagnostics per lead", {
@@ -134,11 +161,11 @@ test_that("extract_f_waves returns features and diagnostics per lead", {
 
   # Every spectral estimate must arrive with the means to judge it
   expect_true(all(
-    c("dominant_rate", "harmonic_index", "on_harmonic", "cancellation_residual") %in%
+    c("dominant_rate", "harmonic_overlap", "on_harmonic", "cancellation_residual") %in%
       names(result$features)
   ))
   expect_true(all(
-    c("n_beats_cancelled", "n_beats_skipped", "spatial_dispersion") %in%
+    c("n_beats_cancelled", "n_beats_skipped", "n_beats_aberrant") %in%
       names(result$record)
   ))
 })
@@ -210,8 +237,7 @@ test_that("VALIDATION harmonic test separates AF from regular rhythm", {
       res$atrial,
       function(x) {
         df <- calculate_dominant_frequency(x, sim$frequency, f_min = 4, f_max = 10)
-        hi <- df * median_rr / sim$frequency
-        isTRUE(abs(hi - round(hi)) < 0.15)
+        isTRUE(EGM:::harmonic_flag(df * median_rr / sim$frequency))
       },
       logical(1)
     )
@@ -294,7 +320,6 @@ test_that("VALIDATION fibrillatory rate is physiologically plausible", {
 test_that("cancellation requires a sampling frequency", {
   sim <- simulate_af()
   expect_error(cancel_ventricular_signal(sim$signals), "frequency")
-  expect_error(EGM:::remove_ventricular_signal(rnorm(1000)), "frequency")
 })
 
 test_that("spatiotemporal cancellation beats per-lead cancellation on residual", {
@@ -324,6 +349,30 @@ test_that("spatiotemporal cancellation beats per-lead cancellation on residual",
   }
 
   expect_lt(residual_for("spatiotemporal"), residual_for("average_beat"))
+})
+
+test_that("subtraction is tapered at the edge of a singly-covered window", {
+  # Dividing the accumulated estimate by the accumulated weight cancels the
+  # taper exactly wherever one window covers a sample, so subtraction stepped
+  # from the full fitted value to zero at the outer edge of every covered
+  # region. The step recurs at the beat period, which is energy on heart-rate
+  # harmonics -- inside the band this whole file is trying to measure.
+  sim <- simulate_af()
+  res <- cancel_ventricular_signal(
+    sim$signals,
+    frequency = sim$frequency,
+    qrs_loc = sim$qrs_loc
+  )
+
+  for (l in names(sim$signals)) {
+    ventricular <- sim$signals[[l]] - res$atrial[[l]]
+    covered <- which(ventricular != 0)
+
+    # Nothing is subtracted outside the covered region, so the estimate has to
+    # arrive and leave at zero rather than switching on at its fitted value
+    expect_lt(abs(ventricular[min(covered)]), 0.05 * max(abs(ventricular)))
+    expect_lt(abs(ventricular[max(covered)]), 0.05 * max(abs(ventricular)))
+  }
 })
 
 test_that("cancellation refuses to run on too few beats", {
@@ -378,27 +427,6 @@ test_that("aberrancy is judged on morphology, not RR interval", {
   expect_gt(rr_flagged, 0L)
   expect_lt(res$n_beats_aberrant, rr_flagged)
   expect_equal(res$n_beats_aberrant, 0L)
-})
-
-test_that("low-rank beat model never reconstructs a group exactly", {
-  # A 95 percent variance rule selects both components of a two-beat group, the
-  # reconstruction is exact, and the residual is identically zero
-  sim <- simulate_af()
-  signal <- sim$signals[[1]]
-
-  for (k in c(3, 4, 5, 10)) {
-    out <- EGM:::process_beat_group(
-      signal,
-      sim$qrs_loc[seq_len(min(k, length(sim$qrs_loc)))],
-      half_window = as.integer(0.12 * sim$frequency),
-      frequency = sim$frequency,
-      smoothing = FALSE
-    )
-    expect_false(isTRUE(all.equal(out, signal)))
-    expect_gt(stats::sd(out - signal), 0)
-    # Residual must not vanish anywhere
-    expect_gt(max(abs(out - signal)), .Machine$double.eps)
-  }
 })
 
 test_that("cancellation absorbs flutter conducting at a fixed ratio", {
@@ -517,6 +545,65 @@ test_that("calculate_dominant_frequency respects the band", {
   )
 })
 
+test_that("the Welch spectrum refuses a signal with holes in it", {
+  # Dropping non-finite samples closes the gap they leave and shifts everything
+  # after it in time, which moves the spectrum rather than losing a little of it
+  x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / 500))
+  x[c(100, 2000)] <- NA_real_
+
+  expect_error(calculate_welch_spectrum(x, frequency = 500), "non-finite")
+})
+
+test_that("the organisation index does not depend on the rate it is measuring", {
+  # The harmonic window is centred on twice the dominant frequency, so a band
+  # that stops short of it drops the harmonic for the fastest rates the
+  # estimator searches. The index then moves with the rate rather than with the
+  # morphology, and fast AF reads as disorganised for an arithmetic reason.
+  fs <- 500
+  t <- seq(0, 10, by = 1 / fs)
+  set.seed(4)
+  tone <- function(f) {
+    sin(2 * pi * f * t) + sin(2 * pi * 2 * f * t) + stats::rnorm(length(t), sd = 4)
+  }
+  fast <- tone(9)
+  slow <- tone(5)
+
+  oi <- function(x, df, band) {
+    calculate_organization_index(
+      x, fs, dominant_frequency = df, n_harmonics = 1, band = band
+    )
+  }
+
+  # Identical construction at both rates, so the index has to agree
+  expect_equal(oi(fast, 9, c(2.5, 21)), oi(slow, 5, c(2.5, 21)), tolerance = 0.02)
+
+  # The band that stops at 15 Hz does not, because 2 * 9 Hz falls outside it
+  expect_gt(abs(oi(fast, 9, c(2.5, 15)) - oi(slow, 5, c(2.5, 15))), 0.1)
+})
+
+test_that("the organisation index is summed over the peaks the literature uses", {
+  # Everett takes the dominant peak with its first four harmonics, and An's
+  # surface implementation does the same over a 0-50 Hz denominator. Summing
+  # fewer terms returns a systematically smaller number that no published
+  # threshold applies to.
+  expect_equal(eval(formals(calculate_organization_index)$n_harmonics), 4L)
+
+  band <- eval(formals(calculate_organization_index)$band)
+  half_width <- eval(formals(calculate_organization_index)$half_width)
+  expect_gte(band[2], 50)
+
+  # And the band must at minimum hold the first harmonic across the 4-10 Hz
+  # range `extract_f_waves()` searches
+  expect_gte(band[2], 2 * 10 + 1.5 * half_width)
+
+  # More harmonic windows can only add power to the numerator
+  fs <- 500
+  x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / fs)) + stats::rnorm(5001, sd = 1)
+  one <- calculate_organization_index(x, fs, dominant_frequency = 6, n_harmonics = 1)
+  four <- calculate_organization_index(x, fs, dominant_frequency = 6, n_harmonics = 4)
+  expect_gte(four, one)
+})
+
 test_that("organization index separates organised from disorganised signals", {
   fs <- 500
   t <- seq(0, 10, by = 1 / fs)
@@ -543,7 +630,7 @@ test_that("TQ amplitude excludes the QRS and reports its coverage", {
 
   amp <- EGM:::amplitude_features(
     res$atrial[[1]],
-    original_signal = sim$signals[[1]],
+    raw_signal = sim$signals[[1]],
     frequency = sim$frequency,
     qrs_loc = sim$qrs_loc,
     annotation = NULL,
@@ -551,7 +638,7 @@ test_that("TQ amplitude excludes the QRS and reports its coverage", {
   )
   all_amp <- EGM:::amplitude_features(
     res$atrial[[1]],
-    original_signal = sim$signals[[1]],
+    raw_signal = sim$signals[[1]],
     frequency = sim$frequency,
     qrs_loc = sim$qrs_loc,
     annotation = NULL,
@@ -585,10 +672,165 @@ test_that("TQ segments are read from a wave-typed annotation", {
 
   # Each segment must run from a T offset to the next QRS onset, and none may
   # straddle a QRS
-  qrs_on <- ann$sample[ann$type == "(" & ann$number == 1]
+  labelled <- EGM:::label_waves(ann)
+  qrs_on <- labelled$sample[labelled$type == "(" & labelled$wave %in% "QRS"]
   for (s in segs) {
     expect_false(any(qrs_on > s[1] & qrs_on < s[2]))
   }
+})
+
+test_that("f_amplitude is the RMS, and one bad segment does not carry it", {
+  # Peak-to-peak is a maximum over its segment, so it grows with the segment's
+  # length, and TQ segment length is set by the RR interval. Both amplitudes are
+  # still returned; the default is the one without that confound.
+  sim <- simulate_af()
+  object <- as_simulated_ecg(sim)
+  res <- suppressMessages(suppressWarnings(
+    extract_f_waves(object, qrs_loc = sim$qrs_loc, verbose = FALSE)
+  ))
+
+  expect_equal(res$features$f_amplitude, res$features$f_amplitude_rms)
+  expect_false(isTRUE(all.equal(
+    res$features$f_amplitude, res$features$f_amplitude_p2p
+  )))
+
+  # `normalize = "qrs"` still points it at the ratio
+  ratio <- suppressMessages(suppressWarnings(
+    extract_f_waves(object, qrs_loc = sim$qrs_loc, normalize = "qrs", verbose = FALSE)
+  ))
+  expect_equal(ratio$features$f_amplitude, ratio$features$f_ratio)
+
+})
+
+test_that("both amplitudes are reduced by the median across segments", {
+  # Pooling the root-mean-square over every TQ sample at once would let one
+  # noisy segment carry the lead, and the segments are not exchangeable: they
+  # vary in length with the RR interval. Nine quiet segments and one loud one.
+  set.seed(21)
+  fs <- 500
+  n <- 11000
+  qrs <- as.integer(seq(1, n, length.out = 11))
+  segs <- EGM:::tq_segments(n, fs, qrs, NULL)
+  expect_length(segs, 10)
+
+  x <- stats::rnorm(n, sd = 1)
+  loud <- segs[[5]]
+  x[loud[1]:loud[2]] <- stats::rnorm(loud[2] - loud[1] + 1L, sd = 30)
+
+  amp <- EGM:::amplitude_features(
+    x,
+    raw_signal = x,
+    frequency = fs,
+    qrs_loc = qrs,
+    annotation = NULL,
+    window = "tq"
+  )
+
+  # One segment thirty times louder than the other nine moves a pooled figure by
+  # about tenfold and a median across segments hardly at all
+  pooled <- sqrt(mean(x[unlist(lapply(segs, function(s) s[1]:s[2]))]^2))
+  expect_gt(pooled, 8)
+  expect_lt(amp$f_amplitude_rms, 1.2)
+  expect_lt(amp$f_amplitude_p2p, 10)
+})
+
+test_that("several usable annotators are refused rather than chosen between", {
+  # The `channel` column catches one per-lead convention. The other -- a file
+  # per lead, as LUDB writes -- leaves `chan` at 0 in every file, so the tables
+  # are indistinguishable by channel and taking the first silently takes a lead.
+  # Which one changes the beat positions, the TQ boundaries and the amplitudes.
+  one <- get_annotation(read_wfdb("ecg-sinus", test_path(), "ann"))
+  expect_s3_class(EGM:::resolve_annotation(list(ann = one)), "data.frame")
+
+  expect_error(
+    EGM:::resolve_annotation(list(i = one, ii = one)),
+    "2 usable annotators"
+  )
+})
+
+test_that("channel 0 is kept only where the table means it globally", {
+  # A table numbering its channels `0 .. nsig-1` has no global channel: 0 is a
+  # lead like any other, and keeping it alongside the requested one pools two
+  # leads' fiducials -- the doubling this guard exists to prevent.
+  ann <- get_annotation(read_wfdb("ecg-sinus", test_path(), "ann"))
+  ann$channel[seq_len(20)] <- 0L
+
+  global <- EGM(
+    signal = signal_table(sample = 0:9, I = rnorm(10)),
+    header = header_table(record_name = "x", number_of_channels = 1, frequency = 500),
+    annotation = list(ann = ann)
+  )
+  kept <- EGM:::resolve_fwave_annotation(global, channel = 2)
+  expect_true(0L %in% kept$channel)
+
+  by_signal <- global
+  attr(by_signal$annotation$ann, "channel_zero") <- "signal"
+  dropped <- EGM:::resolve_fwave_annotation(by_signal, channel = 2)
+  expect_false(0L %in% dropped$channel)
+})
+
+test_that("TQ segments are found when the annotator leaves `number` at zero", {
+  # Wave identity is the peak symbol each bracket pair encloses, never the WFDB
+  # `number` column, which most annotators never populate. Reading `number` sent
+  # every such record silently to the fixed exclusion window while still
+  # reporting `amplitude_window = "tq"`. The bundled `ecg-sinus.ann` is one.
+  ann <- get_annotation(read_wfdb("ecg-sinus", test_path(), "ann"))
+  expect_true(all(ann$number == 0L))
+
+  one_lead <- ann[ann$channel %in% c(1L, 0L), ]
+  segs <- EGM:::tq_segments(5000, 500, qrs_loc = NULL, annotation = one_lead)
+
+  expect_gt(length(segs), 5)
+  expect_true(all(vapply(segs, function(s) s[2] > s[1], logical(1))))
+})
+
+test_that("TQ segments are resolved to one lead", {
+  # Pooled across a per-lead annotator every segment appears once per lead, so
+  # the segments overlap and their total length exceeds the record. It shows up
+  # as a `tq_fraction` greater than one, which is impossible by construction.
+  object <- as_ECG(read_wfdb("ecg-sinus", test_path(), "ann"))
+  ann <- get_annotation(object)
+  expect_gt(length(unique(ann$channel)), 1L)
+
+  pooled <- EGM:::tq_segments(5000, 500, qrs_loc = NULL, annotation = ann)
+  resolved <- EGM:::tq_segments(
+    5000,
+    500,
+    qrs_loc = NULL,
+    annotation = EGM:::resolve_fwave_annotation(object, channel = 2)
+  )
+
+  coverage <- function(segs) sum(vapply(segs, function(s) s[2] - s[1] + 1, numeric(1)))
+  expect_gt(coverage(pooled), 5000)
+  expect_lte(coverage(resolved), 5000)
+
+  # And the same guarantee through the exported entry point
+  result <- suppressWarnings(extract_f_waves(object, channel = 2, verbose = FALSE))
+  expect_true(all(result$features$tq_fraction <= 1))
+})
+
+test_that("the QRS excursion is measured before the bandpass", {
+  # The passband stops at 30 Hz and the QRS carries energy above it, so a
+  # filtered excursion is small by a factor that depends on the QRS width. That
+  # factor would land in `f_ratio`, whose whole purpose is comparability
+  # between patients.
+  sim <- simulate_af()
+  filtered <- EGM:::filter_bandpass(sim$signals[[1]], sim$frequency)
+
+  raw_amp <- EGM:::qrs_excursion(sim$signals[[1]], sim$qrs_loc, sim$frequency)
+  filtered_amp <- EGM:::qrs_excursion(filtered, sim$qrs_loc, sim$frequency)
+
+  expect_gt(raw_amp, filtered_amp)
+
+  amp <- EGM:::amplitude_features(
+    sim$signals[[1]] - filtered,
+    raw_signal = sim$signals[[1]],
+    frequency = sim$frequency,
+    qrs_loc = sim$qrs_loc,
+    annotation = NULL,
+    window = "tq"
+  )
+  expect_equal(amp$qrs_amplitude, raw_amp)
 })
 
 test_that("annotation-derived QRS positions improve cancellation", {
@@ -658,27 +900,7 @@ test_that("rr_regular flags the rhythm the canceller cannot be trusted on", {
 
 test_that("a regular ventricular response warns about what cancellation takes", {
   sim <- simulate_flutter(rr_ms = 400)
-  leads <- c(
-    "I", "II", "III", "AVR", "AVL", "AVF",
-    "V1", "V2", "V3", "V4", "V5", "V6"
-  )
-
-  object <- EGM(
-    signal = do.call(
-      signal_table,
-      c(
-        list(sample = seq_along(sim$signals[[1]]) - 1L),
-        stats::setNames(sim$signals[seq_along(leads)], leads)
-      )
-    ),
-    header = header_table(
-      record_name = "flutter",
-      number_of_channels = length(leads),
-      frequency = sim$frequency,
-      samples = length(sim$signals[[1]]),
-      label = leads
-    )
-  )
+  object <- as_simulated_ecg(sim, "flutter")
 
   # `rhythm = "flutter"` settles the other warning, so this one stands alone -
   # which is the behaviour under test: a label must not silence it
@@ -689,6 +911,81 @@ test_that("a regular ventricular response warns about what cancellation takes", 
     "ventricular response is regular"
   )
   expect_true(res$record$rr_regular)
+})
+
+test_that("the rhythm warnings are not silenced by verbose = FALSE", {
+  # `verbose` reports progress. A batch run turns it off, and a batch run is
+  # where an unnoticed flutter or sinus record does the most damage, so the
+  # warnings have to survive it. They used to be raised inside `if (verbose)`.
+  sim <- simulate_flutter(rr_ms = 400)
+  object <- as_simulated_ecg(sim, "flutter")
+
+  raised <- character()
+  withCallingHandlers(
+    suppressMessages(
+      extract_f_waves(object, qrs_loc = sim$qrs_loc, verbose = FALSE)
+    ),
+    warning = function(w) {
+      raised <<- c(raised, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+
+  expect_true(any(grepl("does not look like atrial fibrillation", raised)))
+  # The regular-response warning is the one trap 5 rests on
+  expect_true(any(grepl("ventricular response is regular", raised)))
+})
+
+test_that("asking for organisation returns organisation", {
+  # `organization_index` used to be assigned only inside the
+  # `"dominant_frequency"` branch, so asking for it alone returned a table with
+  # no such column and no complaint -- in a function that validates
+  # `f_characteristics` against a whitelist a few lines earlier.
+  sim <- simulate_af()
+  object <- as_simulated_ecg(sim)
+
+  res <- suppressMessages(suppressWarnings(extract_f_waves(
+    object,
+    qrs_loc = sim$qrs_loc,
+    f_characteristics = "organization",
+    verbose = FALSE
+  )))
+
+  expect_true("organization_index" %in% names(res$features))
+  expect_true(all(is.finite(res$features$organization_index)))
+})
+
+test_that("an annotation is demanded only where something will read it", {
+  # `qrs_loc` supplied and amplitude measured over the whole record means
+  # nothing consults the annotations, so requiring a `channel` for them would be
+  # a guard on nothing
+  object <- as_ECG(read_wfdb("ecg-sinus", test_path(), "ann"))
+  qrs <- EGM:::locate_features(get_annotation(object), "N", 2L)
+
+  expect_error(
+    extract_f_waves(object, qrs_loc = qrs, verbose = FALSE),
+    "channel"
+  )
+  expect_no_error(suppressWarnings(extract_f_waves(
+    object,
+    qrs_loc = qrs,
+    amplitude_window = "all",
+    f_characteristics = "sample_entropy",
+    verbose = FALSE
+  )))
+})
+
+test_that("printing a record too short to summarise does not error", {
+  # `rhythm_summary()` returns `af_like = NA` below three beats, and the print
+  # method branched on it directly
+  sim <- simulate_af()
+  object <- as_simulated_ecg(sim)
+  res <- suppressMessages(suppressWarnings(
+    extract_f_waves(object, qrs_loc = sim$qrs_loc[1:2], verbose = FALSE)
+  ))
+
+  expect_true(is.na(res$record$af_like))
+  expect_output(print(res), "NOT AF-like")
 })
 
 # Entropy ----
@@ -716,14 +1013,62 @@ test_that("entropy tolerance defaults to a value that does not collapse it", {
   expect_lt(calculate_approximate_entropy(x, r = 3.5 * stats::sd(x)), 0.05)
 })
 
-test_that("approximate entropy agrees between the R and C++ paths", {
+test_that("approximate entropy matches a direct implementation of Pincus", {
+  # Transcribed straight from the definition, with no shared code, so that the
+  # C++ is checked against the paper rather than against itself
+  apen_reference <- function(x, m, r) {
+    N <- length(x)
+    embed_matrix <- function(k) {
+      matrix(vapply(seq_len(k), function(i) x[i:(N - k + i)], numeric(N - k + 1)),
+        ncol = k
+      )
+    }
+    correlation_integral <- function(mat) {
+      rows <- nrow(mat)
+      count <- vapply(
+        seq_len(rows),
+        function(i) {
+          sum(apply(abs(mat - rep(mat[i, ], each = rows)), 1, max) <= r)
+        },
+        numeric(1)
+      )
+      sum(log(count / rows)) / rows
+    }
+    correlation_integral(embed_matrix(m)) - correlation_integral(embed_matrix(m + 1))
+  }
+
   set.seed(123)
   x <- rnorm(300)
   expect_equal(
-    calculate_approximate_entropy(x, implementation = "R"),
-    calculate_approximate_entropy(x, implementation = "C++"),
+    calculate_approximate_entropy(x, m = 2, r = 0.2 * stats::sd(x)),
+    apen_reference(x, m = 2, r = 0.2 * stats::sd(x)),
     tolerance = 1e-8
   )
+})
+
+test_that("a series with holes in it is refused, spectrum and entropy alike", {
+  # Dropping the non-finite samples joins two stretches that were not adjacent.
+  # For a spectrum that moves the whole time axis; for an entropy it is worse,
+  # since the statistic is the relationship between neighbouring samples and the
+  # spliced pairs get compared as though they were contiguous.
+  x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / 500))
+  x[c(100, 2000)] <- NA_real_
+
+  expect_error(calculate_welch_spectrum(x, frequency = 500), "non-finite")
+  expect_error(calculate_sample_entropy(x), "non-finite")
+  expect_error(calculate_approximate_entropy(x), "non-finite")
+})
+
+test_that("entropy decimates to the rate its parameters were tuned at", {
+  # Alcaraz et al. tuned m, r and the rate for AF organisation specifically and
+  # found classification degraded below 256 Hz. The default used to be 50, which
+  # was chosen from the fibrillatory bandwidth and the O(n^2) cost instead.
+  expect_equal(eval(formals(extract_f_waves)$entropy_rate), 256)
+  expect_equal(eval(formals(analyze_atrial_signal)$entropy_rate), 256)
+
+  fs <- 500
+  x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / fs)) + rnorm(5001, sd = 0.3)
+  expect_equal(length(EGM:::decimate_for_entropy(x, fs, 256)), 2561)
 })
 
 test_that("entropy is decimated before it is computed", {
@@ -757,6 +1102,49 @@ test_that("detect_QRS finds peaks", {
   expect_type(peaks, "integer")
   expect_true(length(peaks) > 0)
   expect_true(all(diff(peaks) > 10))
+})
+
+test_that("VALIDATION detected positions land on the beats that are there", {
+  # The local-maximum test compared the sample against its neighbour twice in
+  # the same direction, so it flagged every sample on a rising limb rather than
+  # the peak. With the refractory loop taking the first of each cluster, what
+  # came back was a threshold crossing, offset from the beat by an amount that
+  # moves with the signal. Nothing asserted otherwise: the old tests checked
+  # only that some peaks came back and that they were spaced apart.
+  fs <- 500
+  n <- fs * 10
+  x <- numeric(n)
+  true_peaks <- seq(fs, n - fs, by = as.integer(0.8 * fs))
+  for (p in true_peaks) {
+    w <- (p - 25):(p + 25)
+    x[w] <- x[w] + exp(-((w - p) / 8)^2)
+  }
+  set.seed(11)
+  x <- x + stats::rnorm(n, sd = 0.01)
+
+  detected <- detect_QRS(x, fs)
+  expect_length(detected, length(true_peaks))
+
+  # The integration window is causal, so a detection lags its beat and can never
+  # precede it. Reporting a rising-edge crossing is what made it precede: on
+  # this record the old test came back 8 samples early on every beat.
+  expect_true(all(detected >= true_peaks))
+  expect_true(all(detected - true_peaks <= as.integer(0.150 * fs)))
+
+  # And refinement has to bring them back onto the beat, which needs a search
+  # window wider than the integration lag it is undoing
+  refined <- EGM:::refine_qrs_positions(detected, x, fs)
+  expect_true(all(abs(refined - true_peaks) <= as.integer(0.02 * fs)))
+})
+
+test_that("the refinement window is wider than the lag it has to undo", {
+  # detect_QRS() reports the peak of a 150 ms integration window, so it lags the
+  # beat by about 75 ms. A search window narrower than that cannot reach the
+  # beat and latches onto whatever else is in range; it used to be 60 ms.
+  search_ms <- eval(formals(EGM:::refine_qrs_positions)$search_ms)
+  integration_ms <- 1000 * eval(formals(detect_QRS)$window_size)
+
+  expect_gt(search_ms, integration_ms / 2)
 })
 
 test_that("QRS positions are refined onto the local energy maximum", {

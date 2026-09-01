@@ -8,10 +8,9 @@ cancel_ventricular_signal(
   signals,
   frequency,
   qrs_loc = NULL,
-  method = c("spatiotemporal", "average_beat", "adaptive_svd"),
+  method = c("spatiotemporal", "average_beat"),
   min_beats = 3L,
-  aberrancy_threshold = 0.9,
-  ...
+  aberrancy_threshold = 0.9
 )
 }
 \arguments{
@@ -23,7 +22,7 @@ bandpass filtered and all of the same length.}
 \item{qrs_loc}{Integer vector of QRS sample positions shared by all leads.
 Detected from a composite if \code{NULL}.}
 
-\item{method}{One of \code{"spatiotemporal"}, \code{"average_beat"}, \code{"adaptive_svd"}.}
+\item{method}{Either \code{"spatiotemporal"} or \code{"average_beat"}.}
 
 \item{min_beats}{Minimum number of beats required before any template-based
 subtraction is attempted. Default 3. Below this an "average" beat is
@@ -35,8 +34,6 @@ morphologically aberrant and excluded from template construction. Default
 fibrillation the RR interval is irregular by definition, so an RR-based
 criterion fires on normally conducted beats in the exact rhythm this
 function targets.}
-
-\item{...}{Unused, for method compatibility.}
 }
 \value{
 A list with \code{atrial} (named list of cancelled signals), \code{qrs_loc},
@@ -56,11 +53,6 @@ single-lead template cannot represent.
 \code{"average_beat"} subtracts each lead's own median template, scaled by a single
 least-squares coefficient. This is the Slocum average-beat predecessor and is
 provided for comparison.
-
-\code{"adaptive_svd"} is retained for backward compatibility and operates one lead
-at a time. It is not recommended: a per-lead template leaves a residual that
-is periodic at the heart rate, which deposits energy on heart-rate harmonics
-inside the fibrillatory band.
 
 Beats are never blanked or interpolated across. A beat that the template
 models badly is still fitted and subtracted, and the quality of that fit is

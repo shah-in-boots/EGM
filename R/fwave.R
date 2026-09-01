@@ -8,12 +8,17 @@
 #'
 #' # Cancellation
 #'
-#' The default `cancel_method = "spatiotemporal"` implements the approach of
-#' Stridh and Sornmo (2001). A single set of QRS positions is shared by every
+#' The default `cancel_method = "spatiotemporal"` implements the *spatial* half
+#' of Stridh and Sornmo (2001). A single set of QRS positions is shared by every
 #' lead, and a template beat is formed for each lead by taking the *median*
 #' across beats. Each individual beat, in each lead, is then fitted by least
 #' squares to a linear combination of the templates from *all* leads plus an
 #' intercept, and the fit is subtracted.
+#'
+#' The published method estimates a per-beat time shift and time scaling of the
+#' template as well, which is what the *temporal* in its name refers to. That
+#' step is not implemented here. Its absence shows up as a larger
+#' `cancellation_residual` on records whose QRS width varies beat to beat.
 #'
 #' The extra degrees of freedom matter. A single-lead template cannot absorb the
 #' beat-to-beat rotation of the heart's electrical axis caused by respiration and
@@ -57,9 +62,8 @@
 #' the case it exists for.
 #'
 #' There is no cancellation method here that avoids this -- `"average_beat"`
-#' shares the assumption and `"adaptive_svd"` is worse. Where flutter is the
-#' question, read the atrial wave from a segment between QRS complexes rather
-#' than from a cancelled signal.
+#' shares the assumption. Where flutter is the question, read the atrial wave
+#' from a segment between QRS complexes rather than from a cancelled signal.
 #'
 #' # Interpretation
 #'
@@ -97,10 +101,20 @@
 #'   as a channel number or name. Required when the annotations span more than
 #'   one channel: pooled across twelve leads they report twelve times as many
 #'   beats as the record holds, and every rhythm measure derived from them
-#'   follows. See the channels section. Ignored when `qrs_loc` is supplied.
+#'   follows. See the channels section.
 #'
-#' @param cancel_method Ventricular cancellation method. One of
-#'   `"spatiotemporal"` (default), `"average_beat"`, or `"adaptive_svd"`.
+#'   Supplying `qrs_loc` does not make this unnecessary. The beat positions come
+#'   from `qrs_loc` then, but the TQ segments are still read from annotations,
+#'   and pooled across leads they overlap and cover the record several times
+#'   over. A record whose annotations span more than one channel is an error
+#'   either way.
+#'
+#' @param cancel_method Ventricular cancellation method. Either
+#'   `"spatiotemporal"` (default) or `"average_beat"`, the single-lead Slocum
+#'   predecessor kept as the comparison baseline.
+#'
+#' @param min_beats,aberrancy_threshold Passed to
+#'   [cancel_ventricular_signal()]. See there for what each is guarding.
 #'
 #' @param f_characteristics Character vector of features to compute. Any of
 #'   `"amplitude"`, `"dominant_frequency"`, `"organization"`, `"sample_entropy"`,
@@ -112,11 +126,29 @@
 #'   fibrillatory amplitude with cancellation error, since whatever cancellation
 #'   fails to remove is concentrated at the QRS.
 #'
-#' @param normalize Amplitude normalisation. `"none"` (default) returns raw
-#'   signal units. `"qrs"` additionally divides by the QRS excursion in the same
-#'   lead, which cancels the thoracic transfer function to first order and makes
-#'   amplitudes comparable *between* patients. Both are always returned; this
-#'   argument only sets which one `f_amplitude` refers to.
+#' @param normalize Amplitude normalisation. `"none"` (default) leaves
+#'   `f_amplitude` as `f_amplitude_rms`, in raw signal units. `"qrs"` points it
+#'   at `f_ratio` instead, which divides the peak-to-peak amplitude by the QRS
+#'   excursion in the same lead. The intent is to cancel the thoracic transfer
+#'   function to first order -- the ventricular signal crosses the same tissue,
+#'   so it carries the same attenuation -- and so make amplitudes comparable
+#'   *between* patients of different body habitus. Every amplitude column is
+#'   always returned, and this argument only sets which one `f_amplitude` refers
+#'   to.
+#'
+#'   `f_ratio` is specific to this package. Fibrillatory wave amplitude itself
+#'   is well established, and Li et al. tied a coarse f-wave -- 1 mm or more in
+#'   V1 -- to left atrial appendage dysfunction and thrombus. Normalising it by
+#'   the QRS is not published, and the reasoning above is the whole of the case
+#'   for it.
+#'
+#'   RMS is the default because peak-to-peak is a maximum over the segment and
+#'   so grows with the segment's length: on white noise its expectation rises
+#'   58% between a 20-sample and a 400-sample window. TQ segments are as long as
+#'   the RR interval lets them be, which is irregular within an AF record by
+#'   definition and shorter at higher rates between patients, so
+#'   `f_amplitude_p2p` and `f_ratio` both carry a heart-rate confound that
+#'   `f_amplitude_rms` does not.
 #'
 #' @param band Numeric length-2 vector giving the frequency band searched for the
 #'   dominant fibrillatory frequency, in Hz. Default `c(4, 10)`. Sustained atrial
@@ -125,17 +157,28 @@
 #'   when flutter is expected.
 #'
 #' @param entropy_rate Sampling rate in Hz to which the atrial signal is
-#'   decimated before entropy is computed. Default 50. Entropy is O(n^2) and the
-#'   fibrillatory band is below 10 Hz, so computing it at the raw rate is both
-#'   enormously slower and dominated by the smoothness of the interpolation
-#'   between neighbouring samples rather than by the organisation of the rhythm.
+#'   decimated before entropy is computed, or `NULL` to compute at the record's
+#'   own rate. Default 256.
+#'
+#'   Entropy is O(n^2), so this is the argument that decides how long a batch
+#'   takes. It is not free to lower it: Alcaraz et al. (2010) tuned sample
+#'   entropy for this exact task and found classification degraded below 256 Hz,
+#'   which is why that is the default rather than a rate chosen from the
+#'   fibrillatory bandwidth. A lower value returns a number that is cheaper and
+#'   outside the range the parameter set was validated on.
 #'
 #' @param pooled_spectrum Logical. If `TRUE` (default), the dominant frequency is
 #'   taken from a spectrum pooled across all analysed leads, each normalised to
-#'   unit power in 2.5-15 Hz before averaging. A ten second record yields only
-#'   about four Welch segments per lead; twelve leads give roughly forty-eight,
-#'   which is the difference between a usable and an unusable variance.
-#'   Normalising before pooling stops one high-amplitude lead dictating the peak.
+#'   unit power in 2.5-15 Hz before averaging. Normalising before pooling stops
+#'   one high-amplitude lead dictating the peak.
+#'
+#'   Pooling helps, but by much less than the lead count suggests, and it is
+#'   worth knowing by how much. Four of the twelve leads are exact linear
+#'   combinations of I and II, so at most eight can be independent; and the
+#'   atrial signal is close to a single dipole, so fewer are. On the bundled
+#'   `muse-af` record the correlation matrix of the twelve cancelled leads has a
+#'   participation ratio of 1.7, making the variance reduction about 1.3-fold
+#'   rather than the 3.5-fold that twelve independent leads would give.
 #'
 #' @param rhythm Optional character string naming the rhythm, e.g. `"af"`,
 #'   `"flutter"`, `"sinus"`. Used only to decide whether to warn. If `NULL`
@@ -145,14 +188,24 @@
 #'   `on_harmonic` when its harmonic index falls within `tol` of an integer.
 #'   Default 0.15.
 #'
+#'   This is a sensitive screen and not a specific test, and the difference is
+#'   large enough to plan around. The harmonic index of an uncontaminated peak
+#'   is a ratio of two unrelated numbers, so with integers spaced one apart a
+#'   tolerance of 0.15 lands on one 30% of the time by arithmetic alone --
+#'   simulated at 0.301 for a dominant frequency uniform on 4-10 Hz and a heart
+#'   rate uniform on 60-160 bpm, and flat across rate. Excluding every flagged
+#'   record therefore discards roughly a third of the good ones too. Read it
+#'   with `cancellation_residual`, which says whether there was residual for the
+#'   peak to have come from.
+#'
 #' @param keep_signal Logical. If `TRUE`, the cancelled atrial signals are
 #'   returned alongside the features. Default `FALSE`, since retaining them
 #'   across a large batch is expensive.
 #'
 #' @param verbose Logical. If `TRUE` (default), report which leads are analysed.
-#'
-#' @param ... Additional arguments passed to the cancellation and analysis
-#'   routines.
+#'   This controls the progress message only. The rhythm warnings are raised
+#'   either way: batch processing is where `verbose = FALSE` gets set, and it is
+#'   also where an unnoticed flutter record does the most damage.
 #'
 #' @inheritSection channels Guiding channel
 #'
@@ -162,11 +215,11 @@
 #'     \item{`features`}{A `data.table` with one row per lead, holding
 #'       `f_amplitude_p2p`, `f_amplitude_rms`, `qrs_amplitude`, `f_ratio`,
 #'       `dominant_rate`, `organization_index`, `sample_entropy`, and the
-#'       per-lead diagnostics `harmonic_index`, `on_harmonic`,
+#'       per-lead diagnostics `harmonic_overlap`, `on_harmonic`,
 #'       `cancellation_residual`, and `tq_fraction`.}
 #'     \item{`record`}{A one-row `data.table` of record-level values, including
 #'       `n_beats_cancelled`, `n_beats_skipped`, `n_beats_aberrant`,
-#'       `spatial_dispersion`, `heart_rate`, `rr_cv`, `af_like`, and
+#'       `heart_rate`, `rr_cv`, `af_like`, and
 #'       `rr_regular` - the flag that the cancellation may have taken the atrial
 #'       signal with it, described in the cancellation section.}
 #'     \item{`signal`}{The cancelled atrial signals, when `keep_signal = TRUE`.}
@@ -194,6 +247,11 @@
 #' determine atrial fibrillation complexity. *Heart*. 2014;100(14):1077-1084.
 #' \doi{10.1136/heartjnl-2013-305149}
 #'
+#' Alcaraz R, Abasolo D, Hornero R, Rieta JJ. Optimized assessment of atrial
+#' fibrillation organization through suitable parameters of sample entropy.
+#' *Annual International Conference of the IEEE Engineering in Medicine and
+#' Biology Society*. 2010;2010:118-121. \doi{10.1109/IEMBS.2010.5627169}
+#'
 #' @seealso [cancel_ventricular_signal()], [calculate_dominant_frequency()],
 #'   [calculate_sample_entropy()], [calculate_organization_index()]
 #'
@@ -202,7 +260,7 @@
 #' af <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
 #' res <- extract_f_waves(af)
 #'
-#' # Never read the rate without the diagnostic beside it
+#' # Never read the rate without the diagnostics beside it
 #' res$features[, .(lead, dominant_rate, on_harmonic, cancellation_residual)]
 #' }
 #'
@@ -212,7 +270,7 @@ extract_f_waves <- function(
   lead = NULL,
   qrs_loc = NULL,
   channel = NULL,
-  cancel_method = c("spatiotemporal", "average_beat", "adaptive_svd"),
+  cancel_method = c("spatiotemporal", "average_beat"),
   f_characteristics = c(
     "amplitude",
     "dominant_frequency",
@@ -222,13 +280,14 @@ extract_f_waves <- function(
   amplitude_window = c("tq", "all"),
   normalize = c("none", "qrs"),
   band = c(4, 10),
-  entropy_rate = 50,
+  entropy_rate = 256,
   pooled_spectrum = TRUE,
   rhythm = NULL,
   tol = 0.15,
+  min_beats = 3L,
+  aberrancy_threshold = 0.9,
   keep_signal = FALSE,
-  verbose = TRUE,
-  ...
+  verbose = TRUE
 ) {
   # Surface leads only, and at least one of them. Cancellation and every feature
   # below assume a body-surface potential; on an intracardiac channel they return
@@ -259,10 +318,7 @@ extract_f_waves <- function(
     stop("`band` must be an increasing, non-negative numeric pair, e.g. c(4, 10)")
   }
 
-  frequency <- attributes(object$header)$record_line$frequency
-  if (is.null(frequency) || !is.finite(frequency) || frequency <= 0) {
-    stop("Could not determine a valid sampling frequency from the header")
-  }
+  frequency <- stats::frequency(object)
 
   if (band[2] >= frequency / 2) {
     stop(
@@ -322,9 +378,23 @@ extract_f_waves <- function(
   names(raw) <- cancel_leads
   filtered <- lapply(raw, filter_bandpass, frequency = frequency)
 
+  # One annotation table for the whole analysis, resolved to a single lead
+  # before anything reads it. Beat positions and TQ segments both come from
+  # annotations and both have to come from the *same* lead: a per-lead annotator
+  # writes a complete set of fiducials for each of them, so a pooled table holds
+  # twelve records' worth of beats and twelve overlapping copies of every TQ
+  # segment. That used to be guarded here and not in `tq_segments()`.
+  #
+  # Only where something will actually read it, though: with `qrs_loc` given and
+  # amplitude measured over the whole record, nothing consults the annotations
+  # and demanding a `channel` for them would be a guard on nothing.
+  needs_annotation <- is.null(qrs_loc) ||
+    (amplitude_window == "tq" && "amplitude" %in% f_characteristics)
+  ann <- if (needs_annotation) resolve_fwave_annotation(object, channel) else NULL
+
   # A single QRS set shared by every lead
   if (is.null(qrs_loc)) {
-    qrs_loc <- shared_qrs_positions(object, filtered, frequency, channel)
+    qrs_loc <- shared_qrs_positions(ann, filtered, frequency)
   }
   qrs_loc <- sort(unique(as.integer(qrs_loc)))
   qrs_loc <- qrs_loc[qrs_loc >= 1 & qrs_loc <= length(filtered[[1]])]
@@ -335,15 +405,19 @@ extract_f_waves <- function(
   # organised rhythm has no fibrillatory activity to measure. A *regular* one
   # additionally defeats the cancellation, which is the trap: the fit looks good,
   # `cancellation_residual` is small, and the numbers are wrong anyway.
-  if (verbose && !rhythm_info$af_like) {
+  # Deliberately not gated on `verbose`, which reports progress. A batch run
+  # sets `verbose = FALSE`, and a batch run is exactly where an unnoticed
+  # flutter record does the most damage.
+  if (!isTRUE(rhythm_info$af_like)) {
     warning(
       "This record does not look like atrial fibrillation (RR CV = ",
       signif(rhythm_info$rr_cv, 2),
       "). Fibrillatory features are only meaningful in AF or flutter; ",
-      "in sinus rhythm the estimator returns whatever is largest in the band."
+      "in sinus rhythm the estimator returns whatever is largest in the band.",
+      call. = FALSE
     )
   }
-  if (verbose && isTRUE(rhythm_info$rr_regular)) {
+  if (isTRUE(rhythm_info$rr_regular)) {
     warning(
       "The ventricular response is regular (RR CV = ",
       signif(rhythm_info$rr_cv, 2),
@@ -351,7 +425,8 @@ extract_f_waves <- function(
       "conducting at a fixed ratio - enters the cancellation template and is ",
       "subtracted with the ventricular complex. `organization_index` then ",
       "collapses toward the fibrillation range and `dominant_rate` describes ",
-      "whatever survived. See the cancellation section of ?extract_f_waves."
+      "whatever survived. See the cancellation section of ?extract_f_waves.",
+      call. = FALSE
     )
   }
 
@@ -360,7 +435,8 @@ extract_f_waves <- function(
     frequency = frequency,
     qrs_loc = qrs_loc,
     method = cancel_method,
-    ...
+    min_beats = min_beats,
+    aberrancy_threshold = aberrancy_threshold
   )
 
   atrial <- cancelled$atrial
@@ -372,19 +448,21 @@ extract_f_waves <- function(
       frequency = frequency,
       characteristics = f_characteristics,
       original_signal = filtered[[l]],
+      raw_signal = raw[[l]],
       qrs_loc = qrs_loc,
-      annotation = object$annotation,
+      annotation = ann,
       amplitude_window = amplitude_window,
       band = band,
       entropy_rate = entropy_rate,
-      tol = tol,
-      ...
+      tol = tol
     )
   })
   names(features) <- report_leads
 
-  # A pooled spectrum has far more segments behind it than any single lead, so
-  # the dominant frequency is estimated once for the record and shared.
+  # The dominant frequency is estimated once for the record and shared. Pooling
+  # buys less than the lead count suggests -- the twelve leads carry about 1.7
+  # independent signals between them -- but a single lead on a ten second record
+  # gives only four Welch segments, so it is still worth having.
   if (pooled_spectrum && "dominant_frequency" %in% f_characteristics) {
     pooled <- pooled_dominant_frequency(
       atrial[report_leads],
@@ -394,11 +472,11 @@ extract_f_waves <- function(
     median_rr <- rhythm_info$median_rr
     for (l in report_leads) {
       features[[l]]$dominant_rate <- pooled$dominant_frequency * 60
-      features[[l]]$harmonic_index <- pooled$dominant_frequency *
+      features[[l]]$harmonic_overlap <- pooled$dominant_frequency *
         median_rr /
         frequency
       features[[l]]$on_harmonic <- harmonic_flag(
-        features[[l]]$harmonic_index,
+        features[[l]]$harmonic_overlap,
         tol
       )
       if ("organization" %in% f_characteristics) {
@@ -426,8 +504,7 @@ extract_f_waves <- function(
     rr_rmssd = rhythm_info$rr_rmssd,
     af_like = rhythm_info$af_like,
     rr_regular = rhythm_info$rr_regular,
-    rhythm = rhythm_info$rhythm,
-    spatial_dispersion = spatial_dispersion(feature_table$f_amplitude_p2p)
+    rhythm = rhythm_info$rhythm
   )
 
   out <- list(
@@ -463,7 +540,7 @@ print.f_wave_analysis <- function(x, ...) {
     round(x$record$heart_rate),
     " bpm, RR CV ",
     signif(x$record$rr_cv, 2),
-    if (x$record$af_like) " (AF-like)" else " (NOT AF-like)",
+    if (isTRUE(x$record$af_like)) " (AF-like)" else " (NOT AF-like)",
     "\n",
     sep = ""
   )
@@ -530,23 +607,8 @@ filter_bandpass <- function(signal, frequency, low = 0.5, high = 30) {
 #' composite.
 #'
 #' @noRd
-shared_qrs_positions <- function(object, filtered, frequency, channel = NULL) {
-  ann <- resolve_annotation(object$annotation)
-
+shared_qrs_positions <- function(ann, filtered, frequency) {
   if (!is.null(ann)) {
-    # An annotator run per lead writes one beat annotation per lead, and pooling
-    # them counts every beat as many times as there are leads. Resolve to one
-    # lead, or refuse: a heart rate off by a factor of twelve is not visible in
-    # any downstream number.
-    channel <- resolve_annotation_channel(
-      ann,
-      resolve_channel_spec(object, channel),
-      what = "Fibrillatory wave extraction"
-    )
-    if (!is.null(channel) && "channel" %in% colnames(ann)) {
-      ann <- ann[ann$channel %in% c(as.integer(channel), 0L), , drop = FALSE]
-    }
-
     # Beat labels in the WFDB convention: N, L, R, B, A, a, J, S, V, r, F, e,
     # j, n, E, P, f, Q are all beat annotations
     beat_types <- c(
@@ -571,12 +633,49 @@ shared_qrs_positions <- function(object, filtered, frequency, channel = NULL) {
   refine_qrs_positions(loc, composite, frequency)
 }
 
+#' Settle on one annotation table for the whole analysis
+#'
+#' Both the QRS positions and the TQ segments are read from annotations, and
+#' both have to be read from the same lead. An annotator run once per lead
+#' writes a complete set of fiducials for each, separated only by the `channel`
+#' column, so a pooled table reports twelve times as many beats as the record
+#' holds and twelve overlapping copies of every TQ segment -- the latter shows
+#' up as a `tq_fraction` greater than one.
+#'
+#' @noRd
+resolve_fwave_annotation <- function(object, channel = NULL) {
+  ann <- resolve_annotation(object$annotation)
+  if (is.null(ann)) {
+    return(NULL)
+  }
+
+  channel <- resolve_annotation_channel(
+    ann,
+    resolve_channel_spec(object, channel),
+    what = "Fibrillatory wave extraction"
+  )
+  if (!is.null(channel) && "channel" %in% colnames(ann)) {
+    # Channel 0 rides along as the global channel, but only where the table
+    # means it that way. A table declared `channel_zero = "signal"` numbers its
+    # leads `0 .. nsig-1`, so 0 is a lead like any other and keeping it pools
+    # two leads' fiducials -- the doubling this guard exists to prevent.
+    keep <- as.integer(channel)
+    if (!identical(channel_zero(ann), "signal")) {
+      keep <- c(keep, 0L)
+    }
+    ann <- ann[ann$channel %in% keep, , drop = FALSE]
+  }
+
+  ann
+}
+
 #' Pull a usable annotation table out of whatever shape is attached
 #'
 #' An `EGM` object carries annotations as a named list keyed by annotator, but a
-#' bare `annotation_table` is also accepted. Where several are present, the one
-#' that types its wave boundaries is preferred, since that is what locates TQ
-#' segments.
+#' bare `annotation_table` is also accepted. Several usable annotators is an
+#' error rather than a choice made here: the file-per-lead convention leaves
+#' `chan` at 0 in every file, so the tables are indistinguishable by channel and
+#' picking one silently picks a lead.
 #'
 #' @noRd
 resolve_annotation <- function(ann) {
@@ -603,15 +702,20 @@ resolve_annotation <- function(ann) {
     return(NULL)
   }
 
-  # An annotator that marks wave onsets and offsets carries strictly more
-  # information than one that only marks beats
-  has_boundaries <- vapply(
-    candidates,
-    function(x) "number" %in% names(x) && any(x$type %in% c("(", ")")),
-    logical(1)
-  )
-  if (any(has_boundaries)) {
-    return(as.data.frame(candidates[[which(has_boundaries)[1]]]))
+  # Several annotators is the other per-lead convention, and it is the one the
+  # `channel` column cannot catch: a file-per-lead annotator such as LUDB's
+  # carries the lead in the file extension and leaves `chan` at 0 throughout,
+  # so every table looks global and picking one silently picks a lead. Which
+  # one changes the beat positions, the TQ boundaries and every amplitude.
+  if (length(candidates) > 1) {
+    stop(
+      "This record carries ", length(candidates), " usable annotators (",
+      paste(names(candidates), collapse = ", "),
+      "), and which one is read decides the beat positions and the TQ ",
+      "segments. Read the record with the single annotator you mean, or ",
+      "supply `qrs_loc` and an annotation-free `amplitude_window`.",
+      call. = FALSE
+    )
   }
 
   as.data.frame(candidates[[1]])
@@ -623,8 +727,13 @@ resolve_annotation <- function(ann) {
 #' R peak by roughly half that window. Left uncorrected, the misalignment smears
 #' the template across beats and weakens every subsequent fit.
 #'
+#' `search_ms` has to exceed that lag or the true peak is outside the window and
+#' the refinement latches onto whatever else is in range. The integration window
+#' is 150 ms, so the lag is about 75 ms; 100 ms leaves margin without reaching a
+#' neighbouring QRS at any plausible rate.
+#'
 #' @noRd
-refine_qrs_positions <- function(qrs_loc, reference, frequency, search_ms = 60) {
+refine_qrs_positions <- function(qrs_loc, reference, frequency, search_ms = 100) {
   if (length(qrs_loc) == 0) {
     return(integer(0))
   }
@@ -687,8 +796,15 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
   af_like <- if (!is.null(rhythm)) {
     tolower(rhythm) %in% c("af", "afib", "atrial fibrillation", "flutter", "aflutter")
   } else {
-    # Irregularly irregular ventricular response. The threshold is deliberately
-    # permissive; it exists to catch obviously regular records, not to diagnose.
+    # Irregularly irregular ventricular response. The coefficient of variation
+    # of the RR interval is Tateno and Glass's atrial fibrillation detector
+    # (Med Biol Eng Comput. 2001;39(6):664-671), which they report at 86.6%
+    # sensitivity and 84.3% specificity; the normalised RMSSD is the companion
+    # index used through the RR-irregularity detection literature.
+    #
+    # These three thresholds -- 0.12 and 0.10 here, 0.05 for `rr_regular` below
+    # -- are not from either. They were chosen here, deliberately permissive, to
+    # decide whether to warn rather than to diagnose anything.
     isTRUE(rr_cv >= 0.12 && rr_rmssd >= 0.10)
   }
 
@@ -730,11 +846,6 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
 #' least-squares coefficient. This is the Slocum average-beat predecessor and is
 #' provided for comparison.
 #'
-#' `"adaptive_svd"` is retained for backward compatibility and operates one lead
-#' at a time. It is not recommended: a per-lead template leaves a residual that
-#' is periodic at the heart rate, which deposits energy on heart-rate harmonics
-#' inside the fibrillatory band.
-#'
 #' Beats are never blanked or interpolated across. A beat that the template
 #' models badly is still fitted and subtracted, and the quality of that fit is
 #' reported through `cancellation_residual` rather than being hidden by
@@ -755,7 +866,7 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
 #' @param frequency Sampling frequency in Hz. Required.
 #' @param qrs_loc Integer vector of QRS sample positions shared by all leads.
 #'   Detected from a composite if `NULL`.
-#' @param method One of `"spatiotemporal"`, `"average_beat"`, `"adaptive_svd"`.
+#' @param method Either `"spatiotemporal"` or `"average_beat"`.
 #' @param min_beats Minimum number of beats required before any template-based
 #'   subtraction is attempted. Default 3. Below this an "average" beat is
 #'   effectively a copy of a single beat, and subtracting it returns zero.
@@ -765,7 +876,6 @@ rhythm_summary <- function(qrs_loc, frequency, rhythm = NULL) {
 #'   fibrillation the RR interval is irregular by definition, so an RR-based
 #'   criterion fires on normally conducted beats in the exact rhythm this
 #'   function targets.
-#' @param ... Unused, for method compatibility.
 #'
 #' @return A list with `atrial` (named list of cancelled signals), `qrs_loc`,
 #'   `n_beats_cancelled`, `n_beats_skipped`, and `n_beats_aberrant`.
@@ -780,10 +890,9 @@ cancel_ventricular_signal <- function(
   signals,
   frequency,
   qrs_loc = NULL,
-  method = c("spatiotemporal", "average_beat", "adaptive_svd"),
+  method = c("spatiotemporal", "average_beat"),
   min_beats = 3L,
-  aberrancy_threshold = 0.9,
-  ...
+  aberrancy_threshold = 0.9
 ) {
   method <- match.arg(method)
 
@@ -832,20 +941,6 @@ cancel_ventricular_signal <- function(
       qrs_loc = qrs_loc,
       n_beats_cancelled = 0L,
       n_beats_skipped = length(qrs_loc),
-      n_beats_aberrant = NA_integer_
-    ))
-  }
-
-  if (method == "adaptive_svd") {
-    atrial <- lapply(signals, function(x) {
-      remove_qrs_with_adaptive_svd(x, frequency = frequency, qrs_loc = qrs_loc)
-    })
-    names(atrial) <- names(signals)
-    return(list(
-      atrial = atrial,
-      qrs_loc = qrs_loc,
-      n_beats_cancelled = length(qrs_loc),
-      n_beats_skipped = 0L,
       n_beats_aberrant = NA_integer_
     ))
   }
@@ -980,6 +1075,24 @@ cancel_ventricular_signal <- function(
   # and accumulating this way subtracts the overlap once with a smooth crossfade
   # instead of subtracting it twice or leaving a step discontinuity.
   taper <- tukey_window(width, ramp = 0.10)
+  # `pmax(weight, 1)` and not `weight`: dividing by the weight itself cancels
+  # the taper exactly wherever only one window covers a sample, so subtraction
+  # would step from the full fitted value to zero at the outer edge of every
+  # covered region. On the bundled `muse-af` record subtraction switched on at 3
+  # to 9 percent of the ventricular estimate's own peak -- a median of 46
+  # digital units, against 0.3 with the taper kept -- once per beat.
+  #
+  # What that costs is not measurable here: the harmonic share of 2.5-15 Hz
+  # atrial power moves by 0.0005 on `muse-af`, and by as little on a synthetic
+  # record slow enough that no two beat windows overlap. The step is removed
+  # because a discontinuity the method never intended is not something to leave
+  # in a signal that is about to be read spectrally, not because any returned
+  # feature was seen to move.
+  #
+  # The cost is that the outermost tenth of an unoverlapped window has only
+  # part of its ventricular estimate removed. That is the far tail of the beat,
+  # 200 ms before the R peak and 500 ms after it, where the QRST is near
+  # baseline anyway -- and a ramp there is a smaller error than a step.
 
   ventricular <- lapply(lead_names, function(l) numeric(n))
   names(ventricular) <- lead_names
@@ -995,12 +1108,9 @@ cancel_ventricular_signal <- function(
     weight[w] <- weight[w] + taper
   }
 
-  covered <- weight > .Machine$double.eps
+  scale <- pmax(weight, 1)
   atrial <- lapply(lead_names, function(l) {
-    v <- ventricular[[l]]
-    v[covered] <- v[covered] / weight[covered]
-    v[!covered] <- 0
-    signals[[l]] - v
+    signals[[l]] - ventricular[[l]] / scale
   })
   names(atrial) <- lead_names
 
@@ -1029,317 +1139,6 @@ tukey_window <- function(n, ramp = 0.1) {
   w
 }
 
-#' Legacy single-lead ventricular removal
-#'
-#' @description Retained for backward compatibility. `frequency` is now required
-#'   rather than silently defaulting to 1000 Hz, which produced QRS detection
-#'   filters designed for the wrong Nyquist and adaptive window sizing off by a
-#'   factor of two whenever the signal was not sampled at 1000 Hz.
-#'
-#' @param signal Numeric vector for a single lead
-#' @param frequency Sampling frequency in Hz. Required.
-#' @param method Either `"adaptive_svd"` or `"ica"`
-#' @param ... Passed through to the underlying method
-#'
-#' @return Numeric vector with ventricular activity suppressed
-#' @noRd
-remove_ventricular_signal <- function(signal, frequency, method = "adaptive_svd", ...) {
-  if (missing(frequency) || is.null(frequency)) {
-    stop(
-      "`frequency` is required. It was previously assumed to be 1000 Hz, ",
-      "which silently produced wrong results at any other sampling rate."
-    )
-  }
-
-  if (method == "adaptive_svd") {
-    remove_qrs_with_adaptive_svd(signal, frequency = frequency, ...)
-  } else if (method == "ica") {
-    remove_qrs_with_ica(signal, frequency = frequency, ...)
-  } else {
-    stop("Unsupported method. Choose 'adaptive_svd' or 'ica'")
-  }
-}
-
-#' Single-lead adaptive SVD cancellation
-#'
-#' Kept for backward comparison only. See [cancel_ventricular_signal()] for the
-#' reason this is not the default.
-#'
-#' @noRd
-remove_qrs_with_adaptive_svd <- function(
-  signal,
-  frequency,
-  qrs_loc = NULL,
-  adaptive_window = TRUE,
-  smoothing = TRUE,
-  min_group = 3L,
-  max_components = 3L,
-  ...
-) {
-  if (missing(frequency) || is.null(frequency)) {
-    stop("`frequency` is required")
-  }
-
-  signal <- as.numeric(signal)
-
-  if (is.null(qrs_loc)) {
-    qrs_loc <- detect_QRS(signal, frequency)
-  }
-  qrs_loc <- sort(unique(as.integer(qrs_loc)))
-
-  if (length(qrs_loc) < min_group) {
-    warning(
-      "Insufficient QRS complexes for SVD cancellation. Returning original signal."
-    )
-    return(signal)
-  }
-
-  rr_intervals <- diff(qrs_loc)
-  median_rr <- stats::median(rr_intervals)
-
-  if (adaptive_window) {
-    base_window_ms <- min(
-      500,
-      max(250, 60000 / (median_rr / frequency * 1000) * 0.2)
-    )
-    base_window <- round(base_window_ms * frequency / 1000)
-  } else {
-    base_window <- round(0.5 * frequency)
-  }
-  half_window <- floor(base_window / 2)
-
-  process_beat_group(
-    signal,
-    qrs_loc,
-    half_window,
-    frequency,
-    smoothing,
-    min_group = min_group,
-    max_components = max_components
-  )
-}
-
-#' Subtract a low-rank model of a group of beats
-#'
-#' Two guards matter here. The rank is capped well below the group size: the
-#' point is a *low-rank* model of the ventricular complex, so a rank that grows
-#' with the number of beats defeats it. Left uncapped, a 95 percent variance rule
-#' on a two-beat group selects both components, the reconstruction is exact, and
-#' the residual is identically zero -- the atrial signal in that window is
-#' deleted outright. The group must also be large enough that its "average" beat
-#' is not simply a copy of one beat.
-#'
-#' @noRd
-process_beat_group <- function(
-  signal,
-  beat_indices,
-  half_window,
-  frequency,
-  smoothing = TRUE,
-  min_group = 3L,
-  max_components = 3L
-) {
-  n <- length(signal)
-
-  if (length(beat_indices) < min_group) {
-    return(signal)
-  }
-
-  usable <- beat_indices[
-    (beat_indices - half_window) >= 1L & (beat_indices + half_window) <= n
-  ]
-  if (length(usable) < min_group) {
-    return(signal)
-  }
-
-  width <- 2L * half_window + 1L
-  windows <- lapply(usable, function(p) seq.int(p - half_window, p + half_window))
-  segment_matrix <- t(vapply(windows, function(w) signal[w], numeric(width)))
-
-  svd_result <- tryCatch(svd(segment_matrix), error = function(e) NULL)
-  if (is.null(svd_result) || !any(is.finite(svd_result$d)) || sum(svd_result$d) == 0) {
-    warning("SVD failed or the segment group is degenerate; leaving it unchanged.")
-    return(signal)
-  }
-
-  # Cap the rank rather than chasing a variance threshold, and never allow the
-  # model to reach full rank, which would reconstruct the group exactly.
-  n_components <- max(1L, min(
-    as.integer(max_components),
-    nrow(segment_matrix) - 1L,
-    sum(svd_result$d > .Machine$double.eps * svd_result$d[1])
-  ))
-
-  template_matrix <- svd_result$u[, 1:n_components, drop = FALSE] %*%
-    diag(svd_result$d[1:n_components], nrow = n_components) %*%
-    t(svd_result$v[, 1:n_components, drop = FALSE])
-
-  taper <- tukey_window(width, ramp = 0.10)
-  ventricular <- numeric(n)
-  weight <- numeric(n)
-
-  for (i in seq_along(usable)) {
-    w <- windows[[i]]
-    ventricular[w] <- ventricular[w] + taper * template_matrix[i, ]
-    weight[w] <- weight[w] + taper
-  }
-
-  covered <- weight > .Machine$double.eps
-  ventricular[covered] <- ventricular[covered] / weight[covered]
-  ventricular[!covered] <- 0
-
-  result <- signal - ventricular
-
-  if (smoothing) {
-    result <- smooth_savgol(result, frequency)
-  }
-
-  result
-}
-
-#' Savitzky-Golay smoothing with a graceful fallback
-#' @noRd
-smooth_savgol <- function(x, frequency, window_sec = 0.015) {
-  smooth_window <- round(window_sec * frequency)
-  if (smooth_window <= 2) {
-    return(x)
-  }
-  if (smooth_window %% 2 == 0) {
-    smooth_window <- smooth_window + 1
-  }
-  if (smooth_window <= 3) {
-    return(x)
-  }
-
-  smoothed <- tryCatch(
-    {
-      kern <- signal::sgolay(p = 3, n = smooth_window, m = 0)
-      as.numeric(signal::filter(kern, x))
-    },
-    error = function(e) x
-  )
-
-  na_indices <- which(is.na(smoothed))
-  if (length(na_indices) > 0) {
-    smoothed[na_indices] <- x[na_indices]
-  }
-  smoothed
-}
-
-#' Remove QRST using Independent Component Analysis
-#'
-#' A single-lead signal is delay-embedded to create a pseudo-multichannel
-#' matrix, then decomposed with FastICA. Components whose high frequency energy
-#' rises sharply inside a window around detected QRS peaks are presumed
-#' ventricular and zeroed before back-projection.
-#'
-#' @noRd
-remove_qrs_with_ica <- function(
-  signal,
-  frequency,
-  embedding_dim = 5,
-  qrs_loc = NULL,
-  threshold = 3,
-  ...
-) {
-  if (missing(frequency) || is.null(frequency)) {
-    stop("`frequency` is required")
-  }
-
-  signal <- as.numeric(signal)
-  N <- length(signal)
-
-  if (!requireNamespace("fastICA", quietly = TRUE)) {
-    warning("fastICA not installed, falling back to adaptive SVD.")
-    return(remove_qrs_with_adaptive_svd(signal, frequency = frequency, qrs_loc = qrs_loc))
-  }
-
-  if (is.null(qrs_loc)) {
-    qrs_loc <- detect_QRS(signal, frequency)
-  }
-  if (length(qrs_loc) < 3L) {
-    warning("Too few QRS complexes for ICA, returning original signal.")
-    return(signal)
-  }
-
-  embedding_dim <- max(3, min(embedding_dim, length(qrs_loc) - 1))
-
-  X <- stats::embed(signal, embedding_dim)
-  X <- scale(X, center = TRUE, scale = FALSE)
-
-  methods <- list(
-    list(alg = "parallel", fun = "logcosh"),
-    list(alg = "deflation", fun = "logcosh"),
-    list(alg = "parallel", fun = "exp"),
-    list(alg = "deflation", fun = "exp")
-  )
-
-  ica_result <- NULL
-  for (m in methods) {
-    result <- tryCatch(
-      fastICA::fastICA(
-        X,
-        n.comp = embedding_dim,
-        alg.typ = m$alg,
-        fun = m$fun,
-        verbose = FALSE
-      ),
-      error = function(e) NULL
-    )
-    if (!is.null(result)) {
-      ica_result <- result
-      break
-    }
-  }
-
-  if (is.null(ica_result)) {
-    warning("ICA decomposition failed. Falling back to adaptive SVD.")
-    return(remove_qrs_with_adaptive_svd(signal, frequency = frequency, qrs_loc = qrs_loc))
-  }
-
-  S <- ica_result$S
-  A <- ica_result$A
-
-  ny <- frequency / 2
-  bf <- signal::butter(3, c(20, min(50, ny * 0.95)) / ny, type = "pass")
-  win <- round(0.03 * frequency)
-
-  shift <- embedding_dim - 1L
-  keep <- qrs_loc[qrs_loc > win + shift & qrs_loc <= N - win] - shift
-  if (length(keep) == 0) {
-    return(signal)
-  }
-  idx_qrs <- unlist(lapply(keep, function(p) (p - win):(p + win)))
-  idx_qrs <- idx_qrs[idx_qrs >= 1 & idx_qrs <= nrow(S)]
-
-  total_energy <- apply(S, 2, function(comp) mean(comp^2))
-  qrs_energy <- apply(S, 2, function(comp) {
-    mean(signal::filtfilt(bf, comp)[idx_qrs]^2)
-  })
-
-  qrs_comps <- which(qrs_energy / pmax(total_energy, .Machine$double.eps) > threshold)
-  if (length(qrs_comps)) {
-    S[, qrs_comps] <- 0
-  }
-
-  X_clean <- S %*% t(A)
-  X_mean <- rowMeans(X_clean)
-
-  cleaned_signal <- c(rep(X_mean[1L], embedding_dim - 1L), X_mean)
-  len_diff <- N - length(cleaned_signal)
-  if (len_diff > 0) {
-    cleaned_signal <- c(
-      cleaned_signal,
-      rep(cleaned_signal[length(cleaned_signal)], len_diff)
-    )
-  }
-
-  # No blanking or spline interpolation across the QRS. Replacing a window with
-  # a straight line removes every trace of the atrial signal inside it, which is
-  # the opposite of what this function is for.
-  cleaned_signal[seq_len(N)]
-}
-
 # Atrial signal analysis ----
 
 #' Analyse an isolated atrial signal
@@ -1347,16 +1146,23 @@ remove_qrs_with_ica <- function(
 #' @param atrial_signal Numeric vector of the cancelled (atrial) signal
 #' @param frequency Sampling frequency in Hz
 #' @param characteristics Character vector of features to compute
-#' @param original_signal The uncancelled, filtered signal for the same lead.
-#'   Needed for the QRS excursion used in amplitude normalisation and for the
-#'   cancellation residual.
+#' @param original_signal The uncancelled, filtered signal for the same lead,
+#'   which is what the cancellation residual and the harmonic evidence are
+#'   measured against.
+#' @param raw_signal The same lead before bandpass filtering, used for the QRS
+#'   excursion. Falls back to `original_signal`. The passband reaches only
+#'   30 Hz, and the QRS carries energy above it, so a filtered excursion is
+#'   small by 4-37% across the leads of the bundled records, median 14%, and by
+#'   how much depends on the lead and the QRS width -- which would put a
+#'   morphology-dependent factor into `f_ratio`, the one amplitude measure whose
+#'   whole purpose is comparability between patients.
 #' @param qrs_loc Integer vector of QRS positions
-#' @param annotation Optional annotation table used to locate TQ segments
+#' @param annotation Optional annotation table used to locate TQ segments. It
+#'   must already be resolved to a single lead; see [extract_f_waves()].
 #' @param amplitude_window Either `"tq"` or `"all"`
 #' @param band Numeric length-2 frequency band in Hz
 #' @param entropy_rate Rate in Hz to decimate to before computing entropy
-#' @param tol Tolerance for the harmonic test
-#' @param ... Unused
+#' @param tol Tolerance for the harmonic coincidence test
 #'
 #' @return A named list of features
 #' @export
@@ -1370,13 +1176,13 @@ analyze_atrial_signal <- function(
     "sample_entropy"
   ),
   original_signal = NULL,
+  raw_signal = original_signal,
   qrs_loc = NULL,
   annotation = NULL,
   amplitude_window = c("tq", "all"),
   band = c(4, 10),
-  entropy_rate = 50,
-  tol = 0.15,
-  ...
+  entropy_rate = 256,
+  tol = 0.15
 ) {
   if (!is.numeric(atrial_signal) || !is.numeric(frequency)) {
     stop("atrial_signal must be numeric and frequency must be a number")
@@ -1389,7 +1195,7 @@ analyze_atrial_signal <- function(
   if ("amplitude" %in% characteristics) {
     amp <- amplitude_features(
       atrial_signal,
-      original_signal = original_signal,
+      raw_signal = raw_signal,
       frequency = frequency,
       qrs_loc = qrs_loc,
       annotation = annotation,
@@ -1409,23 +1215,38 @@ analyze_atrial_signal <- function(
 
     # The harmonic index is the diagnostic that separates a fibrillatory peak
     # from ventricular residual: residual energy sits on integer multiples of
-    # the heart rate, so the index comes out an integer.
+    # the heart rate, so the index comes out an integer. Read it as a screen and
+    # not a test -- see `harmonic_flag()` for why.
     if (!is.null(qrs_loc) && length(qrs_loc) >= 2) {
       median_rr <- stats::median(diff(qrs_loc))
-      results$harmonic_index <- df * median_rr / frequency
-      results$on_harmonic <- harmonic_flag(results$harmonic_index, tol)
+      results$harmonic_overlap <- df * median_rr / frequency
+      results$on_harmonic <- harmonic_flag(results$harmonic_overlap, tol)
     } else {
-      results$harmonic_index <- NA_real_
+      results$harmonic_overlap <- NA_real_
       results$on_harmonic <- NA
     }
 
-    if ("organization" %in% characteristics) {
-      results$organization_index <- calculate_organization_index(
-        atrial_signal,
-        frequency = frequency,
-        dominant_frequency = df
-      )
-    }
+  }
+
+  # Organisation is a share of band power at the dominant frequency, so it needs
+  # one -- but asking for it is enough. It used to be computed only inside the
+  # branch above, so `f_characteristics = "organization"` on its own returned a
+  # table with no organisation column in it and said nothing.
+  if ("organization" %in% characteristics) {
+    results$organization_index <- calculate_organization_index(
+      atrial_signal,
+      frequency = frequency,
+      dominant_frequency = if ("dominant_frequency" %in% characteristics) {
+        df
+      } else {
+        calculate_dominant_frequency(
+          atrial_signal,
+          frequency = frequency,
+          f_min = band[1],
+          f_max = band[2]
+        )
+      }
+    )
   }
 
   if ("sample_entropy" %in% characteristics) {
@@ -1452,6 +1273,31 @@ analyze_atrial_signal <- function(
   results
 }
 
+#' Refuse a series with holes in it
+#'
+#' Dropping the non-finite samples closes the gap they leave and joins two
+#' stretches that were not adjacent. For a spectral estimate that shifts the
+#' whole time axis; for an entropy it is worse, since the statistic *is* the
+#' relationship between neighbouring samples and the spliced pairs are compared
+#' as though they were contiguous. Both return a plausible number either way.
+#'
+#' @noRd
+refuse_holes <- function(x, what) {
+  n_bad <- sum(!is.finite(x))
+  if (n_bad > 0) {
+    stop(
+      what,
+      " cannot be computed on a series holding ",
+      n_bad,
+      " non-finite samples. Removing them would join stretches that are not ",
+      "adjacent and the embedded vectors spanning the join would be compared ",
+      "as though they were; interpolate or trim the record first.",
+      call. = FALSE
+    )
+  }
+  x
+}
+
 #' Decimate ahead of an O(n^2) entropy calculation
 #' @noRd
 decimate_for_entropy <- function(x, frequency, entropy_rate) {
@@ -1462,22 +1308,40 @@ decimate_for_entropy <- function(x, frequency, entropy_rate) {
 }
 
 #' Flag a spectral peak that sits on a heart-rate harmonic
+#'
+#' A screen, not a test, and the difference matters. Ventricular residual
+#' deposits its energy on integer multiples of the heart rate, so a contaminated
+#' peak coincides with one. But so does an honest peak, often: the harmonic
+#' overlap is a ratio of two unrelated numbers and integers are spaced one
+#' apart, so a tolerance of 0.15 lands on one about three times in ten by
+#' arithmetic alone. The flag is therefore sensitive and not specific, and it
+#' belongs beside `cancellation_residual` rather than on its own.
+#'
+#' Neither `harmonic_overlap` nor this flag is a published quantity. See
+#' [f_wave_diagnostics] for what they are and are not.
+#'
 #' @noRd
-harmonic_flag <- function(harmonic_index, tol = 0.15) {
-  if (is.null(harmonic_index) || !is.finite(harmonic_index)) {
+harmonic_flag <- function(harmonic_overlap, tol = 0.15) {
+  if (is.null(harmonic_overlap) || !is.finite(harmonic_overlap)) {
     return(NA)
   }
-  abs(harmonic_index - round(harmonic_index)) < tol
+  abs(harmonic_overlap - round(harmonic_overlap)) < tol
 }
 
 # Amplitude ----
 
 #' Locate TQ segments, where the ventricles are electrically silent
 #'
-#' Prefers an ecgpuwave-style annotation, which types each wave boundary
-#' (`number`: 0 = P, 1 = QRS, 2 = T), so a TQ segment runs from a T offset to
-#' the next QRS onset. Falls back to a fixed exclusion window around each
-#' detected QRS.
+#' A TQ segment runs from a T offset to the next QRS onset, so the wave each
+#' bracket belongs to has to be known. That comes from [label_waves()], which
+#' reads it positionally from the peak symbol each `(`...`)` pair encloses --
+#' not from the WFDB `number` column, which most annotators leave at zero
+#' throughout. Reading `number` meant those files fell silently to the fixed
+#' exclusion window below while still reporting `amplitude_window = "tq"`.
+#'
+#' The annotation must already be resolved to one lead; pooled across a
+#' per-lead annotator every segment appears once per lead and `tq_fraction`
+#' comes back greater than one.
 #'
 #' @noRd
 tq_segments <- function(n, frequency, qrs_loc = NULL, annotation = NULL) {
@@ -1485,9 +1349,10 @@ tq_segments <- function(n, frequency, qrs_loc = NULL, annotation = NULL) {
   ann <- resolve_annotation(annotation)
 
   if (!is.null(ann)) {
-    if (all(c("sample", "type", "number") %in% names(ann))) {
-      t_off <- ann$sample[ann$type == ")" & ann$number == 2]
-      qrs_on <- ann$sample[ann$type == "(" & ann$number == 1]
+    if (all(c("sample", "type") %in% names(ann))) {
+      labelled <- label_waves(ann)
+      t_off <- labelled$sample[labelled$type == ")" & labelled$wave %in% "T"]
+      qrs_on <- labelled$sample[labelled$type == "(" & labelled$wave %in% "QRS"]
 
       if (length(t_off) > 0 && length(qrs_on) > 0) {
         segs <- lapply(t_off, function(s) {
@@ -1542,10 +1407,26 @@ tq_segments <- function(n, frequency, qrs_loc = NULL, annotation = NULL) {
 }
 
 #' Amplitude of the fibrillatory signal
+#'
+#' Both a root-mean-square and a peak-to-peak amplitude are returned, and they
+#' are not interchangeable. Peak-to-peak is the measure the coarse- versus
+#' fine-AF literature uses, but it is a maximum over its segment and so grows
+#' with the segment's length: on white noise its expectation rises 58% between
+#' a 20-sample and a 400-sample window. TQ segments are as long as the RR
+#' interval allows, so peak-to-peak carries a heart-rate confound that the
+#' root-mean-square does not. Peak-to-peak is nonetheless the measure with the
+#' clinical literature behind it: Li et al. called atrial fibrillation coarse at
+#' 1 mm or more in V1 and found left atrial appendage dysfunction and thrombus
+#' more common in those patients (Chest. 1995;108(2):359-363,
+#' \doi{10.1378/chest.108.2.359}).
+#'
+#' Both are measured within each segment and then reduced by the median across
+#' segments, which is what keeps a single noisy segment from carrying the lead.
+#'
 #' @noRd
 amplitude_features <- function(
   atrial_signal,
-  original_signal,
+  raw_signal,
   frequency,
   qrs_loc,
   annotation,
@@ -1564,7 +1445,7 @@ amplitude_features <- function(
     return(list(
       f_amplitude_p2p = NA_real_,
       f_amplitude_rms = NA_real_,
-      qrs_amplitude = qrs_excursion(original_signal, qrs_loc, frequency),
+      qrs_amplitude = qrs_excursion(raw_signal, qrs_loc, frequency),
       f_ratio = NA_real_,
       tq_fraction = 0
     ))
@@ -1573,34 +1454,47 @@ amplitude_features <- function(
   idx <- unlist(lapply(segs, function(s) seq.int(s[1], s[2])))
   idx <- idx[idx >= 1 & idx <= n]
 
-  # Peak-to-peak per segment, then the median across segments. This is the
-  # measure the coarse- versus fine-AF literature uses.
-  p2p <- vapply(
-    segs,
-    function(s) {
-      v <- atrial_signal[seq.int(s[1], s[2])]
-      if (length(v) < 2 || all(!is.finite(v))) NA_real_ else diff(range(v, na.rm = TRUE))
-    },
-    numeric(1)
-  )
+  # Peak-to-peak per segment, then the median across segments
+  # Both amplitudes are summarised the same way: measured within each segment,
+  # then the median across segments. A pooled figure over every TQ sample at
+  # once would let one noisy segment carry the lead, and the segments are not
+  # exchangeable -- they vary in length with the RR interval.
+  per_segment <- function(f) {
+    vapply(
+      segs,
+      function(s) {
+        v <- atrial_signal[seq.int(s[1], s[2])]
+        if (length(v) < 2 || all(!is.finite(v))) NA_real_ else f(v)
+      },
+      numeric(1)
+    )
+  }
 
-  qrs_amp <- qrs_excursion(original_signal, qrs_loc, frequency)
+  p2p <- per_segment(function(v) diff(range(v, na.rm = TRUE)))
+  rms <- per_segment(function(v) sqrt(mean(v^2, na.rm = TRUE)))
+
+  qrs_amp <- qrs_excursion(raw_signal, qrs_loc, frequency)
   p2p_median <- stats::median(p2p, na.rm = TRUE)
 
   list(
     f_amplitude_p2p = p2p_median,
-    f_amplitude_rms = sqrt(mean(atrial_signal[idx]^2, na.rm = TRUE)),
+    f_amplitude_rms = stats::median(rms, na.rm = TRUE),
     qrs_amplitude = qrs_amp,
-    # Dividing by the QRS excursion in the same lead cancels the thoracic
-    # transfer function to first order, since the ventricular signal traverses
-    # the same tissue. That matters for comparison between patients, where raw
-    # amplitude is dominated by body habitus rather than by atrial physiology.
+    # Dividing by the QRS excursion in the same lead is meant to cancel the
+    # thoracic transfer function to first order: the ventricular signal
+    # traverses the same tissue, so it carries the same attenuation. That
+    # matters for comparison between patients, where raw amplitude is dominated
+    # by body habitus rather than by atrial physiology.
+    #
+    # The f-wave amplitude in the numerator is a long-established measure. The
+    # ratio is not: it is specific to this package, the reasoning above is its
+    # entire justification, and it has not been validated against anything.
     f_ratio = if (is.finite(qrs_amp) && qrs_amp > 0) p2p_median / qrs_amp else NA_real_,
     tq_fraction = length(idx) / n
   )
 }
 
-#' Median QRS peak-to-peak excursion, measured on the uncancelled signal
+#' Median QRS peak-to-peak excursion, measured on the unfiltered signal
 #' @noRd
 qrs_excursion <- function(signal, qrs_loc, frequency, half_ms = 60) {
   if (is.null(signal) || is.null(qrs_loc) || length(qrs_loc) == 0) {
@@ -1629,6 +1523,26 @@ qrs_excursion <- function(signal, qrs_loc, frequency, half_ms = 60) {
 #' same window before it. Model-free, and independent of any spectral
 #' assumption, so it says how well cancellation worked without presuming what
 #' the atrial spectrum should look like.
+#'
+#' This is a variant of the published *ventricular residue*. Alcaraz and Rieta
+#' introduced VR to score how much ventricular activity survives in an extracted
+#' atrial signal, and Alcaraz, Sornmo and Rieta later recommended the
+#' unnormalised form, uVR, as the index to use when characterising extraction
+#' performance on real rather than simulated signals. Their VR is scaled so that
+#' reported values run above 1 -- 3.16 for average-beat subtraction against 1.73
+#' for adaptive singular value cancellation -- while this ratio is an energy
+#' fraction bounded below by 0, so the numbers are not interchangeable with
+#' theirs and only the ordering carries over.
+#'
+#' Alcaraz R, Rieta JJ. Adaptive singular value cancelation of ventricular
+#' activity in single-lead atrial fibrillation electrocardiograms.
+#' Physiological Measurement. 2008;29(12):1351-1369.
+#' \doi{10.1088/0967-3334/29/12/001}
+#'
+#' Alcaraz R, Sornmo L, Rieta JJ. Reference database and performance evaluation
+#' of methods for extraction of atrial fibrillatory waves in the ECG.
+#' Physiological Measurement. 2019;40(7):075011.
+#' \doi{10.1088/1361-6579/ab2b17}
 #'
 #' @noRd
 cancellation_residual <- function(
@@ -1663,24 +1577,6 @@ cancellation_residual <- function(
   after / before
 }
 
-#' Coefficient of variation of f-wave amplitude across leads
-#'
-#' A uniform fibrillatory field and a regionally organised one differ here even
-#' when their amplitude in any single lead is identical.
-#'
-#' @noRd
-spatial_dispersion <- function(amplitudes) {
-  a <- amplitudes[is.finite(amplitudes)]
-  if (length(a) < 2) {
-    return(NA_real_)
-  }
-  m <- mean(a)
-  if (m == 0) {
-    return(NA_real_)
-  }
-  stats::sd(a) / m
-}
-
 #' Collapse the per-lead feature lists into one table
 #' @noRd
 assemble_feature_table <- function(features, leads, normalize = "none") {
@@ -1693,7 +1589,7 @@ assemble_feature_table <- function(features, leads, normalize = "none") {
     "organization_index",
     "sample_entropy",
     "approximate_entropy",
-    "harmonic_index",
+    "harmonic_overlap",
     "on_harmonic",
     "cancellation_residual",
     "tq_fraction"
@@ -1713,11 +1609,14 @@ assemble_feature_table <- function(features, leads, normalize = "none") {
   }
 
   # `f_amplitude` names whichever amplitude the caller asked to work in.
-  # Normalisation is never the silent default, since it changes the units.
+  # Normalisation is never the silent default, since it changes the units. The
+  # unnormalised default is the root-mean-square rather than the peak-to-peak,
+  # because peak-to-peak grows with the length of the segment it is taken over
+  # and TQ segment length is set by the RR interval.
   if (normalize == "qrs" && "f_ratio" %in% names(dt)) {
     data.table::set(dt, j = "f_amplitude", value = dt$f_ratio)
-  } else if ("f_amplitude_p2p" %in% names(dt)) {
-    data.table::set(dt, j = "f_amplitude", value = dt$f_amplitude_p2p)
+  } else if ("f_amplitude_rms" %in% names(dt)) {
+    data.table::set(dt, j = "f_amplitude", value = dt$f_amplitude_rms)
   }
 
   dt[]
@@ -1765,12 +1664,12 @@ calculate_welch_spectrum <- function(
   resolution = 0.05
 ) {
   x <- as.numeric(x)
-  x <- x[is.finite(x)]
   n <- length(x)
 
   if (n < 8) {
     stop("Signal is too short for a spectral estimate")
   }
+  refuse_holes(x, "A spectral estimate")
 
   nperseg <- min(n, max(8L, as.integer(round(segment_sec * frequency))))
   step <- max(1L, as.integer(round(nperseg * (1 - overlap))))
@@ -1887,23 +1786,56 @@ pooled_dominant_frequency <- function(signals, frequency, band = c(4, 10)) {
 
 #' Calculate the organisation index of an atrial signal
 #'
-#' @description The share of 2.5-15 Hz power that sits at the dominant frequency
-#'   and its first harmonic.
+#' @description The share of spectral power carried by the dominant frequency
+#'   and its harmonics.
 #'
 #' @details A highly organised atrium concentrates its energy in a narrow peak
-#'   and its harmonic; a disorganised one spreads it across the band. This is one
-#'   of the few f-wave features with a reasonably direct electrophysiological
-#'   reading, being related to the number of independent wavefronts the atrium is
-#'   holding.
+#'   and its harmonics; a disorganised one spreads it across the spectrum. This
+#'   is one of the few f-wave features with a reasonably direct
+#'   electrophysiological reading, being related to the number of independent
+#'   wavefronts the atrium is holding.
+#'
+#'   The definition follows the published one: the area under the dominant peak
+#'   and its first `n_harmonics` harmonics, over the total area of the spectrum.
+#'   Everett et al. introduced it on an interatrial electrogram, taking the
+#'   first four harmonic peaks; An et al. give the clearest surface-ECG
+#'   implementation, taking the highest peak and its first four harmonics over
+#'   the total area from 0 to 50 Hz on a QRST-cancelled lead. The defaults here
+#'   are theirs.
+#'
+#'   # What the value can be compared with
+#'
+#'   Not a published cut-point, and the gap is not small. An et al. report a
+#'   median of 0.33 (IQR 0.27-0.39) in lead V1 of 102 patients; other surface
+#'   implementations report 0.26-0.32 and 0.70-0.75. This function returns about
+#'   0.13 on the bundled `muse-af` record with the same formula and the same
+#'   band, so the remaining difference is in the cancellation, the peak
+#'   integration and the cohort rather than in the definition. Published
+#'   surface organisation indices are already implementation-dependent enough
+#'   that they do not transfer between groups; treat these values as comparable
+#'   within a cohort analysed this way and with nothing else.
+#'
+#'   Two further details are local choices with no published basis. The peak is
+#'   integrated over a fixed window rather than out to the shoulders of the peak
+#'   itself, and the harmonic windows are 1.5 times as wide as the fundamental's
+#'   to allow for the harmonic drifting. On a surface record the harmonic count
+#'   barely matters: at a dominant frequency of 7.5 Hz the third harmonic and
+#'   above sit where the f-wave carries no energy, and moving from two peaks to
+#'   five changes the value on `muse-af` by 0.007.
 #'
 #' @param x Numeric vector of the atrial signal
 #' @param frequency Sampling frequency in Hz
 #' @param dominant_frequency Dominant frequency in Hz. Estimated from `x` if
 #'   `NULL`.
+#' @param n_harmonics Number of harmonics summed with the dominant peak.
+#'   Default 4, as in Everett et al. and An et al.
 #' @param band Numeric length-2 vector for the total-power reference band.
-#'   Default `c(2.5, 15)`.
+#'   Default `c(0.5, 50)`, following An et al., and clipped below the Nyquist
+#'   frequency. Note that the band cannot put back what the signal does not
+#'   carry: an atrial signal bandpassed to 30 Hz contributes nothing between 30
+#'   and 50 Hz, so widening the band beyond the passband changes little.
 #' @param half_width Half-width in Hz of the window placed on the dominant
-#'   frequency. The harmonic window is 1.5 times as wide. Default 0.5.
+#'   frequency. The harmonic windows are 1.5 times as wide. Default 0.5.
 #'
 #' @return Organisation index between 0 and 1
 #'
@@ -1912,6 +1844,22 @@ pooled_dominant_frequency <- function(signals, frequency, band = c(4, 10)) {
 #' algorithm for quantifying atrial fibrillation organization to increase
 #' defibrillation efficacy. *IEEE Transactions on Biomedical Engineering*.
 #' 2001;48(9):969-978. \doi{10.1109/10.942586}
+#'
+#' Everett TH 4th, Moorman JR, Kok LC, Akar JG, Haines DE. Assessment of global
+#' atrial fibrillation organization to optimize timing of atrial defibrillation.
+#' *Circulation*. 2001;103(23):2857-2861.
+#' \doi{10.1161/01.CIR.103.23.2857}
+#'
+#' An K, Li H, Yu C, Zheng Z. Surface electrocardiogram f wave analysis in
+#' patients with atrial fibrillation undergoing thoracoscopic epicardial
+#' ablation. *Interdisciplinary CardioVascular and Thoracic Surgery*.
+#' 2024;38(5):ivae057. \doi{10.1093/icvts/ivae057}
+#'
+#' Stavrakis S, Dyer JW, Koomson E, et al. Spectral analysis of baseline
+#' electrocardiogram during atrial fibrillation predicts response to
+#' antiarrhythmic drug therapy in patients with persistent atrial fibrillation.
+#' *Journal of Cardiovascular Electrophysiology*. 2016;27(11):1312-1318.
+#' \doi{10.1111/jce.13064}
 #'
 #' @examples
 #' x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / 500)) + rnorm(5001, sd = 0.5)
@@ -1922,7 +1870,8 @@ calculate_organization_index <- function(
   x,
   frequency,
   dominant_frequency = NULL,
-  band = c(2.5, 15),
+  n_harmonics = 4L,
+  band = c(0.5, 50),
   half_width = 0.5
 ) {
   psd <- calculate_welch_spectrum(x, frequency = frequency)
@@ -1934,24 +1883,25 @@ calculate_organization_index <- function(
     return(NA_real_)
   }
 
+  # A band reaching past Nyquist is a band reaching past what was recorded
+  band <- c(band[1], min(band[2], frequency / 2 * 0.95))
+
   total_idx <- which(psd$freq >= band[1] & psd$freq <= band[2])
   total <- sum(psd$spec[total_idx], na.rm = TRUE)
   if (!is.finite(total) || total <= 0) {
     return(NA_real_)
   }
 
-  in_window <- function(centre, hw) {
+  # The dominant peak and its harmonics, each taken once even where two windows
+  # overlap, and each confined to the reference band
+  windows <- lapply(seq.int(0L, as.integer(n_harmonics)), function(k) {
+    centre <- (k + 1L) * dominant_frequency
+    hw <- if (k == 0L) half_width else half_width * 1.5
     which(psd$freq >= centre - hw & psd$freq <= centre + hw)
-  }
+  })
+  peak_idx <- intersect(unique(unlist(windows)), total_idx)
 
-  peak_idx <- in_window(dominant_frequency, half_width)
-  harm_idx <- in_window(2 * dominant_frequency, half_width * 1.5)
-  harm_idx <- setdiff(harm_idx, peak_idx)
-  harm_idx <- intersect(harm_idx, total_idx)
-  peak_idx <- intersect(peak_idx, total_idx)
-
-  concentrated <- sum(psd$spec[peak_idx], na.rm = TRUE) +
-    sum(psd$spec[harm_idx], na.rm = TRUE)
+  concentrated <- sum(psd$spec[peak_idx], na.rm = TRUE)
 
   min(1, concentrated / total)
 }
@@ -1972,13 +1922,20 @@ calculate_organization_index <- function(
 #' 2. Differentiation to highlight the steep slopes of QRS complexes
 #' 3. Squaring to amplify high-frequency components
 #' 4. Moving window integration to consider the overall QRS morphology
-#' 5. Adaptive thresholding to identify peaks
+#' 5. Thresholding at the mean plus half a standard deviation of the integrated
+#' signal to identify peaks
 #' 6. Application of a refractory period to prevent multiple detections of the
 #' same QRS complex
 #'
+#' The threshold is a single static one over the whole record, not the pair of
+#' adaptive signal and noise thresholds with searchback that Pan and Tompkins
+#' describe. That is enough on a clean ten-second strip and will drop beats on a
+#' record whose amplitude drifts.
+#'
 #' Positions are reported at the peak of the integration window, which lags the
-#' true R peak. Where beat alignment matters, refine them against the raw signal
-#' before use.
+#' true R peak by roughly half the integration width. [extract_f_waves()]
+#' refines them against the signal before use, and anything else that needs beat
+#' alignment should do the same.
 #'
 #' @param signal Numeric vector representing the ECG signal
 #' @param frequency Sampling frequency of the signal in Hz
@@ -2019,9 +1976,15 @@ detect_QRS <- function(signal, frequency, window_size = 0.150) {
 
   threshold <- mean(integrated_signal, na.rm = TRUE) +
     0.5 * stats::sd(integrated_signal, na.rm = TRUE)
-  is_peak <- (integrated_signal > threshold) &
-    (c(FALSE, integrated_signal[-length(integrated_signal)] < integrated_signal[-1])) &
-    (c(integrated_signal[-1] > integrated_signal[-length(integrated_signal)], FALSE))
+
+  # A local maximum rises into the sample and falls out of it. Both comparisons
+  # used to test for a rise, which flags every sample on a rising limb instead;
+  # with the refractory loop below taking the first of each cluster, what came
+  # back was the threshold crossing rather than the peak.
+  n <- length(integrated_signal)
+  rises_into <- c(FALSE, integrated_signal[-n] < integrated_signal[-1])
+  falls_out_of <- c(integrated_signal[-1] < integrated_signal[-n], FALSE)
+  is_peak <- (integrated_signal > threshold) & rises_into & falls_out_of
   is_peak[is.na(is_peak)] <- FALSE
   peak_indices <- which(is_peak)
 
@@ -2051,10 +2014,13 @@ detect_QRS <- function(signal, frequency, window_size = 0.150) {
 #'   introduced to fix. Prefer this over [calculate_approximate_entropy()],
 #'   particularly when record length varies.
 #'
-#'   The calculation is O(n^2). Decimate the signal to a rate matched to the
-#'   analysis band before calling; for a fibrillatory band below 10 Hz, 50 Hz is
-#'   still five times oversampled and is hundreds of times cheaper than the raw
-#'   rate.
+#'   The calculation is O(n^2), which is a standing temptation to decimate
+#'   further than the measurement tolerates. Alcaraz et al. tuned `m`, `r` and
+#'   the sampling rate for atrial fibrillation organisation specifically and
+#'   found classification degraded below 256 Hz, with `m` of 1 or 2 and `r`
+#'   between 0.1 and 0.25 times the standard deviation. The defaults here sit
+#'   inside that, and [extract_f_waves()] decimates to 256 Hz rather than to
+#'   something derived from the fibrillatory bandwidth.
 #'
 #' @param x Numeric vector of the time series
 #' @param m Embedding dimension. Default 2.
@@ -2068,14 +2034,18 @@ detect_QRS <- function(signal, frequency, window_size = 0.150) {
 #'   Heart and Circulatory Physiology*. 2000;278(6):H2039-H2049.
 #'   \doi{10.1152/ajpheart.2000.278.6.H2039}
 #'
+#'   Alcaraz R, Abasolo D, Hornero R, Rieta JJ. Optimized assessment of atrial
+#'   fibrillation organization through suitable parameters of sample entropy.
+#'   *Annual International Conference of the IEEE Engineering in Medicine and
+#'   Biology Society*. 2010;2010:118-121. \doi{10.1109/IEMBS.2010.5627169}
+#'
 #' @examples
 #' set.seed(123)
 #' calculate_sample_entropy(rnorm(500))
 #'
 #' @export
 calculate_sample_entropy <- function(x, m = 2, r = NULL) {
-  x <- as.double(x)
-  x <- x[is.finite(x)]
+  x <- refuse_holes(as.double(x), "Sample entropy")
 
   if (length(x) < m + 2) {
     return(NA_real_)
@@ -2102,14 +2072,13 @@ calculate_sample_entropy <- function(x, m = 2, r = NULL) {
 #'   deviation, which admitted nearly every pair of vectors as a match and drove
 #'   the statistic toward zero regardless of the input.
 #'
-#'   The calculation is O(n^2). Decimate to a rate matched to the analysis band
-#'   before calling.
+#'   The calculation is O(n^2). Decimate before calling; see
+#'   [calculate_sample_entropy()] for how far.
 #'
 #' @param x Numeric vector of the time series
 #' @param m Embedding dimension. Default 2.
 #' @param r Tolerance. Default `NULL`, which uses 0.2 times the standard
 #'   deviation of `x`.
-#' @param implementation Either `"C++"` (default, faster) or `"R"`
 #'
 #' @return Approximate entropy value
 #'
@@ -2119,80 +2088,96 @@ calculate_sample_entropy <- function(x, m = 2, r = NULL) {
 #'
 #' @examples
 #' set.seed(123)
-#' calculate_approximate_entropy(rnorm(500), implementation = "R")
+#' calculate_approximate_entropy(rnorm(500))
 #'
 #' @export
-calculate_approximate_entropy <- function(x, m = 2, r = NULL, implementation = "C++") {
-  x <- as.double(x)
-  x <- x[is.finite(x)]
+calculate_approximate_entropy <- function(x, m = 2, r = NULL) {
+  x <- refuse_holes(as.double(x), "Approximate entropy")
 
   if (length(x) < m + 2) {
     return(NA_real_)
   }
-
-  if (implementation == "C++") {
-    calculate_apen_cpp(x, m, r)
-  } else if (implementation == "R") {
-    calculate_apen_r(x, m, r)
-  } else {
-    stop("Invalid method specified. Choose 'R' or 'C++'")
-  }
-}
-
-#' C++ implementation of approximate entropy
-#' @noRd
-calculate_apen_cpp <- function(x, m, r) {
   # -1 is the flag telling the C++ side to compute the tolerance itself; NULL
   # cannot cross the boundary
   if (is.null(r)) {
     r <- -1
   }
+
   calculate_approximate_entropy_cpp(x, as.integer(m), as.double(r))
 }
 
-#' R implementation of approximate entropy
-#' @noRd
-calculate_apen_r <- function(x, m, r) {
-  N <- length(x)
-  r <- if (is.null(r)) 0.2 * stats::sd(x) else r
-  x <- as.vector(x)
-
-  embed_matrix <- function(x, m) {
-    matrix(sapply(1:m, function(i) x[i:(N - m + i)]), ncol = m)
-  }
-
-  correlation_integral <- function(x, r) {
-    N <- nrow(x)
-    count <- sapply(1:N, function(i) {
-      sum(apply(abs(x - rep(x[i, ], each = nrow(x))), 1, max) <= r)
-    })
-    sum(log(count / N)) / N
-  }
-
-  phi_m <- correlation_integral(embed_matrix(x, m), r)
-  phi_m1 <- correlation_integral(embed_matrix(x, m + 1), r)
-
-  phi_m - phi_m1
-}
-
-#' Diagnostics returned with every fibrillatory estimate
+#' Diagnostics returned with every fibrillatory estimate, and where they came from
 #'
 #' @description Not a function. This documents the diagnostic fields that
-#'   [extract_f_waves()] returns beside each spectral feature, and why they must
-#'   be read together with it.
+#'   [extract_f_waves()] returns beside each spectral feature, why they must be
+#'   read together with it, and -- for each output of the fibrillatory analysis
+#'   -- whether it is a published quantity, an adaptation of one, or specific to
+#'   this package.
 #'
 #' @details
 #'
+#' # Where each output comes from
+#'
+#' A number with no citation should be assumed to be wrong until it has one, so
+#' the provenance is stated here rather than left to be inferred.
+#'
+#' **Published, and computed as published.** `dominant_rate` is the atrial
+#' fibrillatory rate, reported in fibrillations per minute as the literature
+#' does. `sample_entropy` is Richman and Moorman's statistic, with the embedding
+#' dimension, tolerance and sampling rate that Alcaraz et al. tuned for this
+#' task. `f_amplitude_p2p` is fibrillatory wave amplitude, the measure behind
+#' the coarse-versus-fine distinction: Li et al. called atrial fibrillation
+#' coarse at a peak-to-peak amplitude of 1 mm or more in V1, and found left
+#' atrial appendage dysfunction and thrombus more common in those patients.
+#' `rr_cv` is the coefficient of variation of the RR interval, which Tateno and
+#' Glass used to detect atrial fibrillation at 86.6% sensitivity and 84.3%
+#' specificity.
+#'
+#' **Adapted from a published quantity.** `organization_index` follows Everett's
+#' definition and An's surface implementation but is not on their scale; see
+#' [calculate_organization_index()]. `cancellation_residual` is a variant of the
+#' published ventricular residue index, on a different normalisation.
+#'
+#' **Specific to this package, with no published definition.**
+#' `harmonic_overlap` and `on_harmonic`, described below, and `f_ratio`, which
+#' divides the fibrillatory amplitude by the QRS excursion in the same lead. The
+#' f-wave amplitude in the numerator is thoroughly established; dividing it by
+#' the QRS is not, and was introduced here to make amplitudes comparable between
+#' patients of different body habitus, on the reasoning that the ventricular
+#' signal traverses the same thorax and so carries the same attenuation. That is
+#' a stated rationale, not a validated one.
+#'
+#' **Package operating points, not published cut-points.** `af_like` fires at an
+#' RR coefficient of variation of 0.12 with a normalised RMSSD of 0.10, and
+#' `rr_regular` below 0.05. The indices are the published ones; these three
+#' thresholds were chosen here, and exist to decide whether to warn rather than
+#' to diagnose anything.
+#'
+#' # The diagnostic fields
+#'
 #' \describe{
-#'   \item{`harmonic_index`}{Dominant frequency times the median RR interval. If
-#'     the peak is residual ventricular energy rather than atrial activity, it
-#'     sits on an integer multiple of the heart rate, so this number comes out
-#'     an integer.}
-#'   \item{`on_harmonic`}{`TRUE` when `harmonic_index` is within `tol` of an
+#'   \item{`harmonic_overlap`}{How many fibrillatory cycles fit into one average
+#'     heartbeat: the dominant frequency divided by the heart rate, both in Hz.
+#'     Ventricular energy that cancellation failed to remove sits on integer
+#'     multiples of the heart rate, so a contaminated peak makes this a whole
+#'     number. **This is not a published quantity.** The concern behind it is
+#'     established -- Ng and Goldberger set out how a dominant frequency can
+#'     report ventricular residual rather than atrial activity -- but no paper
+#'     defines this ratio, and the name should not be read as naming something
+#'     from the literature. It was called `harmonic_index` in an earlier version,
+#'     which implied more than it should have.}
+#'   \item{`on_harmonic`}{`TRUE` when `harmonic_overlap` is within `tol` of an
 #'     integer. **`dominant_rate` must not be used without conditioning on
-#'     this.** A contaminated estimate is precise, wrong, and highly reproducible,
-#'     because heart rate is highly reproducible within a patient. Validating the
-#'     feature by test-retest reliability will therefore select the artifact.}
+#'     this.** A contaminated estimate is precise, wrong, and highly
+#'     reproducible, because heart rate is highly reproducible within a patient.
+#'     Validating the feature by test-retest reliability will therefore select
+#'     the artifact. It is a sensitive screen rather than a specific test: the
+#'     overlap of an honest peak is a ratio of two unrelated numbers, so with
+#'     integers spaced one apart a tolerance of 0.15 lands on one about three
+#'     times in ten by arithmetic alone, and excluding every flagged record
+#'     discards roughly a third of the good ones with the bad. Read it beside
+#'     `cancellation_residual`; a flagged record with a small residual is
+#'     probably a coincidence.}
 #'   \item{`cancellation_residual`}{Residual energy in a window around each QRS
 #'     as a fraction of that window's energy before cancellation. Model-free, so
 #'     it is independent of any assumption about the atrial spectrum. It reports
@@ -2216,6 +2201,26 @@ calculate_apen_r <- function(x, m, r) {
 #' Ng J, Goldberger JJ. Understanding and interpreting dominant frequency
 #' analysis of AF electrograms. *Journal of Cardiovascular Electrophysiology*.
 #' 2007;18(6):680-685. \doi{10.1111/j.1540-8167.2007.00832.x}
+#'
+#' Li YH, Hwang JJ, Tseng YZ, Kuan P, Lien WP. Clinical significance of
+#' fibrillatory wave amplitude. A clue to left atrial appendage function in
+#' nonrheumatic atrial fibrillation. *Chest*. 1995;108(2):359-363.
+#' \doi{10.1378/chest.108.2.359}
+#'
+#' Tateno K, Glass L. Automatic detection of atrial fibrillation using the
+#' coefficient of variation and density histograms of RR and deltaRR intervals.
+#' *Medical & Biological Engineering & Computing*. 2001;39(6):664-671.
+#' \doi{10.1007/BF02345439}
+#'
+#' Alcaraz R, Rieta JJ. Adaptive singular value cancelation of ventricular
+#' activity in single-lead atrial fibrillation electrocardiograms.
+#' *Physiological Measurement*. 2008;29(12):1351-1369.
+#' \doi{10.1088/0967-3334/29/12/001}
+#'
+#' Alcaraz R, Sornmo L, Rieta JJ. Reference database and performance evaluation
+#' of methods for extraction of atrial fibrillatory waves in the ECG.
+#' *Physiological Measurement*. 2019;40(7):075011.
+#' \doi{10.1088/1361-6579/ab2b17}
 #'
 #' @name f_wave_diagnostics
 NULL

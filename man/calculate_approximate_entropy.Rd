@@ -4,7 +4,7 @@
 \alias{calculate_approximate_entropy}
 \title{Calculate Approximate Entropy (ApEn) of a time series}
 \usage{
-calculate_approximate_entropy(x, m = 2, r = NULL, implementation = "C++")
+calculate_approximate_entropy(x, m = 2, r = NULL)
 }
 \arguments{
 \item{x}{Numeric vector of the time series}
@@ -13,8 +13,6 @@ calculate_approximate_entropy(x, m = 2, r = NULL, implementation = "C++")
 
 \item{r}{Tolerance. Default \code{NULL}, which uses 0.2 times the standard
 deviation of \code{x}.}
-
-\item{implementation}{Either \code{"C++"} (default, faster) or \code{"R"}}
 }
 \value{
 Approximate entropy value
@@ -34,12 +32,12 @@ that this default changed: earlier versions used 3.5 times the standard
 deviation, which admitted nearly every pair of vectors as a match and drove
 the statistic toward zero regardless of the input.
 
-The calculation is O(n^2). Decimate to a rate matched to the analysis band
-before calling.
+The calculation is O(n^2). Decimate before calling; see
+\code{\link[=calculate_sample_entropy]{calculate_sample_entropy()}} for how far.
 }
 \examples{
 set.seed(123)
-calculate_approximate_entropy(rnorm(500), implementation = "R")
+calculate_approximate_entropy(rnorm(500))
 
 }
 \references{

@@ -2,23 +2,75 @@
 % Please edit documentation in R/fwave.R
 \name{f_wave_diagnostics}
 \alias{f_wave_diagnostics}
-\title{Diagnostics returned with every fibrillatory estimate}
+\title{Diagnostics returned with every fibrillatory estimate, and where they came from}
 \description{
 Not a function. This documents the diagnostic fields that
-\code{\link[=extract_f_waves]{extract_f_waves()}} returns beside each spectral feature, and why they must
-be read together with it.
+\code{\link[=extract_f_waves]{extract_f_waves()}} returns beside each spectral feature, why they must be
+read together with it, and -- for each output of the fibrillatory analysis
+-- whether it is a published quantity, an adaptation of one, or specific to
+this package.
 }
-\details{
+\section{Where each output comes from}{
+A number with no citation should be assumed to be wrong until it has one, so
+the provenance is stated here rather than left to be inferred.
+
+\strong{Published, and computed as published.} \code{dominant_rate} is the atrial
+fibrillatory rate, reported in fibrillations per minute as the literature
+does. \code{sample_entropy} is Richman and Moorman's statistic, with the embedding
+dimension, tolerance and sampling rate that Alcaraz et al. tuned for this
+task. \code{f_amplitude_p2p} is fibrillatory wave amplitude, the measure behind
+the coarse-versus-fine distinction: Li et al. called atrial fibrillation
+coarse at a peak-to-peak amplitude of 1 mm or more in V1, and found left
+atrial appendage dysfunction and thrombus more common in those patients.
+\code{rr_cv} is the coefficient of variation of the RR interval, which Tateno and
+Glass used to detect atrial fibrillation at 86.6\% sensitivity and 84.3\%
+specificity.
+
+\strong{Adapted from a published quantity.} \code{organization_index} follows Everett's
+definition and An's surface implementation but is not on their scale; see
+\code{\link[=calculate_organization_index]{calculate_organization_index()}}. \code{cancellation_residual} is a variant of the
+published ventricular residue index, on a different normalisation.
+
+\strong{Specific to this package, with no published definition.}
+\code{harmonic_overlap} and \code{on_harmonic}, described below, and \code{f_ratio}, which
+divides the fibrillatory amplitude by the QRS excursion in the same lead. The
+f-wave amplitude in the numerator is thoroughly established; dividing it by
+the QRS is not, and was introduced here to make amplitudes comparable between
+patients of different body habitus, on the reasoning that the ventricular
+signal traverses the same thorax and so carries the same attenuation. That is
+a stated rationale, not a validated one.
+
+\strong{Package operating points, not published cut-points.} \code{af_like} fires at an
+RR coefficient of variation of 0.12 with a normalised RMSSD of 0.10, and
+\code{rr_regular} below 0.05. The indices are the published ones; these three
+thresholds were chosen here, and exist to decide whether to warn rather than
+to diagnose anything.
+}
+
+\section{The diagnostic fields}{
 \describe{
-\item{\code{harmonic_index}}{Dominant frequency times the median RR interval. If
-the peak is residual ventricular energy rather than atrial activity, it
-sits on an integer multiple of the heart rate, so this number comes out
-an integer.}
-\item{\code{on_harmonic}}{\code{TRUE} when \code{harmonic_index} is within \code{tol} of an
+\item{\code{harmonic_overlap}}{How many fibrillatory cycles fit into one average
+heartbeat: the dominant frequency divided by the heart rate, both in Hz.
+Ventricular energy that cancellation failed to remove sits on integer
+multiples of the heart rate, so a contaminated peak makes this a whole
+number. \strong{This is not a published quantity.} The concern behind it is
+established -- Ng and Goldberger set out how a dominant frequency can
+report ventricular residual rather than atrial activity -- but no paper
+defines this ratio, and the name should not be read as naming something
+from the literature. It was called \code{harmonic_index} in an earlier version,
+which implied more than it should have.}
+\item{\code{on_harmonic}}{\code{TRUE} when \code{harmonic_overlap} is within \code{tol} of an
 integer. \strong{\code{dominant_rate} must not be used without conditioning on
-this.} A contaminated estimate is precise, wrong, and highly reproducible,
-because heart rate is highly reproducible within a patient. Validating the
-feature by test-retest reliability will therefore select the artifact.}
+this.} A contaminated estimate is precise, wrong, and highly
+reproducible, because heart rate is highly reproducible within a patient.
+Validating the feature by test-retest reliability will therefore select
+the artifact. It is a sensitive screen rather than a specific test: the
+overlap of an honest peak is a ratio of two unrelated numbers, so with
+integers spaced one apart a tolerance of 0.15 lands on one about three
+times in ten by arithmetic alone, and excluding every flagged record
+discards roughly a third of the good ones with the bad. Read it beside
+\code{cancellation_residual}; a flagged record with a small residual is
+probably a coincidence.}
 \item{\code{cancellation_residual}}{Residual energy in a window around each QRS
 as a fraction of that window's energy before cancellation. Model-free, so
 it is independent of any assumption about the atrial spectrum. It reports
@@ -38,8 +90,29 @@ therefore usable for amplitude measurement.}
 of the record was actually processed.}
 }
 }
+
 \references{
 Ng J, Goldberger JJ. Understanding and interpreting dominant frequency
 analysis of AF electrograms. \emph{Journal of Cardiovascular Electrophysiology}.
 2007;18(6):680-685. \doi{10.1111/j.1540-8167.2007.00832.x}
+
+Li YH, Hwang JJ, Tseng YZ, Kuan P, Lien WP. Clinical significance of
+fibrillatory wave amplitude. A clue to left atrial appendage function in
+nonrheumatic atrial fibrillation. \emph{Chest}. 1995;108(2):359-363.
+\doi{10.1378/chest.108.2.359}
+
+Tateno K, Glass L. Automatic detection of atrial fibrillation using the
+coefficient of variation and density histograms of RR and deltaRR intervals.
+\emph{Medical & Biological Engineering & Computing}. 2001;39(6):664-671.
+\doi{10.1007/BF02345439}
+
+Alcaraz R, Rieta JJ. Adaptive singular value cancelation of ventricular
+activity in single-lead atrial fibrillation electrocardiograms.
+\emph{Physiological Measurement}. 2008;29(12):1351-1369.
+\doi{10.1088/0967-3334/29/12/001}
+
+Alcaraz R, Sornmo L, Rieta JJ. Reference database and performance evaluation
+of methods for extraction of atrial fibrillatory waves in the ECG.
+\emph{Physiological Measurement}. 2019;40(7):075011.
+\doi{10.1088/1361-6579/ab2b17}
 }

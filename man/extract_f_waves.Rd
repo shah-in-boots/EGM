@@ -9,19 +9,20 @@ extract_f_waves(
   lead = NULL,
   qrs_loc = NULL,
   channel = NULL,
-  cancel_method = c("spatiotemporal", "average_beat", "adaptive_svd"),
+  cancel_method = c("spatiotemporal", "average_beat"),
   f_characteristics = c("amplitude", "dominant_frequency", "organization",
     "sample_entropy"),
   amplitude_window = c("tq", "all"),
   normalize = c("none", "qrs"),
   band = c(4, 10),
-  entropy_rate = 50,
+  entropy_rate = 256,
   pooled_spectrum = TRUE,
   rhythm = NULL,
   tol = 0.15,
+  min_beats = 3L,
+  aberrancy_threshold = 0.9,
   keep_signal = FALSE,
-  verbose = TRUE,
-  ...
+  verbose = TRUE
 )
 }
 \arguments{
@@ -44,10 +45,17 @@ detected from a multi-lead composite.}
 as a channel number or name. Required when the annotations span more than
 one channel: pooled across twelve leads they report twelve times as many
 beats as the record holds, and every rhythm measure derived from them
-follows. See the channels section. Ignored when \code{qrs_loc} is supplied.}
+follows. See the channels section.
 
-\item{cancel_method}{Ventricular cancellation method. One of
-\code{"spatiotemporal"} (default), \code{"average_beat"}, or \code{"adaptive_svd"}.}
+Supplying \code{qrs_loc} does not make this unnecessary. The beat positions come
+from \code{qrs_loc} then, but the TQ segments are still read from annotations,
+and pooled across leads they overlap and cover the record several times
+over. A record whose annotations span more than one channel is an error
+either way.}
+
+\item{cancel_method}{Ventricular cancellation method. Either
+\code{"spatiotemporal"} (default) or \code{"average_beat"}, the single-lead Slocum
+predecessor kept as the comparison baseline.}
 
 \item{f_characteristics}{Character vector of features to compute. Any of
 \code{"amplitude"}, \code{"dominant_frequency"}, \code{"organization"}, \code{"sample_entropy"},
@@ -59,11 +67,29 @@ electrically silent. \code{"all"} uses the whole record, which confounds
 fibrillatory amplitude with cancellation error, since whatever cancellation
 fails to remove is concentrated at the QRS.}
 
-\item{normalize}{Amplitude normalisation. \code{"none"} (default) returns raw
-signal units. \code{"qrs"} additionally divides by the QRS excursion in the same
-lead, which cancels the thoracic transfer function to first order and makes
-amplitudes comparable \emph{between} patients. Both are always returned; this
-argument only sets which one \code{f_amplitude} refers to.}
+\item{normalize}{Amplitude normalisation. \code{"none"} (default) leaves
+\code{f_amplitude} as \code{f_amplitude_rms}, in raw signal units. \code{"qrs"} points it
+at \code{f_ratio} instead, which divides the peak-to-peak amplitude by the QRS
+excursion in the same lead. The intent is to cancel the thoracic transfer
+function to first order -- the ventricular signal crosses the same tissue,
+so it carries the same attenuation -- and so make amplitudes comparable
+\emph{between} patients of different body habitus. Every amplitude column is
+always returned, and this argument only sets which one \code{f_amplitude} refers
+to.
+
+\code{f_ratio} is specific to this package. Fibrillatory wave amplitude itself
+is well established, and Li et al. tied a coarse f-wave -- 1 mm or more in
+V1 -- to left atrial appendage dysfunction and thrombus. Normalising it by
+the QRS is not published, and the reasoning above is the whole of the case
+for it.
+
+RMS is the default because peak-to-peak is a maximum over the segment and
+so grows with the segment's length: on white noise its expectation rises
+58\% between a 20-sample and a 400-sample window. TQ segments are as long as
+the RR interval lets them be, which is irregular within an AF record by
+definition and shorter at higher rates between patients, so
+\code{f_amplitude_p2p} and \code{f_ratio} both carry a heart-rate confound that
+\code{f_amplitude_rms} does not.}
 
 \item{band}{Numeric length-2 vector giving the frequency band searched for the
 dominant fibrillatory frequency, in Hz. Default \code{c(4, 10)}. Sustained atrial
@@ -72,17 +98,28 @@ fibrillation is usually quoted at 4-10 Hz. Typical atrial flutter is
 when flutter is expected.}
 
 \item{entropy_rate}{Sampling rate in Hz to which the atrial signal is
-decimated before entropy is computed. Default 50. Entropy is O(n^2) and the
-fibrillatory band is below 10 Hz, so computing it at the raw rate is both
-enormously slower and dominated by the smoothness of the interpolation
-between neighbouring samples rather than by the organisation of the rhythm.}
+decimated before entropy is computed, or \code{NULL} to compute at the record's
+own rate. Default 256.
+
+Entropy is O(n^2), so this is the argument that decides how long a batch
+takes. It is not free to lower it: Alcaraz et al. (2010) tuned sample
+entropy for this exact task and found classification degraded below 256 Hz,
+which is why that is the default rather than a rate chosen from the
+fibrillatory bandwidth. A lower value returns a number that is cheaper and
+outside the range the parameter set was validated on.}
 
 \item{pooled_spectrum}{Logical. If \code{TRUE} (default), the dominant frequency is
 taken from a spectrum pooled across all analysed leads, each normalised to
-unit power in 2.5-15 Hz before averaging. A ten second record yields only
-about four Welch segments per lead; twelve leads give roughly forty-eight,
-which is the difference between a usable and an unusable variance.
-Normalising before pooling stops one high-amplitude lead dictating the peak.}
+unit power in 2.5-15 Hz before averaging. Normalising before pooling stops
+one high-amplitude lead dictating the peak.
+
+Pooling helps, but by much less than the lead count suggests, and it is
+worth knowing by how much. Four of the twelve leads are exact linear
+combinations of I and II, so at most eight can be independent; and the
+atrial signal is close to a single dipole, so fewer are. On the bundled
+\code{muse-af} record the correlation matrix of the twelve cancelled leads has a
+participation ratio of 1.7, making the variance reduction about 1.3-fold
+rather than the 3.5-fold that twelve independent leads would give.}
 
 \item{rhythm}{Optional character string naming the rhythm, e.g. \code{"af"},
 \code{"flutter"}, \code{"sinus"}. Used only to decide whether to warn. If \code{NULL}
@@ -90,16 +127,29 @@ Normalising before pooling stops one high-amplitude lead dictating the peak.}
 
 \item{tol}{Numeric tolerance for the harmonic test. A peak is flagged
 \code{on_harmonic} when its harmonic index falls within \code{tol} of an integer.
-Default 0.15.}
+Default 0.15.
+
+This is a sensitive screen and not a specific test, and the difference is
+large enough to plan around. The harmonic index of an uncontaminated peak
+is a ratio of two unrelated numbers, so with integers spaced one apart a
+tolerance of 0.15 lands on one 30\% of the time by arithmetic alone --
+simulated at 0.301 for a dominant frequency uniform on 4-10 Hz and a heart
+rate uniform on 60-160 bpm, and flat across rate. Excluding every flagged
+record therefore discards roughly a third of the good ones too. Read it
+with \code{cancellation_residual}, which says whether there was residual for the
+peak to have come from.}
+
+\item{min_beats, aberrancy_threshold}{Passed to
+\code{\link[=cancel_ventricular_signal]{cancel_ventricular_signal()}}. See there for what each is guarding.}
 
 \item{keep_signal}{Logical. If \code{TRUE}, the cancelled atrial signals are
 returned alongside the features. Default \code{FALSE}, since retaining them
 across a large batch is expensive.}
 
-\item{verbose}{Logical. If \code{TRUE} (default), report which leads are analysed.}
-
-\item{...}{Additional arguments passed to the cancellation and analysis
-routines.}
+\item{verbose}{Logical. If \code{TRUE} (default), report which leads are analysed.
+This controls the progress message only. The rhythm warnings are raised
+either way: batch processing is where \code{verbose = FALSE} gets set, and it is
+also where an unnoticed flutter record does the most damage.}
 }
 \value{
 An object of class \code{f_wave_analysis}, a list with:
@@ -108,11 +158,11 @@ An object of class \code{f_wave_analysis}, a list with:
 \item{\code{features}}{A \code{data.table} with one row per lead, holding
 \code{f_amplitude_p2p}, \code{f_amplitude_rms}, \code{qrs_amplitude}, \code{f_ratio},
 \code{dominant_rate}, \code{organization_index}, \code{sample_entropy}, and the
-per-lead diagnostics \code{harmonic_index}, \code{on_harmonic},
+per-lead diagnostics \code{harmonic_overlap}, \code{on_harmonic},
 \code{cancellation_residual}, and \code{tq_fraction}.}
 \item{\code{record}}{A one-row \code{data.table} of record-level values, including
 \code{n_beats_cancelled}, \code{n_beats_skipped}, \code{n_beats_aberrant},
-\code{spatial_dispersion}, \code{heart_rate}, \code{rr_cv}, \code{af_like}, and
+\code{heart_rate}, \code{rr_cv}, \code{af_like}, and
 \code{rr_regular} - the flag that the cancellation may have taken the atrial
 signal with it, described in the cancellation section.}
 \item{\code{signal}}{The cancelled atrial signals, when \code{keep_signal = TRUE}.}
@@ -124,12 +174,17 @@ by cancelling the ventricular (QRST) contribution, then summarises the
 residual fibrillatory signal in each lead.
 }
 \section{Cancellation}{
-The default \code{cancel_method = "spatiotemporal"} implements the approach of
-Stridh and Sornmo (2001). A single set of QRS positions is shared by every
+The default \code{cancel_method = "spatiotemporal"} implements the \emph{spatial} half
+of Stridh and Sornmo (2001). A single set of QRS positions is shared by every
 lead, and a template beat is formed for each lead by taking the \emph{median}
 across beats. Each individual beat, in each lead, is then fitted by least
 squares to a linear combination of the templates from \emph{all} leads plus an
 intercept, and the fit is subtracted.
+
+The published method estimates a per-beat time shift and time scaling of the
+template as well, which is what the \emph{temporal} in its name refers to. That
+step is not implemented here. Its absence shows up as a larger
+\code{cancellation_residual} on records whose QRS width varies beat to beat.
 
 The extra degrees of freedom matter. A single-lead template cannot absorb the
 beat-to-beat rotation of the heart's electrical axis caused by respiration and
@@ -172,9 +227,8 @@ raised. It is deliberately not silenced by \code{rhythm = "flutter"}, since that
 the case it exists for.
 
 There is no cancellation method here that avoids this -- \code{"average_beat"}
-shares the assumption and \code{"adaptive_svd"} is worse. Where flutter is the
-question, read the atrial wave from a segment between QRS complexes rather
-than from a cancelled signal.
+shares the assumption. Where flutter is the question, read the atrial wave
+from a segment between QRS complexes rather than from a cancelled signal.
 }
 }
 
@@ -236,7 +290,7 @@ vectorcardiogram.
 af <- read_wfdb("muse-af", system.file("extdata", package = "EGM"))
 res <- extract_f_waves(af)
 
-# Never read the rate without the diagnostic beside it
+# Never read the rate without the diagnostics beside it
 res$features[, .(lead, dominant_rate, on_harmonic, cancellation_residual)]
 }
 
@@ -261,6 +315,11 @@ analysis of AF electrograms. \emph{Journal of Cardiovascular Electrophysiology}.
 Lankveld TAR, Zeemering S, Crijns HJGM, Schotten U. The ECG as a tool to
 determine atrial fibrillation complexity. \emph{Heart}. 2014;100(14):1077-1084.
 \doi{10.1136/heartjnl-2013-305149}
+
+Alcaraz R, Abasolo D, Hornero R, Rieta JJ. Optimized assessment of atrial
+fibrillation organization through suitable parameters of sample entropy.
+\emph{Annual International Conference of the IEEE Engineering in Medicine and
+Biology Society}. 2010;2010:118-121. \doi{10.1109/IEMBS.2010.5627169}
 }
 \seealso{
 \code{\link[=cancel_ventricular_signal]{cancel_ventricular_signal()}}, \code{\link[=calculate_dominant_frequency]{calculate_dominant_frequency()}},

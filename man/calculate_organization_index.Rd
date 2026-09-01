@@ -8,7 +8,8 @@ calculate_organization_index(
   x,
   frequency,
   dominant_frequency = NULL,
-  band = c(2.5, 15),
+  n_harmonics = 4L,
+  band = c(0.5, 50),
   half_width = 0.5
 )
 }
@@ -20,26 +21,60 @@ calculate_organization_index(
 \item{dominant_frequency}{Dominant frequency in Hz. Estimated from \code{x} if
 \code{NULL}.}
 
+\item{n_harmonics}{Number of harmonics summed with the dominant peak.
+Default 4, as in Everett et al. and An et al.}
+
 \item{band}{Numeric length-2 vector for the total-power reference band.
-Default \code{c(2.5, 15)}.}
+Default \code{c(0.5, 50)}, following An et al., and clipped below the Nyquist
+frequency. Note that the band cannot put back what the signal does not
+carry: an atrial signal bandpassed to 30 Hz contributes nothing between 30
+and 50 Hz, so widening the band beyond the passband changes little.}
 
 \item{half_width}{Half-width in Hz of the window placed on the dominant
-frequency. The harmonic window is 1.5 times as wide. Default 0.5.}
+frequency. The harmonic windows are 1.5 times as wide. Default 0.5.}
 }
 \value{
 Organisation index between 0 and 1
 }
 \description{
-The share of 2.5-15 Hz power that sits at the dominant frequency
-and its first harmonic.
+The share of spectral power carried by the dominant frequency
+and its harmonics.
 }
 \details{
 A highly organised atrium concentrates its energy in a narrow peak
-and its harmonic; a disorganised one spreads it across the band. This is one
-of the few f-wave features with a reasonably direct electrophysiological
-reading, being related to the number of independent wavefronts the atrium is
-holding.
+and its harmonics; a disorganised one spreads it across the spectrum. This
+is one of the few f-wave features with a reasonably direct
+electrophysiological reading, being related to the number of independent
+wavefronts the atrium is holding.
+
+The definition follows the published one: the area under the dominant peak
+and its first \code{n_harmonics} harmonics, over the total area of the spectrum.
+Everett et al. introduced it on an interatrial electrogram, taking the
+first four harmonic peaks; An et al. give the clearest surface-ECG
+implementation, taking the highest peak and its first four harmonics over
+the total area from 0 to 50 Hz on a QRST-cancelled lead. The defaults here
+are theirs.
 }
+\section{What the value can be compared with}{
+Not a published cut-point, and the gap is not small. An et al. report a
+median of 0.33 (IQR 0.27-0.39) in lead V1 of 102 patients; other surface
+implementations report 0.26-0.32 and 0.70-0.75. This function returns about
+0.13 on the bundled \code{muse-af} record with the same formula and the same
+band, so the remaining difference is in the cancellation, the peak
+integration and the cohort rather than in the definition. Published
+surface organisation indices are already implementation-dependent enough
+that they do not transfer between groups; treat these values as comparable
+within a cohort analysed this way and with nothing else.
+
+Two further details are local choices with no published basis. The peak is
+integrated over a fixed window rather than out to the shoulders of the peak
+itself, and the harmonic windows are 1.5 times as wide as the fundamental's
+to allow for the harmonic drifting. On a surface record the harmonic count
+barely matters: at a dominant frequency of 7.5 Hz the third harmonic and
+above sit where the f-wave carries no energy, and moving from two peaks to
+five changes the value on \code{muse-af} by 0.007.
+}
+
 \examples{
 x <- sin(2 * pi * 6 * seq(0, 10, by = 1 / 500)) + rnorm(5001, sd = 0.5)
 calculate_organization_index(x, frequency = 500)
@@ -50,4 +85,20 @@ Everett TH 4th, Kok LC, Vaughn RH, Moorman JR, Haines DE. Frequency domain
 algorithm for quantifying atrial fibrillation organization to increase
 defibrillation efficacy. \emph{IEEE Transactions on Biomedical Engineering}.
 2001;48(9):969-978. \doi{10.1109/10.942586}
+
+Everett TH 4th, Moorman JR, Kok LC, Akar JG, Haines DE. Assessment of global
+atrial fibrillation organization to optimize timing of atrial defibrillation.
+\emph{Circulation}. 2001;103(23):2857-2861.
+\doi{10.1161/01.CIR.103.23.2857}
+
+An K, Li H, Yu C, Zheng Z. Surface electrocardiogram f wave analysis in
+patients with atrial fibrillation undergoing thoracoscopic epicardial
+ablation. \emph{Interdisciplinary CardioVascular and Thoracic Surgery}.
+2024;38(5):ivae057. \doi{10.1093/icvts/ivae057}
+
+Stavrakis S, Dyer JW, Koomson E, et al. Spectral analysis of baseline
+electrocardiogram during atrial fibrillation predicts response to
+antiarrhythmic drug therapy in patients with persistent atrial fibrillation.
+\emph{Journal of Cardiovascular Electrophysiology}. 2016;27(11):1312-1318.
+\doi{10.1111/jce.13064}
 }

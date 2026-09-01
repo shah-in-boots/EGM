@@ -38,7 +38,6 @@ Suggests:
     rmarkdown,
     testthat (>= 3.0.0),
     withr,
-    fastICA,
     moments,
     lifecycle,
     quarto

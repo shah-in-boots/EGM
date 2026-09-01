@@ -10,13 +10,13 @@ analyze_atrial_signal(
   characteristics = c("amplitude", "dominant_frequency", "organization",
     "sample_entropy"),
   original_signal = NULL,
+  raw_signal = original_signal,
   qrs_loc = NULL,
   annotation = NULL,
   amplitude_window = c("tq", "all"),
   band = c(4, 10),
-  entropy_rate = 50,
-  tol = 0.15,
-  ...
+  entropy_rate = 256,
+  tol = 0.15
 )
 }
 \arguments{
@@ -26,13 +26,22 @@ analyze_atrial_signal(
 
 \item{characteristics}{Character vector of features to compute}
 
-\item{original_signal}{The uncancelled, filtered signal for the same lead.
-Needed for the QRS excursion used in amplitude normalisation and for the
-cancellation residual.}
+\item{original_signal}{The uncancelled, filtered signal for the same lead,
+which is what the cancellation residual and the harmonic evidence are
+measured against.}
+
+\item{raw_signal}{The same lead before bandpass filtering, used for the QRS
+excursion. Falls back to \code{original_signal}. The passband reaches only
+30 Hz, and the QRS carries energy above it, so a filtered excursion is
+small by 4-37\% across the leads of the bundled records, median 14\%, and by
+how much depends on the lead and the QRS width -- which would put a
+morphology-dependent factor into \code{f_ratio}, the one amplitude measure whose
+whole purpose is comparability between patients.}
 
 \item{qrs_loc}{Integer vector of QRS positions}
 
-\item{annotation}{Optional annotation table used to locate TQ segments}
+\item{annotation}{Optional annotation table used to locate TQ segments. It
+must already be resolved to a single lead; see \code{\link[=extract_f_waves]{extract_f_waves()}}.}
 
 \item{amplitude_window}{Either \code{"tq"} or \code{"all"}}
 
@@ -40,9 +49,7 @@ cancellation residual.}
 
 \item{entropy_rate}{Rate in Hz to decimate to before computing entropy}
 
-\item{tol}{Tolerance for the harmonic test}
-
-\item{...}{Unused}
+\item{tol}{Tolerance for the harmonic coincidence test}
 }
 \value{
 A named list of features
