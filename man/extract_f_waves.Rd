@@ -20,7 +20,6 @@ extract_f_waves(
   entropy_bandwidth = 3,
   entropy_tolerance = 0.2,
   spectrum = c("V1", "pooled", "lead"),
-  pooled_spectrum = NULL,
   rhythm = NULL,
   tol = 0.15,
   min_beats = 3L,
@@ -176,9 +175,6 @@ would give.
 from row to row; on \code{muse-af} it spans 313 to 465 per minute across the
 twelve. Whichever is chosen, \code{organization_index} and the main atrial wave
 are computed at the same frequency as \code{dominant_rate} reports.}
-
-\item{pooled_spectrum}{Superseded by \code{spectrum}: \code{TRUE} is \code{"pooled"} and
-\code{FALSE} is \code{"lead"}. Still accepted, and reported once per session.}
 
 \item{rhythm}{Optional character string naming the rhythm, e.g. \code{"af"},
 \code{"flutter"}, \code{"sinus"}. Used only to decide whether to warn. If \code{NULL}

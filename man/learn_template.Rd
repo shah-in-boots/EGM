@@ -15,7 +15,6 @@ learn_template(
   missing = c("complete", "available", "error"),
   ambiguous = c("error", "first"),
   order_policy = c("drop", "error"),
-  channel_criteria = NULL,
   ...
 )
 }
@@ -43,8 +42,6 @@ or error on incomplete examples.}
 \item{ambiguous}{Error when a landmark has multiple matches, or use the first.}
 
 \item{order_policy}{Drop examples with crossed landmarks, or error.}
-
-\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
 
 \item{...}{Additional arguments, currently unused.}
 }

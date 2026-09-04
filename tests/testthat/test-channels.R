@@ -6,13 +6,21 @@ ludb_leads <- function() {
   c("i", "ii", "iii", "avr", "avl", "avf", "v1", "v2", "v3", "v4", "v5", "v6")
 }
 
+# Read from the bundled copy rather than a duplicate kept beside the tests, so
+# these exercise the record a user actually gets. The duplicate was how a header
+# naming a signal file it did not ship went unnoticed: the tests held a
+# corrected copy and the shipped one could not be opened at all.
+ludb_dir <- function() {
+  system.file("extdata", package = "EGM")
+}
+
 signal_numbered_record <- function() {
   dir <- withr::local_tempdir(.local_envir = parent.frame())
-  file.copy(test_path(c("ludb-ecg.dat", "ludb-ecg.hea")), dir)
+  file.copy(file.path(ludb_dir(), c("ludb-ecg.dat", "ludb-ecg.hea")), dir)
 
   parts <- lapply(seq_along(ludb_leads()), function(k) {
     ann <- data.table::as.data.table(
-      read_annotation("ludb-ecg", ludb_leads()[k], test_path())
+      read_annotation("ludb-ecg", ludb_leads()[k], ludb_dir())
     )
     ann$channel <- as.integer(k - 1L)
     ann
@@ -38,11 +46,36 @@ signal_numbered_record <- function() {
   dir
 }
 
+test_that("the bundled LUDB record reads from the installed package", {
+  # A header names its own record and signal file, and nothing checks that the
+  # names still match after the files are renamed. This one said `1` and `1.dat`
+  # long after the record was renamed to `ludb-ecg`, so the shipped example --
+  # the one `?channels` documents -- could not be opened at all while the tests
+  # read a corrected copy of their own and passed.
+  ecg <- read_wfdb("ludb-ecg", ludb_dir())
+
+  expect_s3_class(ecg, "EGM")
+  expect_equal(nrow(ecg$signal), 5000)
+  expect_equal(
+    names(ecg$signal)[-1],
+    c("i", "ii", "iii", "avr", "avl", "avf", "v1", "v2", "v3", "v4", "v5", "v6")
+  )
+
+  # The per-lead delineations ship beside it and are what makes this the
+  # file-per-lead example; each carries the same fiducials for its own lead
+  counts <- vapply(
+    ludb_leads(),
+    function(lead) nrow(read_annotation("ludb-ecg", lead, ludb_dir())),
+    integer(1)
+  )
+  expect_true(all(counts > 0))
+})
+
 test_that("channel zero is read as global by default", {
   # Every annotator that does not populate the field leaves it at 0, so an
   # all-zero column is an absence of information rather than a claim that every
   # fiducial belongs to the first signal
-  ecg <- read_wfdb("ludb-ecg", test_path(), "ii")
+  ecg <- read_wfdb("ludb-ecg", ludb_dir(), "ii")
 
   expect_equal(channel_zero(ecg), "global")
   expect_equal(channel_zero(get_annotation(ecg)), "global")
@@ -61,7 +94,7 @@ test_that("a file counting from 0 is renumbered from 1 as it is read", {
   expect_equal(channel_zero(ecg), "signal")
   expect_equal(EGM:::annotation_channels(get_annotation(ecg)), 1:12)
 
-  lead_i <- read_annotation("ludb-ecg", "i", test_path())
+  lead_i <- read_annotation("ludb-ecg", "i", ludb_dir())
   expect_equal(
     EGM:::locate_features(get_annotation(ecg), "N", 1L),
     as.integer(lead_i$sample[lead_i$type == "N"])
@@ -76,7 +109,7 @@ test_that("a file counting from 0 is renumbered from 1 as it is read", {
 test_that("a lead name resolves to its signal number", {
   dir <- signal_numbered_record()
   by_signal <- read_wfdb("ludb-ecg", dir, "sig", channel_zero = "signal")
-  by_global <- read_wfdb("ludb-ecg", test_path(), "ii")
+  by_global <- read_wfdb("ludb-ecg", ludb_dir(), "ii")
 
   # `header$number` counts signals from one, and so does every table, so a name
   # resolves the same way whichever convention its file used
@@ -103,7 +136,7 @@ test_that("a channel column that fills the signals is refused until declared", {
 
   # And a file that counts from 1 is not ambiguous, so it reads without one
   expect_no_error(read_wfdb("ecg-sinus", test_path(), "ann"))
-  expect_no_error(read_wfdb("ludb-ecg", test_path(), "ii"))
+  expect_no_error(read_wfdb("ludb-ecg", ludb_dir(), "ii"))
 })
 
 test_that("a file goes back out the way it came in", {
@@ -112,7 +145,7 @@ test_that("a file goes back out the way it came in", {
   expect_equal(sort(unique(ann$channel)), 1:12)
 
   out <- withr::local_tempdir()
-  file.copy(fs::path(dir, c("ludb-ecg.dat", "ludb-ecg.hea")), out)
+  file.copy(file.path(dir, c("ludb-ecg.dat", "ludb-ecg.hea")), out)
   write_annotation(ann, "sig", "ludb-ecg", out)
 
   # On disk the numbering is the one the file arrived with, so a tool that reads

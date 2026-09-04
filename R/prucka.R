@@ -107,7 +107,7 @@ read_prucka_header <- function(header_file) {
   lines <- readLines(header_file)
 
   # Extract record name from filename
-  record_name <- fs::path_ext_remove(fs::path_file(header_file))
+  record_name <- tools::file_path_sans_ext(basename(header_file))
   file_name <- paste0(record_name, '.dat')
 
   # Parse key-value pairs (lines with "=")

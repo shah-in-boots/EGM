@@ -60,9 +60,11 @@ signal_table <- function(..., units = c("digital", "physical")) {
   }
 
   # Last checks
-  checkmate::assert_list(y, types = 'numeric')
-  checkmate::assert_names(names(y), must.include = 'sample')
-  checkmate::assert_integer(y$sample)
+  stopifnot(
+    'Signal channels must all be numeric' = all(vapply(y, is.numeric, logical(1))),
+    'A signal table must carry a `sample` column' = 'sample' %in% names(y),
+    'The `sample` column must be an integer' = is.integer(y$sample)
+  )
 
   new_signal_table(data = y, units = units)
 }
@@ -360,14 +362,17 @@ new_annotation_table <- function(
   channel_zero = "global"
 ) {
   if (length(x) > 0) {
-    checkmate::assert_list(
-      x,
-      types = c("numeric", "integer", "character")
-    )
-
-    checkmate::assert_names(
-      names(x),
-      identical.to = c("time", "sample", "type", "subtype", "channel", "number", "aux")
+    stopifnot(
+      "Annotation columns must be numeric or character" = all(vapply(
+        x,
+        function(column) is.numeric(column) || is.character(column),
+        logical(1)
+      )),
+      "An annotation table holds exactly the WFDB annotation columns" =
+        identical(
+          names(x),
+          c("time", "sample", "type", "subtype", "channel", "number", "aux")
+        )
     )
   }
 

@@ -4,14 +4,7 @@
 \alias{median_window}
 \title{Collapse windows to a single median beat}
 \usage{
-median_window(
-  x,
-  align_feature = NULL,
-  channel = NULL,
-  na.rm = TRUE,
-  channel_criteria = NULL,
-  ...
-)
+median_window(x, align_feature = NULL, channel = NULL, na.rm = TRUE, ...)
 }
 \arguments{
 \item{x}{A \code{windows} object (or list of \code{EGM} objects) to reduce.}
@@ -27,8 +20,6 @@ channel; see the channels section.}
 
 \item{na.rm}{Logical passed to \code{\link[stats:median]{stats::median()}}; if TRUE (default), missing
 values are ignored when averaging.}
-
-\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
 
 \item{...}{Additional arguments (currently unused).}
 }

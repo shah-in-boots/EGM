@@ -90,7 +90,7 @@ test_that('write_wfdb honours explicit headers and preserves integer storage', {
 
 test_that("native header reader parses WFDB headers", {
   fp <- system.file("extdata", "muse-sinus.hea", package = "EGM")
-  dir <- fs::path_dir(fp)
+  dir <- dirname(fp)
   header <- read_header("muse-sinus", dir)
 
   expect_s3_class(header, "header_table")
@@ -101,7 +101,7 @@ test_that("native header reader parses WFDB headers", {
 
 test_that("native signal reader returns a signal_table", {
   fp <- system.file("extdata", "muse-sinus.dat", package = "EGM")
-  dir <- fs::path_dir(fp)
+  dir <- dirname(fp)
   header <- read_header("muse-sinus", dir)
   signal <- read_signal("muse-sinus", dir, header = header)
 
@@ -184,7 +184,7 @@ test_that("signal windows use clock times and duration intervals", {
 
 test_that("native reader returns an EGM object", {
   fp <- system.file("extdata", "muse-sinus.dat", package = "EGM")
-  dir <- fs::path_dir(fp)
+  dir <- dirname(fp)
   EGM_obj <- read_wfdb("muse-sinus", dir)
 
   expect_s3_class(EGM_obj, "EGM")
@@ -196,14 +196,14 @@ test_that("native writer produces WFDB files", {
   skip_if_not_installed("withr")
 
   fp <- system.file("extdata", "muse-sinus.dat", package = "EGM")
-  dir <- fs::path_dir(fp)
+  dir <- dirname(fp)
   EGM_obj <- read_wfdb("muse-sinus", dir)
 
   tmp <- withr::local_tempdir()
   write_wfdb(EGM_obj, record = "native-test", record_dir = tmp)
 
-  expect_true(fs::file_exists(fs::path(tmp, "native-test.dat")))
-  expect_true(fs::file_exists(fs::path(tmp, "native-test.hea")))
+  expect_true(file.exists(file.path(tmp, "native-test.dat")))
+  expect_true(file.exists(file.path(tmp, "native-test.hea")))
 
   roundtrip <- read_wfdb("native-test", tmp)
   expect_equal(nrow(roundtrip$signal), nrow(EGM_obj$signal))
@@ -286,7 +286,7 @@ test_that("format 212 supports one signal and an odd sample count", {
   roundtrip <- read_signal("single212", tmp)
 
   expect_equal(roundtrip$MLII, signal$MLII)
-  expect_equal(as.numeric(fs::file_size(fs::path(tmp, "single212.dat"))), 9)
+  expect_equal(file.size(file.path(tmp, "single212.dat")), 9)
 })
 
 test_that("formats 61 and 160 roundtrip with C byte ordering", {
@@ -381,9 +381,9 @@ test_that("header reader preserves nonstandard signal file names and defaults", 
       "custom 1",
       "samples.bin 16 200 12 0 7 5 0 Mixed Case Lead"
     ),
-    fs::path(tmp, "custom.hea")
+    file.path(tmp, "custom.hea")
   )
-  writeBin(as.integer(c(7L, -2L)), fs::path(tmp, "samples.bin"),
+  writeBin(as.integer(c(7L, -2L)), file.path(tmp, "samples.bin"),
     size = 2L, endian = "little"
   )
 
@@ -403,13 +403,13 @@ test_that("signal reader honours absolute file names in headers", {
   skip_if_not_installed("withr")
 
   tmp <- withr::local_tempdir()
-  signal_path <- fs::path(tmp, "absolute.bin")
+  signal_path <- file.path(tmp, "absolute.bin")
   writeBin(as.integer(c(11L, -4L)), signal_path,
     size = 2L, endian = "little"
   )
   writeLines(
     c("absolute 1 250 2", paste(signal_path, "16")),
-    fs::path(tmp, "absolute.hea")
+    file.path(tmp, "absolute.hea")
   )
 
   signal <- read_signal("absolute", tmp)
@@ -422,7 +422,7 @@ test_that("unsupported header format modifiers fail instead of misdecoding", {
   tmp <- withr::local_tempdir()
   writeLines(
     c("modified 1 250 2", "modified.dat 16x2:1+8"),
-    fs::path(tmp, "modified.hea")
+    file.path(tmp, "modified.hea")
   )
 
   expect_error(

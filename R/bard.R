@@ -117,7 +117,7 @@ read_bard <- function(file, n = Inf) {
 #' @rdname bard
 #' @export
 read_bard_header <- function(file) {
-  record_name <- fs::path_ext_remove(fs::path_file(file))
+  record_name <- tools::file_path_sans_ext(basename(file))
   file_name <- paste0(record_name, '.dat')
 
   hea <-

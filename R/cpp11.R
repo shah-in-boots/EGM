@@ -4,10 +4,6 @@ calculate_approximate_entropy_cpp <- function(x, m, r) {
   .Call(`_EGM_calculate_approximate_entropy_cpp`, x, m, r)
 }
 
-fun <- function() {
-  invisible(.Call(`_EGM_fun`))
-}
-
 calculate_sample_entropy_cpp <- function(x, m, r) {
   .Call(`_EGM_calculate_sample_entropy_cpp`, x, m, r)
 }

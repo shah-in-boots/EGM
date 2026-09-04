@@ -259,9 +259,6 @@
 #'   twelve. Whichever is chosen, `organization_index` and the main atrial wave
 #'   are computed at the same frequency as `dominant_rate` reports.
 #'
-#' @param pooled_spectrum Superseded by `spectrum`: `TRUE` is `"pooled"` and
-#'   `FALSE` is `"lead"`. Still accepted, and reported once per session.
-#'
 #' @param rhythm Optional character string naming the rhythm, e.g. `"af"`,
 #'   `"flutter"`, `"sinus"`. Used only to decide whether to warn. If `NULL`
 #'   (default), rhythm is inferred from RR irregularity.
@@ -392,7 +389,6 @@ extract_f_waves <- function(
   entropy_bandwidth = 3,
   entropy_tolerance = 0.2,
   spectrum = c("V1", "pooled", "lead"),
-  pooled_spectrum = NULL,
   rhythm = NULL,
   tol = 0.15,
   min_beats = 3L,
@@ -410,7 +406,7 @@ extract_f_waves <- function(
   amplitude_window <- match.arg(amplitude_window)
   normalize <- match.arg(normalize)
   entropy_input <- match.arg(entropy_input)
-  spectrum <- resolve_spectrum_argument(spectrum, pooled_spectrum)
+  spectrum <- match.arg(spectrum)
 
   if (
     !is.numeric(entropy_bandwidth) ||
@@ -641,40 +637,6 @@ extract_f_waves <- function(
   )
   class(out) <- c("f_wave_analysis", "list")
   out
-}
-
-#' Accept the superseded `pooled_spectrum` argument
-#'
-#' `pooled_spectrum = TRUE` is `spectrum = "pooled"` and `FALSE` is `"lead"`.
-#' Warned once per session rather than once per record, for the reason
-#' [resolve_channel_argument()] gives: a rename reported 14,000 times in a batch
-#' is noise that hides everything around it.
-#'
-#' @noRd
-resolve_spectrum_argument <- function(spectrum, pooled_spectrum = NULL) {
-  choices <- c("V1", "pooled", "lead")
-  if (is.null(pooled_spectrum)) {
-    return(match.arg(spectrum, choices))
-  }
-  # A caller who wrote `spectrum` wrote a single string; the untouched default
-  # is the whole vector of choices
-  if (length(spectrum) == 1) {
-    stop(
-      "Give either `spectrum` or the superseded `pooled_spectrum`, not both",
-      call. = FALSE
-    )
-  }
-  if (!isTRUE(deprecation_state[["extract_f_waves.pooled_spectrum"]])) {
-    deprecation_state[["extract_f_waves.pooled_spectrum"]] <- TRUE
-    warning(
-      "`pooled_spectrum` is superseded by `spectrum` in extract_f_waves(): ",
-      "`TRUE` is `spectrum = \"pooled\"` and `FALSE` is `spectrum = \"lead\"`. ",
-      "The default is now `\"V1\"`, the lead the literature reads the rate ",
-      "from. It still works, and this is reported once per session.",
-      call. = FALSE
-    )
-  }
-  if (isTRUE(pooled_spectrum)) "pooled" else "lead"
 }
 
 #' Whether anything asked for will read a dominant frequency

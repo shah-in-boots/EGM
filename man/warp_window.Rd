@@ -14,7 +14,6 @@ warp_window(
   missing = c("partial", "drop", "error"),
   ambiguous = c("error", "first", "drop"),
   order_policy = c("error", "drop"),
-  channel_criteria = NULL,
   ...
 )
 }
@@ -45,8 +44,6 @@ error, use the first, or drop that window.}
 
 \item{order_policy}{What to do when landmarks are crossed or duplicated:
 error or drop that window.}
-
-\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
 
 \item{...}{Additional arguments (currently unused).}
 }

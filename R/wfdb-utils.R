@@ -1,75 +1,9 @@
-#' WFDB path utilities
-#'
-#' @description These functions are used to help find and locate commands from the
-#' installation of WFDB. They are helpful in setting and getting path options
-#' and specific WFDB commands. They are primarily internal helper functions, but
-#' are documented for troubleshooting purposes.
-#'
-#' @returns These functions are helper functions to work with the user-installed
-#'   WFDB software. They do not always return an object, and are primarily used
-#'   for their side effects. They are primarily developer functions, but are
-#'   exposed to the user to help troubleshoot issues with their installation of
-#'   WFDB.
-#'
-#' @param .app The name of WFDB software command or application as a `character`
-#'
-#' @param .path A `character` string that describes the path to the WFDB binary
-#'   directory
-#'
-#' @name wfdb_paths
-#' @export
-find_wfdb_software <- function() {
-  # Check to see if WFDB software path is already set
-  op <- getOption("wfdb_path")
+# WFDB helpers -----------------------------------------------------------------
 
-  # If NULL then needs to be set
-  if (is.null(op)) {
-    # Confirm operating system structure
-    if (grepl("windows|Windows", utils::sessionInfo()$running)) {
-      os <- "win"
-      packageStartupMessage(
-        "Operating system is Windows. Default installation location for WFDB will be on WSL or Cygwin. Before using any `wfdb`-based functions, please set the location of the binary directory using `set_wfdb_path()`, which modifies `options('wfdb_path')`."
-      )
-    } else if (grepl("mac", utils::sessionInfo()$running)) {
-      os <- "mac"
-
-      packageStartupMessage(
-        "Operating system detected is Apple. Default installation location for WFDB will be on root. Before using any `wfdb`-based functions, please set the location of the binary directory using `set_wfdb_path()`, which modifies `options('wfdb_path')`."
-      )
-    } else if (grepl("n*x", utils::sessionInfo()$running)) {
-      os <- "nix"
-      packageStartupMessage(
-        "Operating system detected is Unix-like. Default installation location for WFDB will be on root. Before using any `wfdb`-based functions, please set the location of the binary directory using `set_wfdb_path()`, which modifies `options('wfdb_path')`."
-      )
-    } else {
-      os <- NA
-      packageStartupMessage(
-        "Operating system could not be determined. Before using any `wfdb`-based functions, please set the location of the binary directory using `set_wfdb_path()`, which modifies `options('wfdb_path')`."
-      )
-    }
-  }
-
-  # Return path if exists already
-  invisible(op)
-}
-
-#' @rdname wfdb_paths
-#' @export
-set_wfdb_path <- function(.path) {
-  options(wfdb_path = .path)
-}
-
-#' @rdname wfdb_paths
-#' @export
-find_wfdb_command <- function(.app, .path = getOption('wfdb_path')) {
-  # Check for wfdb_path
-  # Maybe NULL or NA
-  if (is.null(.path) | is.na(.path)) {
-    stop('No `wfdb_path` set. Please set using `set_wfdb_path()`')
-  }
-
-  cmd <- fs::path(.path, .app)
-}
+# Small utilities shared by the WFDB readers and writers: turning an annotation
+# table back into the fixed-width text a `wrann`-style file holds, reading a
+# record's start date and time out of a header line, and normalising the
+# `begin`/`end`/`interval` window every reader takes.
 
 #' @keywords internal
 #' @noRd
@@ -438,4 +372,26 @@ wfdb_sample_range <- function(
   }
 
   list(begin = as.integer(begin_sample), end = as.integer(end_sample))
+}
+
+#' Whether a path is absolute
+#'
+#' @description The one thing base R does not ship a predicate for, and the
+#'   reason the readers and writers need it: a header may name its signal file
+#'   either relative to the record directory or by an absolute path, and joining
+#'   an absolute path onto `record_dir` silently addresses a file that is not
+#'   there.
+#'
+#' @details Matches a POSIX root, a home-relative `~`, a Windows drive letter,
+#'   and a UNC share, so a header written on one platform is read the same way
+#'   on another.
+#'
+#' @param x A `character` vector of paths.
+#'
+#' @return A `logical` vector the same length as `x`.
+#'
+#' @keywords internal
+#' @noRd
+is_absolute_path <- function(x) {
+  grepl("^(/|~|[A-Za-z]:[/\\\\]|\\\\\\\\)", x)
 }

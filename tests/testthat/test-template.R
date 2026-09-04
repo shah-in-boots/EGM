@@ -324,21 +324,6 @@ test_that("a channel is named the same way everywhere it is accepted", {
   by_name <- learn_template(windows, channel = "II", target_samples = 300)
   expect_equal(by_list@statistics, by_number@statistics)
   expect_equal(by_name@statistics, by_number@statistics)
-
-  # The superseded name still works, and says so
-  expect_warning(
-    superseded <- learn_template(
-      windows,
-      channel_criteria = 2,
-      target_samples = 300
-    ),
-    "superseded"
-  )
-  expect_equal(superseded@statistics, by_number@statistics)
-  expect_error(
-    learn_template(windows, channel = 2, channel_criteria = 2),
-    "not both"
-  )
 })
 
 test_that("ambiguity from a per-lead annotator names the argument that fixes it", {

@@ -2,6 +2,11 @@
 
 ## Breaking
 
+* **`set_wfdb_path()`, `find_wfdb_software()` and `find_wfdb_command()` are
+  removed.** They located the WFDB binaries the package used to shell out to,
+  and nothing has shelled out since the readers and writers moved into C++ —
+  the package no longer calls `system2()` anywhere. Setting `wfdb_path` had
+  stopped affecting anything it was set for.
 * `read_muse()` sets `ADC_gain` from `<LeadAmplitudeUnits>`, 1000 for
   microvolts. Earlier conversions read 5× too large in physical units; the
   `.dat` was always right, fix the `.hea` gain field. Bundled `muse-sinus`,
@@ -37,7 +42,6 @@
   procedure and weighted a lead with no atrial signal the same as V1.
   `spectrum = "pooled"` keeps the old default, `"lead"` estimates one per lead,
   and a record without V1 is an error where something needs the frequency.
-  `pooled_spectrum` still works and is reported once per session.
 * **`f_ratio` divides the RMS amplitude by the QRS excursion, not the
   peak-to-peak.** It was documented as unpublished; it is the Alcaraz–Rieta
   group's normalised f-wave amplitude — RMS f-wave amplitude as a percentage of
@@ -166,10 +170,13 @@
 
 ## Updates
 
+* {fs}, {checkmate} and {rlang} are no longer dependencies. Their uses were
+  base equivalents (`file.path()`, `basename()`, `dir.create()`,
+  `stopifnot()`), and `rlang::.data` was imported but never used.
 * Leads order `I, II, III, AVR, AVL, AVF, V1`–`V6` as displayed; ordered lead
   and catheter factors had alphabetical levels.
-* `channel_criteria` superseded by `channel`, taking a number, a name (`"II"`),
-  or `list(channel = )`. Warns once per session.
+* `channel_criteria` is now `channel`, taking a number, a name (`"II"`), or
+  `list(channel = )`.
 * A heart rate outside 20–300 bpm warns, as does a record not looking like AF.
 * Windows cut from an `ECG` are `ECG`s. Provenance is `method` plus `history`.
 * `?extract_f_waves` no longer claims pooling across twelve leads gives twelve
@@ -212,6 +219,14 @@
 
 ## Bugs
 
+* **The bundled `ludb-ecg` record could not be read.** Its header still carried
+  the record name and signal file of the LUDB original — `1` and `1.dat` — from
+  before the files were renamed, so `read_wfdb("ludb-ecg",
+  system.file("extdata", package = "EGM"))` failed on a missing `1.dat`. The
+  record `?channels` documents as the file-per-lead example had never been
+  readable from an installed package. The test suite did not catch it because it
+  kept a corrected copy of the header of its own; it now reads the bundled files,
+  so a header naming a file it does not ship fails where it is shipped.
 * Every `print()` method dispatches again; the `S7::method(print, ...)`
   assignments are wrapped in `local()`.
 * `frequency()` gains a `header_table` method; it reported 1 Hz for a 500 Hz

@@ -196,8 +196,8 @@ write_wfdb <- function(
   units <- match.arg(units)
   # Create the output directory up-front so subsequent file writes do not
   # fail midway through the export pipeline.
-  if (!fs::dir_exists(record_dir)) {
-    fs::dir_create(record_dir, recurse = TRUE)
+  if (!dir.exists(record_dir)) {
+    dir.create(record_dir, recursive = TRUE)
   }
 
   if (inherits(data, "EGM")) {
@@ -381,12 +381,12 @@ write_wfdb <- function(
     combined_info <- lapply(combined_info, as.character)
   }
 
-  data_path <- if (fs::is_absolute_path(unique_files[[1]])) {
+  data_path <- if (is_absolute_path(unique_files[[1]])) {
     unique_files[[1]]
   } else {
-    fs::path(record_dir, unique_files[[1]])
+    file.path(record_dir, unique_files[[1]])
   }
-  header_path <- fs::path(record_dir, record_name, ext = "hea")
+  header_path <- file.path(record_dir, paste0(record_name, ".hea"))
 
   # The heavy lifting happens inside the native writer, which handles the
   # byte-level encoding for both the signal and header files.
@@ -572,10 +572,10 @@ read_signal <- function(
   # Delegate decoding of the binary signal file to the C++ implementation.
   # Channel indices are converted to zero-based offsets to match the WFDB
   # on-disk layout.
-  data_path <- if (fs::is_absolute_path(file_names[[1]])) {
+  data_path <- if (is_absolute_path(file_names[[1]])) {
     file_names[[1]]
   } else {
-    fs::path(record_dir, file_names[[1]])
+    file.path(record_dir, file_names[[1]])
   }
 
   signal_list <- read_signal_native_cpp(
@@ -607,8 +607,8 @@ read_signal <- function(
 #'
 #' @export
 read_header <- function(record, record_dir = ".", ...) {
-  header_path <- fs::path(record_dir, record, ext = "hea")
-  if (!fs::file_exists(header_path)) {
+  header_path <- file.path(record_dir, paste0(record, ".hea"))
+  if (!file.exists(header_path)) {
     stop(record, " not found in ", record_dir)
   }
 

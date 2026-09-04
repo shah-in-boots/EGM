@@ -156,8 +156,8 @@ read_annotation_single <- function(
     stop("`header` must be a `header_table` object")
   }
 
-  annotation_path <- fs::path(record_dir, record, ext = annotator)
-  if (!fs::file_exists(annotation_path)) {
+  annotation_path <- file.path(record_dir, paste0(record, ".", annotator))
+  if (!file.exists(annotation_path)) {
     stop(
       "Annotation file not found for ",
       record,
@@ -322,10 +322,10 @@ write_annotation <- function(
     stop("`annotator` must be provided")
   }
 
-  if (!fs::dir_exists(record_dir)) {
+  if (!dir.exists(record_dir)) {
     # Match the behaviour of write_wfdb() by creating the directory
     # before invoking the native writer.
-    fs::dir_create(record_dir, recurse = TRUE)
+    dir.create(record_dir, recursive = TRUE)
   }
 
   if (!inherits(data, "annotation_table")) {
@@ -428,7 +428,7 @@ write_annotation <- function(
   }
   aux_vals[is.na(aux_vals)] <- ""
 
-  annotation_path <- fs::path(record_dir, record, ext = annotator)
+  annotation_path <- file.path(record_dir, paste0(record, ".", annotator))
   # Offload the binary encoding to the native implementation which shares
   # logic with the reader, ensuring the two functions round-trip cleanly.
   write_annotation_native_cpp(
@@ -802,7 +802,7 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
         "Annotation contains samples outside valid range [0, ",
         max_samples,
         "): ",
-        paste(head(invalid_samples, 5), collapse = ", "),
+        paste(utils::head(invalid_samples, 5), collapse = ", "),
         if (length(invalid_samples) > 5) "..." else "",
         call. = FALSE
       )

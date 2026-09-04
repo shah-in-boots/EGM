@@ -29,7 +29,7 @@ test_that('header and labels work fluidly when plotting', {
 
   data <- read_wfdb(
     record = 'ludb-ecg',
-    record_dir = test_path(),
+    record_dir = system.file("extdata", package = "EGM"),
     annotator = 'i'
   )
 
@@ -69,7 +69,7 @@ test_that("ggm defaults to dark background when white channels present", {
 test_that("ggm defaults to light background when black channels present", {
   data <- read_wfdb(
     record = 'ludb-ecg',
-    record_dir = test_path(),
+    record_dir = system.file("extdata", package = "EGM"),
     annotator = 'i'
   )
 

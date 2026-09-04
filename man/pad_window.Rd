@@ -14,7 +14,6 @@ pad_window(
   channel = NULL,
   pad_value = NA,
   preserve_class = TRUE,
-  channel_criteria = NULL,
   ...
 )
 }
@@ -54,8 +53,6 @@ fill section for choosing between them.}
 
 \item{preserve_class}{Logical. If TRUE (default), returns a \code{windows} object;
 if FALSE, returns a plain list of \code{EGM} objects.}
-
-\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
 
 \item{...}{Additional arguments (currently unused).}
 }

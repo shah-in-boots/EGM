@@ -68,7 +68,6 @@
 #' @param channel The lead whose `align_feature` anchors the alignment, given as
 #'   a channel number or name. Required when the annotations span more than one
 #'   channel; see the channels section.
-#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param pad_value The value used for padding: `NA` (default), a single number,
 #'   or the string `"edge"`. `NA` marks the added samples as absent rather than
 #'   as a measurement. Padding with `0` states that the potential there was zero,
@@ -122,16 +121,11 @@ pad_window <- function(
   channel = NULL,
   pad_value = NA,
   preserve_class = TRUE,
-  channel_criteria = NULL,
   ...
 ) {
   windows <- as_window_list(x)
   align <- match.arg(align)
-  channel_criteria <- resolve_channel_argument(
-    channel,
-    channel_criteria,
-    fn = "pad_window"
-  )
+  channel_criteria <- valid_channel(channel)
 
   # Validated here rather than at the fill, where a mistyped string would become
   # `NA` through `as.numeric()` and pass for the default
@@ -536,7 +530,6 @@ baseline_window <- function(
 #'   channel; see the channels section.
 #' @param na.rm Logical passed to [stats::median()]; if TRUE (default), missing
 #'   values are ignored when averaging.
-#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param ... Additional arguments (currently unused).
 #'
 #' @inheritSection channels Guiding channel
@@ -563,18 +556,13 @@ median_window <- function(
   align_feature = NULL,
   channel = NULL,
   na.rm = TRUE,
-  channel_criteria = NULL,
   ...
 ) {
   windows <- as_window_list(x)
   if (length(windows) == 0) {
     stop("Cannot compute a median beat from zero windows")
   }
-  channel_criteria <- resolve_channel_argument(
-    channel,
-    channel_criteria,
-    fn = "median_window"
-  )
+  channel_criteria <- valid_channel(channel)
   if (!is.null(align_feature)) {
     channel_criteria <- require_window_channel(
       windows,
@@ -802,7 +790,6 @@ median_annotations <- function(
 #'   different samples, so a bare `align_feature = "N"` would otherwise centre on
 #'   whichever lead sorts first. Ignored when `align_feature` is `NULL` or
 #'   already specifies a `channel`; see the channels section.
-#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param preserve_amplitude Logical. If TRUE, rescales each lead back to its
 #'   original amplitude range after interpolation. Defaults to FALSE, since a
 #'   pure time stretch should leave amplitudes to the interpolation.
@@ -843,16 +830,11 @@ normalize_window <- function(
   channel = NULL,
   preserve_amplitude = FALSE,
   preserve_class = TRUE,
-  channel_criteria = NULL,
   ...
 ) {
   windows <- as_window_list(x)
   interpolation_method <- match.arg(interpolation_method)
-  channel_criteria <- resolve_channel_argument(
-    channel,
-    channel_criteria,
-    fn = "normalize_window"
-  )
+  channel_criteria <- valid_channel(channel)
   if (!is.null(align_feature)) {
     channel_criteria <- require_window_channel(
       windows,
@@ -1188,7 +1170,6 @@ interpolate_signal <- function(
 #' @param channel Fallback guiding channel used when locating a landmark whose
 #'   own spec does not name one, given as a channel number or name. A landmark's
 #'   own channel always takes precedence; see the channels section.
-#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param preserve_amplitude Logical. If TRUE, rescales each lead back to its
 #'   original amplitude range after warping. Defaults to FALSE.
 #' @param preserve_class Logical. If TRUE (default), returns a `windows` object;
@@ -1219,18 +1200,13 @@ warp_window <- function(
   missing = c("partial", "drop", "error"),
   ambiguous = c("error", "first", "drop"),
   order_policy = c("error", "drop"),
-  channel_criteria = NULL,
   ...
 ) {
   windows <- as_window_list(x)
   if (!is_template(template)) {
     stop("`template` must be a template object")
   }
-  channel_criteria <- resolve_channel_argument(
-    channel,
-    channel_criteria,
-    fn = "warp_window"
-  )
+  channel_criteria <- valid_channel(channel)
   interpolation_method <- match.arg(interpolation_method)
   missing <- match.arg(missing)
   ambiguous <- match.arg(ambiguous)

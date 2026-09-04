@@ -13,7 +13,6 @@ normalize_window(
   channel = NULL,
   preserve_amplitude = FALSE,
   preserve_class = TRUE,
-  channel_criteria = NULL,
   ...
 )
 }
@@ -46,8 +45,6 @@ pure time stretch should leave amplitudes to the interpolation.}
 
 \item{preserve_class}{Logical. If TRUE (default), returns a \code{windows} object;
 if FALSE, returns a plain list of \code{EGM} objects.}
-
-\item{channel_criteria}{Superseded name for \code{channel}, still accepted.}
 
 \item{...}{Additional arguments (currently unused).}
 }

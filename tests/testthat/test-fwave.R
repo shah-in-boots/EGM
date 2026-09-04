@@ -1100,62 +1100,6 @@ test_that("a record without V1 is refused only where the frequency is needed", {
   expect_length(unique(pooled$features$dominant_rate), 1L)
 })
 
-test_that("pooled_spectrum still works, and says so once", {
-  sim <- simulate_af()
-  object <- as_simulated_ecg(sim)
-  suppressWarnings(
-    rm("extract_f_waves.pooled_spectrum", envir = EGM:::deprecation_state)
-  )
-
-  # Every warning but the one under test is muffled; the rhythm warnings are
-  # tested elsewhere
-  only_superseded <- function(expr) {
-    withCallingHandlers(
-      expr,
-      warning = function(w) {
-        if (!grepl("superseded", conditionMessage(w))) {
-          invokeRestart("muffleWarning")
-        }
-      }
-    )
-  }
-
-  old <- NULL
-  only_superseded(expect_warning(
-    old <- suppressMessages(extract_f_waves(
-      object,
-      qrs_loc = sim$qrs_loc,
-      pooled_spectrum = FALSE,
-      keep_signal = TRUE,
-      verbose = FALSE
-    )),
-    "superseded"
-  ))
-  # `FALSE` maps to `"lead"`: each lead its own estimate
-  expect_equal(
-    old$features$dominant_rate,
-    vapply(
-      old$features$lead,
-      function(l) 60 * calculate_dominant_frequency(old$signal[[l]], sim$frequency),
-      numeric(1)
-    ),
-    ignore_attr = TRUE
-  )
-
-  # Second use in the session says nothing
-  expect_no_warning(only_superseded(suppressMessages(extract_f_waves(
-    object,
-    qrs_loc = sim$qrs_loc,
-    pooled_spectrum = TRUE,
-    verbose = FALSE
-  ))))
-
-  expect_error(
-    extract_f_waves(object, spectrum = "lead", pooled_spectrum = TRUE),
-    "not both"
-  )
-})
-
 test_that("an annotation is demanded only where something will read it", {
   # `qrs_loc` supplied and amplitude measured over the whole record means
   # nothing consults the annotations, so requiring a `channel` for them would be

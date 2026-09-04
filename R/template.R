@@ -295,7 +295,6 @@ resolve_channel_spec <- function(egm, channel) {
 #'   or error on incomplete examples.
 #' @param ambiguous Error when a landmark has multiple matches, or use the first.
 #' @param order_policy Drop examples with crossed landmarks, or error.
-#' @param channel_criteria Superseded name for `channel`, still accepted.
 #' @param ... Additional arguments, currently unused.
 #'
 #' @inheritSection channels Guiding channel
@@ -316,7 +315,6 @@ learn_template <- function(
   missing = c("complete", "available", "error"),
   ambiguous = c("error", "first"),
   order_policy = c("drop", "error"),
-  channel_criteria = NULL,
   ...
 ) {
   position_estimator <- match.arg(position_estimator)
@@ -333,11 +331,7 @@ learn_template <- function(
   }
   target_samples <- as.integer(target_samples)
 
-  channel_criteria <- resolve_channel_argument(
-    channel,
-    channel_criteria,
-    fn = "learn_template"
-  )
+  channel_criteria <- valid_channel(channel)
 
   if (
     is.list(landmarks) && length(landmarks) > 0L &&
