@@ -259,6 +259,13 @@
   `qrs_loc` is supplied, which the argument previously said it did not. The beat
   positions come from `qrs_loc`, but the TQ segments are still read from the
   annotations.
+* **The bundled `ludb-ecg` record reads.** Its header still carried the record
+  name and signal file names of the LUDB record `1` it was built from, so
+  `read_wfdb("ludb-ecg", system.file("extdata", package = "EGM"))` looked for a
+  `1.dat` that is not shipped and failed for everyone but the test suite, which
+  kept a corrected copy of its own. The header now names the files beside it;
+  the signal data is unchanged. The tests read the shipped record rather than a
+  private copy, so a header that stops matching fails them.
 
 # EGM 0.2.0
 

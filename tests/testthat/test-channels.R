@@ -2,17 +2,30 @@
 # counts its signals from 0, which is the convention `channel_zero = "signal"`
 # names. LUDB itself ships one file per lead with `chan` left at 0 throughout,
 # so the two readings can be checked against the same fiducials.
+#
+# The record is read where the package ships it rather than from a copy kept
+# here, so a header that stops naming the files beside it fails these tests too.
+ludb_dir <- function() {
+  system.file("extdata", package = "EGM")
+}
+
 ludb_leads <- function() {
   c("i", "ii", "iii", "avr", "avl", "avf", "v1", "v2", "v3", "v4", "v5", "v6")
 }
 
 signal_numbered_record <- function() {
   dir <- withr::local_tempdir(.local_envir = parent.frame())
-  file.copy(test_path(c("ludb-ecg.dat", "ludb-ecg.hea")), dir)
+  # The installed copy may be read-only; the temp copy is written beside a new
+  # annotation file, so take the contents without the permissions
+  file.copy(
+    fs::path(ludb_dir(), c("ludb-ecg.dat", "ludb-ecg.hea")),
+    dir,
+    copy.mode = FALSE
+  )
 
   parts <- lapply(seq_along(ludb_leads()), function(k) {
     ann <- data.table::as.data.table(
-      read_annotation("ludb-ecg", ludb_leads()[k], test_path())
+      read_annotation("ludb-ecg", ludb_leads()[k], ludb_dir())
     )
     ann$channel <- as.integer(k - 1L)
     ann
@@ -42,7 +55,7 @@ test_that("channel zero is read as global by default", {
   # Every annotator that does not populate the field leaves it at 0, so an
   # all-zero column is an absence of information rather than a claim that every
   # fiducial belongs to the first signal
-  ecg <- read_wfdb("ludb-ecg", test_path(), "ii")
+  ecg <- read_wfdb("ludb-ecg", ludb_dir(), "ii")
 
   expect_equal(channel_zero(ecg), "global")
   expect_equal(channel_zero(get_annotation(ecg)), "global")
@@ -61,7 +74,7 @@ test_that("a file counting from 0 is renumbered from 1 as it is read", {
   expect_equal(channel_zero(ecg), "signal")
   expect_equal(EGM:::annotation_channels(get_annotation(ecg)), 1:12)
 
-  lead_i <- read_annotation("ludb-ecg", "i", test_path())
+  lead_i <- read_annotation("ludb-ecg", "i", ludb_dir())
   expect_equal(
     EGM:::locate_features(get_annotation(ecg), "N", 1L),
     as.integer(lead_i$sample[lead_i$type == "N"])
@@ -76,7 +89,7 @@ test_that("a file counting from 0 is renumbered from 1 as it is read", {
 test_that("a lead name resolves to its signal number", {
   dir <- signal_numbered_record()
   by_signal <- read_wfdb("ludb-ecg", dir, "sig", channel_zero = "signal")
-  by_global <- read_wfdb("ludb-ecg", test_path(), "ii")
+  by_global <- read_wfdb("ludb-ecg", ludb_dir(), "ii")
 
   # `header$number` counts signals from one, and so does every table, so a name
   # resolves the same way whichever convention its file used
@@ -103,7 +116,7 @@ test_that("a channel column that fills the signals is refused until declared", {
 
   # And a file that counts from 1 is not ambiguous, so it reads without one
   expect_no_error(read_wfdb("ecg-sinus", test_path(), "ann"))
-  expect_no_error(read_wfdb("ludb-ecg", test_path(), "ii"))
+  expect_no_error(read_wfdb("ludb-ecg", ludb_dir(), "ii"))
 })
 
 test_that("a file goes back out the way it came in", {

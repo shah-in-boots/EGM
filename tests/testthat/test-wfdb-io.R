@@ -459,6 +459,75 @@ test_that("mixed storage formats in one signal group are rejected", {
   )
 })
 
+# Bundled records -----------------------------------------------------------
+
+# A header names both itself and the files its samples live in, so a record
+# renamed on its way into `inst/extdata` keeps reading only in the directory it
+# was built in until the header is rewritten to match. Nothing in the reader
+# can catch that; only opening the shipped record from its installed path can,
+# which is what these tests do.
+
+test_that("every record the package ships reads from its installed path", {
+  dir <- system.file("extdata", package = "EGM")
+  headers <- fs::dir_ls(dir, glob = "*.hea")
+  records <- as.character(fs::path_ext_remove(fs::path_file(headers)))
+  expect_true("ludb-ecg" %in% records)
+
+  for (record in records) {
+    ecg <- read_wfdb(record, dir)
+
+    expect_s3_class(ecg, "EGM")
+    expect_s3_class(ecg$signal, "signal_table")
+    expect_gt(nrow(ecg$signal), 0)
+
+    # The names the header carries are the names on disk, not the ones the
+    # record happened to have wherever it was converted
+    expect_equal(attr(ecg$header, "record_line")$record_name, record)
+    expect_equal(
+      unique(as.character(ecg$header$file_name)),
+      paste0(record, ".dat")
+    )
+  }
+})
+
+test_that("the bundled LUDB record reads with each of its per-lead annotators", {
+  # `?channels` sends readers to this record for the per-lead case: twelve
+  # delineations of the same twelve leads, one file each, carrying the lead in
+  # the *file extension* rather than in the `channel` column
+  dir <- system.file("extdata", package = "EGM")
+  leads <- c(
+    "i", "ii", "iii", "avr", "avl", "avf",
+    "v1", "v2", "v3", "v4", "v5", "v6"
+  )
+
+  ecg <- read_wfdb("ludb-ecg", dir)
+  expect_s3_class(ecg, "EGM")
+  expect_equal(ecg$header$label, leads)
+  expect_equal(nrow(ecg$signal), 5000)
+  expect_equal(attr(ecg$header, "record_line")$frequency, 500)
+
+  # Every lead's annotator is its own file and has to be readable on its own
+  annotations <- read_annotation("ludb-ecg", leads, dir)
+  expect_named(annotations, leads)
+
+  for (lead in leads) {
+    ann <- annotations[[lead]]
+    expect_s3_class(ann, "annotation_table")
+
+    # Each delineation is six beats of the same record, bounded by wave onsets
+    # and offsets
+    expect_equal(sum(ann$type == "N"), 6L)
+    expect_equal(nrow(ann), 48L)
+
+    # The lead is in the extension, so the column says nothing and is global
+    expect_equal(channel_zero(ann), "global")
+    expect_length(EGM:::annotation_channels(ann), 0)
+  }
+
+  # And such a record windows without being told which lead to follow
+  expect_length(get_windows(read_wfdb("ludb-ecg", dir, "ii"), by = by_beat()), 6)
+})
+
 # Native annotation ---------------------------------------------------------
 
 test_that("read_annotation parses annotations", {
