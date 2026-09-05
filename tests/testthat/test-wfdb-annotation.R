@@ -163,6 +163,56 @@ test_that("add_annotation validates inputs", {
   expect_error(add_annotation(EGM(), ann_no_attr), "annotator.*attribute")
 })
 
+test_that("add_annotation resolves a channel name to its signal number", {
+  x <- small_test_egm()
+
+  named <- annotation_table(
+    annotator = "test",
+    sample = c(100L, 200L, 300L),
+    type = c("N", "N", "+"),
+    frequency = 360L,
+    channel = c("II", "II", "0")
+  )
+  added <- add_annotation(x, named)
+  stored <- added$annotation$test$channel
+
+  # The header's `label` is a factor; combining it with `number` used to give
+  # the labels' integer codes, so a name could never match. It now resolves to
+  # the signal number and the global channel stays 0.
+  expect_true(is.integer(stored))
+  expect_equal(stored, c(1L, 1L, 0L))
+})
+
+test_that("add_annotation refuses a channel name the record does not carry", {
+  x <- small_test_egm()
+
+  named <- annotation_table(
+    annotator = "test",
+    sample = 100L,
+    type = "N",
+    frequency = 360L,
+    channel = "V1"
+  )
+  expect_error(add_annotation(x, named), "not present")
+})
+
+test_that("write_annotation refuses a channel column holding names", {
+  dir <- withr::local_tempdir()
+
+  named <- annotation_table(
+    annotator = "test",
+    sample = 100L,
+    type = "N",
+    frequency = 360L,
+    channel = "II"
+  )
+  # It would otherwise be written as channel 0 without a word
+  expect_error(
+    write_annotation(named, record = "toy", annotator = "test", record_dir = dir),
+    "add_annotation"
+  )
+})
+
 test_that("get_annotation returns the same shape as read_annotation", {
   from_disk <- read_annotation("ecg-sinus", "ann", test_path())
   in_memory <- get_annotation(read_wfdb("ecg-sinus", test_path(), "ann"))

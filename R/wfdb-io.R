@@ -5,7 +5,7 @@
 #' @author
 #' Original software: George Moody, Tom Pollard, Benjamin Moody \cr
 #' R implementation: Anish S. Shah \cr
-#' Last updated: `r Sys.Date()` \cr
+#' Last updated: 2026-09-05 \cr
 #'
 #' @description
 #' This implementation of WFDB is a back-end for the WFDB using a combination of

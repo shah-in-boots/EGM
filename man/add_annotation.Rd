@@ -30,9 +30,11 @@ it or merge the annotations.
 The function performs several validation checks to ensure the annotation
 table is compatible with the \code{egm} object:
 \itemize{
-\item \strong{Channel validation}: Checks that all channels referenced in the
-annotation table (except channel 0, which is the global/default channel)
-exist in the signal header.
+\item \strong{Channel validation}: A channel given as a lead name (\code{"II"}) is
+resolved against the record's header to its signal number, so the table
+stored on the object always counts channels the way \link{channels} describes.
+Every channel other than the global channel \code{0} has to exist in the
+header; a name the record does not carry is an error.
 \item \strong{Sample validation}: Checks that all sample indices in the annotation
 table are within the valid range of samples in the recording.
 }

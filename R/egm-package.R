@@ -8,6 +8,7 @@
 #' @name EGM-vctrs
 
 ## usethis namespace: start
+#' @import data.table
 #' @import stats
 #' @importFrom data.table :=
 #' @importFrom data.table .BY

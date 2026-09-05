@@ -228,10 +228,18 @@ vec_cast.signal_table.data.frame <- function(x, to, ...) {
 #'   annotation
 #'
 #' @param channel An `integer` representing the channel number of the
-#'   annotation, or a `character` representing the channel name
+#'   annotation, or a `character` representing the channel name. A name is
+#'   resolved to its signal number when the table is added to a record with
+#'   [add_annotation()]; [write_annotation()] refuses a table still holding
+#'   names, since the file stores an integer. See [channels] for how the
+#'   numbers count.
 #'
 #' @param number An additional `integer` value or number that classifies the
 #'   annotation (allows for compatibility with multiple annotation types)
+#'
+#' @param aux A `character` auxiliary string carried with each annotation, the
+#'   WFDB `aux` field. Free text, such as a rhythm label (`"(AFIB"`) or a note
+#'   from the annotator. Defaults to empty.
 #'
 #' @param frequency An `integer` that represents the sampling frequency in Hertz
 #'
@@ -719,8 +727,6 @@ header_table <- function(
     ADC_gain <- ADC_saturation / additional_gain
   }
 
-  # TODO
-  # Option characteristics
 
   # Signal specifications
   channel_count <- if (
@@ -781,8 +787,6 @@ header_table <- function(
     "scale" = ifelse(length(scale) == 0, NA, scale)
   )
 
-  # TODO
-  # Info strings
 
   record_line$number_of_channels <- channel_count
 

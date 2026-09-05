@@ -25,10 +25,10 @@ home:
     on the Waveform Database(WFDB) software package, written by Moody et al
     2022 <doi:10.13026/gjvw-1m31>. This package provides a wrapper for
     utilizing WFDB functions for reading and writing signal data in R, as well
-    as functions for visualization and analysis. This package introduces a
-    stable and compatible class for working with signal data, and supports
-    reading in of specific, electrophysiogical file formats, including
-    intracardiac electrograms.
+    as functions for analysis; plotting lives in the companion gram package.
+    This package introduces a stable and compatible class for working with
+    signal data, and supports reading in of specific, electrophysiogical file
+    formats, including intracardiac electrograms.
   sidebar:
     structure: [links, license, community, citation, authors, dev]
 

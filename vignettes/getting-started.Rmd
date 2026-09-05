@@ -39,9 +39,10 @@ head(xml)
 ecg <- read_muse(fp)
 ecg
 
-# Can now plot this easily
-ggm(ecg) + 
-  theme_egm_light()
+# A quick look at one lead. Figures for presentation live in the companion
+# {gram} package; {EGM} itself carries no plotting layer.
+sig <- get_signal(ecg)
+plot(sig$sample / 500, sig$II, type = "l", xlab = "Seconds", ylab = "Lead II")
 ```
 
 Similarly, intracardiac recordings obtained through bard can be read in as well. The function itself documents how this generally work.
@@ -57,9 +58,14 @@ head(bard, n = 20)
 egram <- read_bard(fp)
 egram
 
-# Similarly, can be visualized with ease
-ggm(egram, channels = c('HIS', 'CS', 'RV'), mode = NULL) +
-	theme_egm_dark() 
+# The intracardiac channels, one trace each, on a shared time axis
+sig <- get_signal(egram)
+matplot(
+  sig$sample / 1000,
+  sig[, c("HIS.D", "HIS.M", "CS.1.2", "RV.1.2")],
+  type = "l", lty = 1,
+  xlab = "Seconds", ylab = "Signal"
+)
 ```
 
 # Class Introduction

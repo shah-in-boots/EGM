@@ -1,7 +1,18 @@
-# EGM (development version)
+# EGM 0.3.0
 
 ## Breaking
 
+* **`ggm()`, `theme_egm()`, `theme_egm_light()`, `theme_egm_dark()` and the
+  empty `add_annotations()` stub are removed, and `{ggplot2}` leaves Imports.**
+  `{EGM}` is the signal back end; plotting moves to the companion `{gram}`
+  package, where the same code is parked (not yet exported) until it is wired
+  to gram's own viewer. The header `color` column and `ecg_leads()` stay.
+* **`add_annotation()` resolves a channel given as a lead name to its signal
+  number.** It compared names against `c(header$number, header$label)`, and
+  `label` is a factor, so `c()` gave the labels' integer codes and a name could
+  never match. The stored table now always holds integers, which is what
+  `annotation_channels()` and the file writer read; `write_annotation()`
+  refuses a table still holding names rather than writing them as channel 0.
 * **`set_wfdb_path()`, `find_wfdb_software()` and `find_wfdb_command()` are
   removed.** They located the WFDB binaries the package used to shell out to,
   and nothing has shelled out since the readers and writers moved into C++ —

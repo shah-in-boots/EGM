@@ -221,7 +221,7 @@ ann_multiple <- read_annotation(
 
 # Returns a named list of annotation_table objects
 names(ann_multiple)
-# [1] "ecgpuwave" "atr" "wqrs"
+# [1] "i"  "ii" "wqrs"
 
 # Access individual annotators
 ann_multiple$ecgpuwave
@@ -235,9 +235,9 @@ You can also read an entire WFDB record with multiple annotations in one call:
 ```{r}
 # Read signal, header, and multiple annotations together
 record <- read_wfdb(
-  record = "300",
-  record_dir = test_path(),
-  annotator = c("ecgpuwave", "atr")
+  record = "ludb-ecg",
+  record_dir = system.file("extdata", package = "EGM"),
+  annotator = c("i", "ii")
 )
 
 # The egm object now contains multiple annotators
@@ -251,14 +251,14 @@ print(record)
 ```{r}
 # Get names of all annotators in an egm object
 annotators <- list_annotators(record)
-# [1] "ecgpuwave" "atr"
+# [1] "i"  "ii"
 ```
 
 ### Extract Specific Annotators
 
 ```{r}
 # Extract a specific annotator from an egm object
-ecg_ann <- get_annotation(record, "ecgpuwave")
+ecg_ann <- get_annotation(record, "i")
 
 # Without a name: the table itself when there is one annotator, a named list of
 # them when there are several - the same shape `read_annotation()` returns
@@ -280,13 +280,13 @@ merged <- merge_annotations(record)
 head(merged)
 
 # Merge only specific annotators
-merged_subset <- merge_annotations(record, annotators = c("ecgpuwave"))
+merged_subset <- merge_annotations(record, annotators = c("i"))
 
 # You can also merge from a list of annotation_table objects
 ann_list <- read_annotation(
-  record = "300",
-  record_dir = test_path(),
-  annotator = c("ecgpuwave", "atr")
+  record = "ludb-ecg",
+  record_dir = system.file("extdata", package = "EGM"),
+  annotator = c("i", "ii")
 )
 merged_from_list <- merge_annotations(ann_list)
 ```

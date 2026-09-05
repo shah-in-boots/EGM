@@ -44,10 +44,18 @@ given for compatibility with the WFDB applications.}
 annotation}
 
 \item{channel}{An \code{integer} representing the channel number of the
-annotation, or a \code{character} representing the channel name}
+annotation, or a \code{character} representing the channel name. A name is
+resolved to its signal number when the table is added to a record with
+\code{\link[=add_annotation]{add_annotation()}}; \code{\link[=write_annotation]{write_annotation()}} refuses a table still holding
+names, since the file stores an integer. See \link{channels} for how the
+numbers count.}
 
 \item{number}{An additional \code{integer} value or number that classifies the
 annotation (allows for compatibility with multiple annotation types)}
+
+\item{aux}{A \code{character} auxiliary string carried with each annotation, the
+WFDB \code{aux} field. Free text, such as a rhythm label (\code{"(AFIB"}) or a note
+from the annotator. Defaults to empty.}
 
 \item{channel_zero}{How the \code{channel} values given count signals: \code{"global"}
 (default), from \code{1} with \code{0} the global channel, which is how the table
@@ -87,7 +95,7 @@ page.
 
 The \strong{type} column can be \emph{p}, \emph{t}, or \emph{N} for the peak of the P wave, T
 wave, and QRS (R peak) directly. The output notation also includes waveform
-onset XXX and waveform offset XXX. The \strong{number} column gives further
+onset \code{(} and waveform offset \verb{)}. The \strong{number} column gives further
 information about each of these \strong{type} labels.
 
 The \strong{number} column gives modifier information. If the \strong{type} classifier

@@ -1,6 +1,6 @@
 Package: EGM
 Title: Intracardiac Electrograms
-Version: 0.2.0.900
+Version: 0.3.0
 Authors@R: c(
     person(given = "Anish S.", family = "Shah", role = c("aut", "cre", "cph"), email = "shah.in.boots@gmail.com", comment = c(ORCID = "0000-0002-9729-1558")),
     person(given = "Darren", family = "Seaney", role = c("ctb"), email = "dseaney2@uic.edu")
@@ -8,9 +8,9 @@ Authors@R: c(
 Description: A system for importing electrophysiological signal, based
     on the 'Waveform Database (WFDB)' software package, written by Moody et al 
     2022 <doi:10.13026/gjvw-1m31>. A R-based system to utilize 'WFDB' functions
-    for reading and writing signal data, as well as functions for visualization
-    and analysis are provided. A stable and broadly compatible class for working
-    with signal data, supporting the reading in of cardiac electrophysiological
+    for reading and writing signal data, as well as functions for analysis, are
+    provided. A stable and broadly compatible class for working with signal
+    data, supporting the reading in of cardiac electrophysiological
     files such as intracardiac electrograms, is introduced.
 License: GPL (>= 3)
 Encoding: UTF-8
@@ -23,7 +23,6 @@ Imports:
     data.table (>= 1.15.0),
     stats,
     tools,
-    ggplot2,
     utils,
     xml2,
     base64enc,

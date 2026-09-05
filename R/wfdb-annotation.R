@@ -37,7 +37,7 @@
 #'
 #' The __type__ column can be _p_, _t_, or _N_ for the peak of the P wave, T
 #' wave, and QRS (R peak) directly. The output notation also includes waveform
-#' onset XXX and waveform offset XXX. The __number__ column gives further
+#' onset `(` and waveform offset `)`. The __number__ column gives further
 #' information about each of these __type__ labels.
 #'
 #' The __number__ column gives modifier information. If the __type__ classifier
@@ -401,6 +401,24 @@ write_annotation <- function(
   }
 
   subtype_vals <- parse_optional_int(ann_dt$subtype)
+
+  # A lead name in the channel column has no place in the file, which stores an
+  # integer, and `parse_optional_int()` would write it as the global channel 0
+  # without a word. Names are resolved when a table is added to a record.
+  if (is.character(ann_dt$channel)) {
+    unresolved <- unique(ann_dt$channel[
+      is.na(suppressWarnings(as.integer(ann_dt$channel)))
+    ])
+    if (length(unresolved) > 0) {
+      stop(
+        "`channel` holds names (",
+        paste(unresolved, collapse = ", "),
+        ") which an annotation file cannot store. Add the table to its record ",
+        "with `add_annotation()` first, which resolves them to signal numbers.",
+        call. = FALSE
+      )
+    }
+  }
   channel_vals <- parse_optional_int(ann_dt$channel)
   number_vals <- parse_optional_int(ann_dt$number)
 
@@ -706,9 +724,11 @@ list_annotators <- function(x) {
 #' The function performs several validation checks to ensure the annotation
 #' table is compatible with the `egm` object:
 #'
-#' * **Channel validation**: Checks that all channels referenced in the
-#'   annotation table (except channel 0, which is the global/default channel)
-#'   exist in the signal header.
+#' * **Channel validation**: A channel given as a lead name (`"II"`) is
+#'   resolved against the record's header to its signal number, so the table
+#'   stored on the object always counts channels the way [channels] describes.
+#'   Every channel other than the global channel `0` has to exist in the
+#'   header; a name the record does not carry is an error.
 #' * **Sample validation**: Checks that all sample indices in the annotation
 #'   table are within the valid range of samples in the recording.
 #'
@@ -763,28 +783,41 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
     )
   }
 
-  # Validate channels (except channel 0 which is global/default)
-  annotation_channels <- unique(annotation$channel)
-  annotation_channels <- annotation_channels[annotation_channels != 0]
-  annotation_channels <- as.character(annotation_channels)
+  # This is where an annotation crosses into a record, so it is where a channel
+  # written as a lead name becomes the signal number every consumer matches on.
+  # Downstream nothing reads names: `annotation_channels()` coerces to integer
+  # and drops what fails, and the writer would store a name as channel 0.
+  chan <- annotation$channel
+  if (is.character(chan)) {
+    names <- setdiff(unique(chan), c("0", NA_character_))
+    resolved <- vapply(
+      names,
+      function(name) {
+        # A number written as text ("3") is already a channel number
+        number <- suppressWarnings(as.integer(name))
+        if (!is.na(number)) number else resolve_channel_spec(x, name)
+      },
+      integer(1)
+    )
+    chan <- unname(resolved[match(chan, names)])
+    chan[is.na(chan)] <- 0L
+    data.table::set(annotation, j = "channel", value = chan)
+  }
+  chan <- as.integer(chan)
 
-  if (length(annotation_channels) > 0) {
-    # Get available channels from header (either channel name or number)
-    header_channels <-
-      c(x$header$number, x$header$label) |>
-      as.character() |>
-      unique()
-
-    invalid_channels <- setdiff(annotation_channels, header_channels)
-    if (length(invalid_channels) > 0) {
-      stop(
-        "Annotation contains invalid channels: ",
-        paste(invalid_channels, collapse = ", "),
-        "\nAvailable channels: ",
-        paste(header_channels, collapse = ", "),
-        call. = FALSE
-      )
-    }
+  # Validate channels (except channel 0 which is global/default). The header's
+  # `label` is a factor, so it is never combined with `number` here: `c()` on a
+  # factor yields its integer codes, not its labels.
+  header_channels <- as.integer(x$header$number)
+  invalid_channels <- setdiff(unique(chan[chan != 0L]), header_channels)
+  if (length(invalid_channels) > 0) {
+    stop(
+      "Annotation contains invalid channels: ",
+      paste(invalid_channels, collapse = ", "),
+      "\nAvailable channels: ",
+      paste(header_channels, collapse = ", "),
+      call. = FALSE
+    )
   }
 
   # Validate samples are within range

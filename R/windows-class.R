@@ -191,8 +191,6 @@ c.windows <- function(...) {
     stop("All arguments must be `windows` objects")
   }
 
-  # TODO
-  # Consider additional validation methods for making sure windows are similar
 
   # Provenance is taken from the first non-empty input; an all-empty
   # concatenation falls back to the first so the attributes are still well formed

@@ -170,8 +170,8 @@ This data is included in the package, and can be accessed as below.
 ```{r}
 fp <- system.file('extdata', 'muse-sinus.xml', package = 'EGM')
 ecg <- read_muse(fp)
-fig <- ggm(ecg) + theme_egm_light()
-fig
+sig <- get_signal(ecg)
+plot(sig$sample / 500, sig$II, type = "l", xlab = "Seconds", ylab = "Lead II")
 ```
 
 We may have customized software, manual approaches, or machine learning models that may label signal data.
@@ -264,3 +264,6 @@ annotated_ecg <- add_annotation(ecg, ann)
 # Output
 annotated_ecg
 ```
+
+The table we built named its channel `"I"`; the one stored on the object holds `1`, the signal number that lead has in this record's header.
+`add_annotation()` is where a lead name becomes a number, so that every function reading the annotations matches on the same thing (see `?channels`).

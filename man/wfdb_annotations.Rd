@@ -121,7 +121,7 @@ page.
 
 The \strong{type} column can be \emph{p}, \emph{t}, or \emph{N} for the peak of the P wave, T
 wave, and QRS (R peak) directly. The output notation also includes waveform
-onset XXX and waveform offset XXX. The \strong{number} column gives further
+onset \code{(} and waveform offset \verb{)}. The \strong{number} column gives further
 information about each of these \strong{type} labels.
 
 The \strong{number} column gives modifier information. If the \strong{type} classifier
