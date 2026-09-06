@@ -386,7 +386,7 @@ resampled_length <- function(n, ratio) {
 #' @return The converted `EGM` object.
 #'
 #' @keywords internal
-resample_egm <- function(x, ratio, to, method, anti_alias) {
+resample_EGM <- function(x, ratio, to, method, anti_alias) {
   # A phase-warped object no longer has a physical sampling interval, so its
   # `frequency` field is provenance rather than a rate (see warp_window()).
   if (isTRUE(attributes(x$header)$record_line$time_warped)) {

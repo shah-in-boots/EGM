@@ -370,7 +370,7 @@ pad_window <- function(
 #' median_window(beats) |> baseline_window(reference = "start")
 #' }
 #'
-#' @seealso [pad_window()], [median_window()], [vectorcardiogram()], which
+#' @seealso [pad_window()], [median_window()], [vcg()], which
 #'   references each loop to its own onset by the same rule
 #'
 #' @export

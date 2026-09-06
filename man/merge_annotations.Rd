@@ -7,7 +7,7 @@
 merge_annotations(x, annotators = NULL)
 }
 \arguments{
-\item{x}{An \code{egm} object containing annotations, or a named list of
+\item{x}{An \code{EGM} object containing annotations, or a named list of
 \code{annotation_table} objects}
 
 \item{annotators}{Optional character vector specifying which annotators
@@ -18,7 +18,7 @@ A single \code{annotation_table} object with all annotations combined
 and an additional \code{annotator} column
 }
 \description{
-Combine multiple annotation tables from an \code{egm} object into
+Combine multiple annotation tables from an \code{EGM} object into
 a single annotation table with an additional \code{annotator} column to
 identify the source of each annotation.
 }

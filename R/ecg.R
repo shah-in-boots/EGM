@@ -22,9 +22,8 @@
 #'   an ECG analysis.
 #'
 #'   Functions that are only defined on the surface ECG - [extract_f_waves()],
-#'   [vectorcardiogram()], [atrial_vectorcardiogram()] - coerce their input
-#'   through that same path and then check that the leads each one needs are
-#'   actually present. A record carrying only intracardiac channels is an error
+#'   [vcg()] - coerce their input through that same path and then check that the
+#'   leads each one needs are actually present. A record carrying only intracardiac channels is an error
 #'   rather than a silent result.
 #'
 #'   Construction is otherwise identical to [EGM()]. A record with a lead set
@@ -381,8 +380,7 @@ canonical_leads <- function(x) {
 #'   order.
 #'
 #' @seealso [ecg_leads()] and [lead_factor()] for the display order, [ECG()] for
-#'   the class, [extract_f_waves()] and [vectorcardiogram()] for analyses that
-#'   require it.
+#'   the class, [extract_f_waves()] and [vcg()] for analyses that require it.
 #'
 #' @export
 as_ECG <- function(x, ...) {

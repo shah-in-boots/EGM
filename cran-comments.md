@@ -15,8 +15,8 @@ Version 0.3.0 is a breaking release.
 * Annotation channel numbering is settled at the reader: a file counting
   signals from 0 is renumbered as it is read and restored as it is written.
 * Windowing strategies are objects (`by_rhythm()`, `by_beat()`, `by_pwave()`),
-  the fibrillatory-wave analysis follows its cited methods, and a
-  vectorcardiogram is added. NEWS.md lists every renamed or removed function.
+  the fibrillatory-wave analysis follows its cited methods, and `vcg()` adds
+  vectorcardiography. NEWS.md lists every renamed or removed function.
 
 ## Test environments
 

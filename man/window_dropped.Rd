@@ -7,7 +7,7 @@
 window_dropped(x)
 }
 \arguments{
-\item{x}{A \link{windows} collection, or a \code{\link[=vectorcardiogram]{vectorcardiogram()}} result.}
+\item{x}{A \link{windows} collection, or a \code{\link[=vcg]{vcg()}} result.}
 }
 \value{
 A named \code{integer} vector of counts, one per reason; empty for an
@@ -28,7 +28,7 @@ the full span to be cut. \code{\link[=by_rhythm]{by_rhythm()}} reports \code{no_
 matching offset before the record ends), \code{no_reference} (no reference
 fiducial inside the window), and \code{overlapping} (a second onset inside the
 window, which for sinus means the beat was not clean).
-\code{\link[=vectorcardiogram]{vectorcardiogram()}} reports \code{incomplete_span} from its own windowing and
+\code{\link[=vcg]{vcg()}} reports \code{incomplete_span} from its own windowing and
 \code{no_delineation} for beats the annotator did not mark the wave in.
 
 Counts are of candidate onsets, so \code{length(x) + sum(window_dropped(x))} is
@@ -39,10 +39,10 @@ the number of candidates the strategy considered.
 beats <- get_windows(ecg, by = by_beat(channel = 2))
 window_dropped(beats)
 
-window_dropped(vectorcardiogram(ecg, channel = 2))
+window_dropped(vcg(ecg, channel = 2))
 }
 
 }
 \seealso{
-\code{\link[=get_windows]{get_windows()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}}
+\code{\link[=get_windows]{get_windows()}}, \code{\link[=vcg]{vcg()}}
 }

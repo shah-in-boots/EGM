@@ -93,7 +93,7 @@ silently follows whichever lead happens to sort first.
 
 So every function that reads fiducials - \code{\link[=get_windows]{get_windows()}},
 \code{\link[=learn_template]{learn_template()}}, \code{\link[=median_window]{median_window()}} and the other window transforms,
-\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}} - takes a \code{channel}, and resolves
+\code{\link[=extract_f_waves]{extract_f_waves()}}, \code{\link[=vcg]{vcg()}} - takes a \code{channel}, and resolves
 it the same way:
 \itemize{
 \item annotations spanning more than one channel with no \code{channel} given are an
@@ -131,6 +131,6 @@ median_window(beats) |> baseline_window(reference = "start")
 
 }
 \seealso{
-\code{\link[=pad_window]{pad_window()}}, \code{\link[=median_window]{median_window()}}, \code{\link[=vectorcardiogram]{vectorcardiogram()}}, which
+\code{\link[=pad_window]{pad_window()}}, \code{\link[=median_window]{median_window()}}, \code{\link[=vcg]{vcg()}}, which
 references each loop to its own onset by the same rule
 }

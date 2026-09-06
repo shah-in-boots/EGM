@@ -36,7 +36,7 @@ identify_channel_source <- function(x) {
 #'
 #'   So every function that reads fiducials - [get_windows()],
 #'   [learn_template()], [median_window()] and the other window transforms,
-#'   [extract_f_waves()], [vectorcardiogram()] - takes a `channel`, and resolves
+#'   [extract_f_waves()], [vcg()] - takes a `channel`, and resolves
 #'   it the same way:
 #'
 #'   * annotations spanning more than one channel with no `channel` given are an

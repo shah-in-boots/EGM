@@ -2,7 +2,7 @@
 % Please edit documentation in R/wfdb-annotation.R
 \name{get_annotation}
 \alias{get_annotation}
-\title{Get annotation from EGM object}
+\title{Get annotation from \code{EGM} object}
 \usage{
 get_annotation(x, annotator = NULL)
 }

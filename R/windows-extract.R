@@ -356,7 +356,7 @@ by_rhythm <- function(
 #' # The P wave alone
 #' by_pwave(to = "p_offset")
 #'
-#' @seealso [get_windows()], [by_rhythm()], [atrial_vectorcardiogram()]
+#' @seealso [get_windows()], [by_rhythm()], [vcg()]
 #'
 #' @export
 by_pwave <- function(
@@ -652,13 +652,13 @@ get_windows <- function(object, by = "rhythm") {
 #'   matching offset before the record ends), `no_reference` (no reference
 #'   fiducial inside the window), and `overlapping` (a second onset inside the
 #'   window, which for sinus means the beat was not clean).
-#'   [vectorcardiogram()] reports `incomplete_span` from its own windowing and
+#'   [vcg()] reports `incomplete_span` from its own windowing and
 #'   `no_delineation` for beats the annotator did not mark the wave in.
 #'
 #'   Counts are of candidate onsets, so `length(x) + sum(window_dropped(x))` is
 #'   the number of candidates the strategy considered.
 #'
-#' @param x A [windows] collection, or a [vectorcardiogram()] result.
+#' @param x A [windows] collection, or a [vcg()] result.
 #'
 #' @return A named `integer` vector of counts, one per reason; empty for an
 #'   object that carries no drop accounting.
@@ -668,10 +668,10 @@ get_windows <- function(object, by = "rhythm") {
 #' beats <- get_windows(ecg, by = by_beat(channel = 2))
 #' window_dropped(beats)
 #'
-#' window_dropped(vectorcardiogram(ecg, channel = 2))
+#' window_dropped(vcg(ecg, channel = 2))
 #' }
 #'
-#' @seealso [get_windows()], [vectorcardiogram()]
+#' @seealso [get_windows()], [vcg()]
 #'
 #' @export
 window_dropped <- function(x) {

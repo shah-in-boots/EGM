@@ -2,14 +2,14 @@
 % Please edit documentation in R/wfdb-annotation.R
 \name{add_annotation}
 \alias{add_annotation}
-\title{Add an annotation table to an EGM object}
+\title{Add an annotation table to an \code{EGM} object}
 \usage{
 add_annotation(x, annotation, overwrite = FALSE)
 }
 \arguments{
-\item{x}{An \code{egm} object to which the annotation will be added}
+\item{x}{An \code{EGM} object to which the annotation will be added}
 
-\item{annotation}{An \code{annotation_table} object to add to the \code{egm} object}
+\item{annotation}{An \code{annotation_table} object to add to the \code{EGM} object}
 
 \item{overwrite}{Logical. If an annotation with the same annotator name
 already exists, should it be overwritten? If \code{FALSE} (default), the
@@ -17,10 +17,10 @@ annotations will be merged. If \code{TRUE}, the existing annotation will be
 replaced.}
 }
 \value{
-The modified \code{egm} object with the annotation table added
+The modified \code{EGM} object with the annotation table added
 }
 \description{
-Add an \code{annotation_table} to an \code{egm} object, with validation
+Add an \code{annotation_table} to an \code{EGM} object, with validation
 to ensure compatibility. The annotation table is added to the list of
 annotations using the annotator name as the list name. If an annotation
 with the same annotator name already exists, you can choose to overwrite
@@ -28,7 +28,7 @@ it or merge the annotations.
 }
 \section{Validation}{
 The function performs several validation checks to ensure the annotation
-table is compatible with the \code{egm} object:
+table is compatible with the \code{EGM} object:
 \itemize{
 \item \strong{Channel validation}: A channel given as a lead name (\code{"II"}) is
 resolved against the record's header to its signal number, so the table
@@ -52,21 +52,21 @@ by sample number.
 }
 
 \section{Empty Annotations}{
-If the \code{egm} object has no existing annotations (empty list or blank
+If the \code{EGM} object has no existing annotations (empty list or blank
 annotation table), the new annotation table will replace the empty
 annotations.
 }
 
 \examples{
 \dontrun{
-# Add a new annotation table to an egm object
-egm <- add_annotation(egm, my_annotation_table)
+# Add a new annotation table to an `EGM` object
+`EGM` <- add_annotation(`EGM`, my_annotation_table)
 
 # Overwrite an existing annotation
-egm <- add_annotation(egm, new_annotation, overwrite = TRUE)
+`EGM` <- add_annotation(`EGM`, new_annotation, overwrite = TRUE)
 
 # Merge with existing annotation (default)
-egm <- add_annotation(egm, additional_annotation, overwrite = FALSE)
+`EGM` <- add_annotation(`EGM`, additional_annotation, overwrite = FALSE)
 }
 
 }

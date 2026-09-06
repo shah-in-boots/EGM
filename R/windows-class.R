@@ -376,7 +376,7 @@ rewrap_windows <- function(result, source, step) {
 #' @description A window cut from an [ECG], and a beat derived from such windows,
 #'   holds the same leads and so is still an `ECG`. Without this the class would
 #'   be lost at the first transform, and analyses gated on it - notably
-#'   [vectorcardiogram()] - could not be handed a windowed beat.
+#'   [vcg()] - could not be handed a windowed beat.
 #'
 #' @details The class is set directly rather than through [ECG()], which would
 #'   re-validate a lead set already known to be good and warn once per window.

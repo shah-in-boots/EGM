@@ -32,7 +32,7 @@ test_that("the kors dataset is the published matrix", {
 
 test_that("the loop is the linear combination the matrix specifies", {
   object <- sinus_ecg()
-  loop <- vectorcardiogram(object, beats = "all", baseline = FALSE)$loop
+  loop <- vcg(object, beats = "all", baseline = FALSE)$loop
   loop <- loop[loop$beat == 1, ]
   whole <- as.matrix(as.data.frame(object$signal)[, colnames(kors)]) %*% t(kors)
 
@@ -115,34 +115,52 @@ test_that("vectorcardiograms require all eight Kors leads", {
   study <- read_wfdb("egm", test_path())
 
   expect_error(
-    suppressWarnings(suppressMessages(vectorcardiogram(study))),
+    suppressWarnings(suppressMessages(vcg(study))),
     "requires the surface leads"
   )
   expect_error(
-    suppressWarnings(suppressMessages(atrial_vectorcardiogram(study))),
+    suppressWarnings(suppressMessages(vcg(study, method = "atrial"))),
     "requires the surface leads"
   )
-  expect_error(vectorcardiogram("not an EGM"), "class <EGM> or <ECG>")
+  expect_error(vcg("not an EGM"), "class <EGM> or <ECG>")
 })
 
 test_that("vectorcardiograms require wave delineation", {
   bare <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"))
 
-  expect_error(vectorcardiogram(bare), "requires wave delineation annotations")
+  expect_error(vcg(bare), "requires wave delineation annotations")
 })
 
 test_that("a guiding channel is demanded when annotations span leads", {
   object <- read_wfdb("ecg-sinus", test_path(), "ann")
 
-  expect_error(vectorcardiogram(object), "needs a guiding `channel`")
-  expect_type(vectorcardiogram(object, channel = 2), "list")
+  expect_error(vcg(object), "needs a guiding `channel`")
+  expect_type(vcg(object, channel = 2), "list")
 })
 
 # Loops from a record ----
 
+test_that("method chooses the loop, and defaults to the ventricular one", {
+  object <- sinus_ecg()
+
+  # The default has to be the ventricular loop: it is the one the GEH components
+  # belong to, and an atrial loop returned in its place would be a tenth the
+  # magnitude and never error
+  expect_equal(vcg(object), vcg(object, method = "ventricular"))
+  expect_false(isTRUE(all.equal(
+    vcg(object)$components$magnitude_peak,
+    vcg(object, method = "atrial")$components$magnitude_peak
+  )))
+
+  # A method that is not one of the two is refused rather than falling through
+  # to the default. `match.arg()` still accepts an unambiguous prefix, so
+  # `"atri"` is the atrial loop and only a genuine non-member errors.
+  expect_error(vcg(object, method = "nodal"), "'arg' should be one of")
+})
+
 test_that("the ventricular loop is returned with its components", {
   object <- sinus_ecg()
-  result <- vectorcardiogram(object)
+  result <- vcg(object)
 
   # A plain list of two tables, not a bespoke object
   expect_type(result, "list")
@@ -162,7 +180,7 @@ test_that("the ventricular loop is returned with its components", {
 
 test_that("every beat can be traced separately", {
   object <- sinus_ecg()
-  every_beat <- vectorcardiogram(object, beats = "all")
+  every_beat <- vcg(object, beats = "all")
 
   expect_gt(nrow(every_beat$components), 1L)
   expect_equal(
@@ -185,7 +203,7 @@ test_that("beats that could not be traced are counted rather than announced", {
   # Silent: a fixed span overhangs at least one end of a short strip on nearly
   # every record, so the notice this used to print carried no information and
   # went nowhere on a background worker in any case
-  expect_silent(traced <- vectorcardiogram(object))
+  expect_silent(traced <- vcg(object))
   expect_named(traced, c("loop", "components"))
 
   dropped <- window_dropped(traced)
@@ -195,7 +213,7 @@ test_that("beats that could not be traced are counted rather than announced", {
 
 test_that("an undelineated beat costs that beat rather than the record", {
   object <- sinus_ecg()
-  whole <- vectorcardiogram(object, beats = "all")
+  whole <- vcg(object, beats = "all")
 
   # Remove one beat's QRS onset. It used to abort the record, which is the wrong
   # trade when the point of `beats = "all"` is the spread across the beats that
@@ -207,7 +225,7 @@ test_that("an undelineated beat costs that beat rather than the record", {
   damaged <- object
   damaged$annotation[[1]] <- ann[-onsets[3], ]
 
-  partial <- vectorcardiogram(damaged, beats = "all")
+  partial <- vcg(damaged, beats = "all")
 
   expect_equal(nrow(partial$components), nrow(whole$components) - 1L)
   expect_equal(window_dropped(partial)[["no_delineation"]], 1L)
@@ -230,15 +248,15 @@ test_that("a record with nothing traceable is still an error", {
   ]
 
   expect_error(
-    vectorcardiogram(stripped, beats = "all"),
+    vcg(stripped, beats = "all"),
     "No complete QRS waves could be delineated"
   )
 })
 
 test_that("the median beat sits among the beats it summarises", {
   object <- sinus_ecg()
-  median_beat <- vectorcardiogram(object)$components
-  every_beat <- vectorcardiogram(object, beats = "all")$components
+  median_beat <- vcg(object)$components
+  every_beat <- vcg(object, beats = "all")$components
 
   # A median taken sample by sample is not the median of any one component, but
   # it should land close to it; a misaligned stack would not
@@ -265,8 +283,8 @@ test_that("a windowed beat can be handed straight in", {
   # The window is still an ECG, so it satisfies the contract on its own
   expect_s3_class(windows[[3]], "ECG")
 
-  from_window <- vectorcardiogram(windows[[3]])
-  from_record <- vectorcardiogram(object, beats = "all")
+  from_window <- vcg(windows[[3]])
+  from_record <- vcg(object, beats = "all")
 
   # One beat in, one loop out, matching that beat of the whole record
   expect_equal(nrow(from_window$components), 1L)
@@ -286,14 +304,14 @@ test_that("a median beat can be piped in", {
   piped <- object |>
     get_windows() |>
     median_window(align_feature = "N") |>
-    vectorcardiogram()
+    vcg()
 
   expect_equal(nrow(piped$components), 1L)
 
   # Built by hand or taken from `beats = "median"`, it is the same beat: the
   # windowing differs (P-onset to T-offset rather than QRS-onset to T-offset)
   # but the median across beats does not
-  internal <- vectorcardiogram(object)
+  internal <- vcg(object)
   expect_equal(
     piped$components$magnitude_peak,
     internal$components$magnitude_peak,
@@ -307,7 +325,7 @@ test_that("a median beat can be piped in", {
 
   # Reducing an object that is already one beat is a no-op, not a second median
   expect_equal(
-    vectorcardiogram(median_window(get_windows(object), align_feature = "N")),
+    vcg(median_window(get_windows(object), align_feature = "N")),
     piped
   )
 })
@@ -331,7 +349,7 @@ test_that("windows carry the ECG class through the transforms", {
 # Global electric heterogeneity ----
 
 test_that("GEH components come back with the ventricular loop", {
-  components <- vectorcardiogram(sinus_ecg())$components
+  components <- vcg(sinus_ecg())$components
 
   expect_true(all(c(
     "qrst_angle_peak", "qrst_angle_mean", "svg_magnitude",
@@ -354,7 +372,7 @@ test_that("GEH is missing rather than invented when the T wave is not delineated
   ann <- object$annotation[[1]]
   object$annotation <- list(qrs_only = ann[ann$type != "t", ])
 
-  result <- vectorcardiogram(object)
+  result <- vcg(object)
 
   expect_true(is.na(result$components$qrst_angle_peak))
   expect_true(is.na(result$components$svg_magnitude))
@@ -363,7 +381,7 @@ test_that("GEH is missing rather than invented when the T wave is not delineated
   # The QRS loop itself is unaffected
   expect_equal(
     result$components$magnitude_peak,
-    vectorcardiogram(sinus_ecg())$components$magnitude_peak
+    vcg(sinus_ecg())$components$magnitude_peak
   )
 })
 
@@ -371,8 +389,8 @@ test_that("GEH is missing rather than invented when the T wave is not delineated
 
 test_that("the atrial loop traces the P wave", {
   object <- sinus_ecg()
-  p_loop <- atrial_vectorcardiogram(object)
-  qrs_loop <- vectorcardiogram(object)
+  p_loop <- vcg(object, method = "atrial")
+  qrs_loop <- vcg(object)
 
   expect_named(p_loop, c("loop", "components"))
 
@@ -388,7 +406,7 @@ test_that("the atrial loop traces the P wave", {
   # GEH belongs to the ventricular loop alone
   expect_false("qrst_angle_peak" %in% names(p_loop$components))
 
-  every_beat <- atrial_vectorcardiogram(object, beats = "all")
+  every_beat <- vcg(object, method = "atrial", beats = "all")
   expect_gt(nrow(every_beat$components), 1L)
 })
 
@@ -396,8 +414,8 @@ test_that("baselining references each beat to its own onset", {
   # Per beat, since the median is taken after baselining and so is not itself a
   # translation of the unreferenced median
   object <- sinus_ecg()
-  referenced <- vectorcardiogram(object, beats = "all")$loop
-  raw <- vectorcardiogram(object, beats = "all", baseline = FALSE)$loop
+  referenced <- vcg(object, beats = "all")$loop
+  raw <- vcg(object, beats = "all", baseline = FALSE)$loop
 
   # The first 10 ms of the beat sit on the origin once referenced
   onset <- referenced[referenced$beat == 1, ][1:5, ]

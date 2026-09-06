@@ -345,8 +345,8 @@ The `annotation_table` class allows any __annotator__ type to be read in.
 
 However the `{EGM}` package would like to allow for editing of annotations and writing annotations, which requires some level of standardization (particularly when introducing a new annotation labels to intracardiac data). 
 
-To allow for editing on writing annotations (either through an algorithm approach or manual edits), several rules are inherent:
+To allow for editing on writing annotations (either through an algorithm approach or manual edits), several rules are being developed.
 
-1. An `annotator` class is required 
+
 
 

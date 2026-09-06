@@ -2,16 +2,16 @@
 % Please edit documentation in R/wfdb-annotation.R
 \name{list_annotators}
 \alias{list_annotators}
-\title{List annotators in EGM object}
+\title{List annotators in \code{EGM} object}
 \usage{
 list_annotators(x)
 }
 \arguments{
-\item{x}{An \code{egm} object containing annotations}
+\item{x}{An \code{EGM} object containing annotations}
 }
 \value{
 A character vector of annotator names
 }
 \description{
-Get the names of all annotators present in an \code{egm} object.
+Get the names of all annotators present in an \code{EGM} object.
 }

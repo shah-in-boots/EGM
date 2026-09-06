@@ -605,7 +605,7 @@ wfdb_annotation_decode <- function(annotation, column = "type") {
 
 # Multi-annotator helper functions --------------------------------------------
 
-#' Get annotation from EGM object
+#' Get annotation from `EGM` object
 #'
 #' @description Extract an annotator's annotation table from an `EGM` object,
 #'   which may hold several.
@@ -635,7 +635,7 @@ wfdb_annotation_decode <- function(annotation, column = "type") {
 #' @export
 get_annotation <- function(x, annotator = NULL) {
   if (!inherits(x, "EGM")) {
-    stop("`x` must be an egm object", call. = FALSE)
+    stop("`x` must be an `EGM` object", call. = FALSE)
   }
 
   ann <- x$annotation
@@ -652,7 +652,7 @@ get_annotation <- function(x, annotator = NULL) {
       # a caller asked for is still a table, so hand back an empty one
       return(if (length(ann) == 1L) ann[[1]] else annotation_table())
     } else {
-      stop("No annotations available in this egm object", call. = FALSE)
+      stop("No annotations available in this `EGM` object", call. = FALSE)
     }
   }
 
@@ -678,18 +678,18 @@ get_annotation <- function(x, annotator = NULL) {
   return(ann[[annotator]])
 }
 
-#' List annotators in EGM object
+#' List annotators in `EGM` object
 #'
-#' @description Get the names of all annotators present in an `egm` object.
+#' @description Get the names of all annotators present in an `EGM` object.
 #'
-#' @param x An `egm` object containing annotations
+#' @param x An `EGM` object containing annotations
 #'
 #' @returns A character vector of annotator names
 #'
 #' @export
 list_annotators <- function(x) {
   if (!inherits(x, "EGM")) {
-    stop("`x` must be an egm object", call. = FALSE)
+    stop("`x` must be an `EGM` object", call. = FALSE)
   }
 
   ann <- x$annotation
@@ -703,16 +703,16 @@ list_annotators <- function(x) {
   ann_names
 }
 
-#' Add an annotation table to an EGM object
+#' Add an annotation table to an `EGM` object
 #'
-#' @description Add an `annotation_table` to an `egm` object, with validation
+#' @description Add an `annotation_table` to an `EGM` object, with validation
 #'   to ensure compatibility. The annotation table is added to the list of
 #'   annotations using the annotator name as the list name. If an annotation
 #'   with the same annotator name already exists, you can choose to overwrite
 #'   it or merge the annotations.
 #'
-#' @param x An `egm` object to which the annotation will be added
-#' @param annotation An `annotation_table` object to add to the `egm` object
+#' @param x An `EGM` object to which the annotation will be added
+#' @param annotation An `annotation_table` object to add to the `EGM` object
 #' @param overwrite Logical. If an annotation with the same annotator name
 #'   already exists, should it be overwritten? If `FALSE` (default), the
 #'   annotations will be merged. If `TRUE`, the existing annotation will be
@@ -722,7 +722,7 @@ list_annotators <- function(x) {
 #' # Validation
 #'
 #' The function performs several validation checks to ensure the annotation
-#' table is compatible with the `egm` object:
+#' table is compatible with the `EGM` object:
 #'
 #' * **Channel validation**: A channel given as a lead name (`"II"`) is
 #'   resolved against the record's header to its signal number, so the table
@@ -744,29 +744,29 @@ list_annotators <- function(x) {
 #'
 #' # Empty Annotations
 #'
-#' If the `egm` object has no existing annotations (empty list or blank
+#' If the `EGM` object has no existing annotations (empty list or blank
 #' annotation table), the new annotation table will replace the empty
 #' annotations.
 #'
-#' @returns The modified `egm` object with the annotation table added
+#' @returns The modified `EGM` object with the annotation table added
 #'
 #' @examples
 #' \dontrun{
-#' # Add a new annotation table to an egm object
-#' egm <- add_annotation(egm, my_annotation_table)
+#' # Add a new annotation table to an `EGM` object
+#' `EGM` <- add_annotation(`EGM`, my_annotation_table)
 #'
 #' # Overwrite an existing annotation
-#' egm <- add_annotation(egm, new_annotation, overwrite = TRUE)
+#' `EGM` <- add_annotation(`EGM`, new_annotation, overwrite = TRUE)
 #'
 #' # Merge with existing annotation (default)
-#' egm <- add_annotation(egm, additional_annotation, overwrite = FALSE)
+#' `EGM` <- add_annotation(`EGM`, additional_annotation, overwrite = FALSE)
 #' }
 #'
 #' @export
 add_annotation <- function(x, annotation, overwrite = FALSE) {
   # Validate inputs
   if (!inherits(x, "EGM")) {
-    stop("`x` must be an egm object", call. = FALSE)
+    stop("`x` must be an `EGM` object", call. = FALSE)
   }
 
   if (!inherits(annotation, "annotation_table")) {
@@ -852,7 +852,7 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
   # Handle empty annotations - replace with new annotation
   if (!has_existing) {
     x$annotation <- stats::setNames(list(annotation), annotator_name)
-    message("Added annotation table '", annotator_name, "' to egm object")
+    message("Added annotation table '", annotator_name, "' to `EGM` object")
     return(x)
   }
 
@@ -862,7 +862,7 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
       # Overwrite mode - replace existing annotation
       current_annotations[[annotator_name]] <- annotation
       x$annotation <- current_annotations
-      message("Replaced annotation table '", annotator_name, "' in egm object")
+      message("Replaced annotation table '", annotator_name, "' in `EGM` object")
     } else {
       # Merge mode - combine annotations
       existing_ann <- current_annotations[[annotator_name]]
@@ -891,13 +891,13 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
 
       current_annotations[[annotator_name]] <- merged
       x$annotation <- current_annotations
-      message("Merged new annotations with existing '", annotator_name, "' in egm object")
+      message("Merged new annotations with existing '", annotator_name, "' in `EGM` object")
     }
   } else {
     # Annotator doesn't exist - add it
     current_annotations[[annotator_name]] <- annotation
     x$annotation <- current_annotations
-    message("Added annotation table '", annotator_name, "' to egm object")
+    message("Added annotation table '", annotator_name, "' to `EGM` object")
   }
 
   return(x)
@@ -905,11 +905,11 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
 
 #' Merge multiple annotations into a single table
 #'
-#' @description Combine multiple annotation tables from an `egm` object into
+#' @description Combine multiple annotation tables from an `EGM` object into
 #'   a single annotation table with an additional `annotator` column to
 #'   identify the source of each annotation.
 #'
-#' @param x An `egm` object containing annotations, or a named list of
+#' @param x An `EGM` object containing annotations, or a named list of
 #'   `annotation_table` objects
 #' @param annotators Optional character vector specifying which annotators
 #'   to merge. If NULL (default), merges all available annotators.
@@ -919,7 +919,7 @@ add_annotation <- function(x, annotation, overwrite = FALSE) {
 #'
 #' @export
 merge_annotations <- function(x, annotators = NULL) {
-  # Handle both egm objects and lists of annotation_tables
+  # Handle both `EGM` objects and lists of annotation_tables
   if (inherits(x, "EGM")) {
     ann_list <- x$annotation
   } else if (is.list(x)) {
@@ -934,7 +934,7 @@ merge_annotations <- function(x, annotators = NULL) {
     ann_list <- x
   } else {
     stop(
-      "`x` must be an egm object or a list of annotation_table objects",
+      "`x` must be an `EGM` object or a list of annotation_table objects",
       call. = FALSE
     )
   }

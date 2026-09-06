@@ -70,6 +70,6 @@ matplot(
 
 # Class Introduction
 
-The `{EGM}` package introduces a specific data-oriented class called `egm` (note the *lower-case* spelling compared to the package name). 
-This class is the primary data structure, and allows for compatibility within multiple signal types, including when reading in WFDB-formatted data.
-Once in this class, everything can be written out as well - with the preferred option being for the stated `WFDB` format.
+The `{EGM}` package introduces a specific data-oriented class called `EGM`. 
+This class is the primary data structure and allows for compatibility with multiple signal types, including when reading in WFDB-formatted data.
+Once in this class, everything can be written out as well, with the preferred option being the stated `WFDB` format.

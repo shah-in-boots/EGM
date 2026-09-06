@@ -15,7 +15,7 @@ kors
 \description{
 The linear map from the 12-lead ECG to the orthogonal X, Y, Z
 leads of the Frank vectorcardiographic system, used by
-\code{\link[=vectorcardiogram]{vectorcardiogram()}} and \code{\link[=atrial_vectorcardiogram]{atrial_vectorcardiogram()}}.
+\code{\link[=vcg]{vcg()}}.
 }
 \details{
 Only eight leads enter the transformation. III, aVR, aVL and aVF are
@@ -48,6 +48,6 @@ prediction of all-cause mortality. \emph{Journal of Electrocardiology}.
 2018;51(5):768-775. \doi{10.1016/j.jelectrocard.2018.05.011}
 }
 \seealso{
-\code{\link[=vectorcardiogram]{vectorcardiogram()}}
+\code{\link[=vcg]{vcg()}}
 }
 \keyword{datasets}

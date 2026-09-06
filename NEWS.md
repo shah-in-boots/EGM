@@ -144,16 +144,17 @@
 * `median_window()` returns the fiducials that produced the beat, under
   `$annotation` — read with `get_annotation()`.
 * `pad_window()` pads with `NA`, not `0`.
-* `vectorcardiogram()` drops and counts an undelineated beat rather than
-  failing the record.
+* `vcg()` drops and counts an undelineated beat rather than failing the
+  record.
 * Removed: `standardize_windows()` (merged into `normalize_window()`, whose
   defaults win), `resample_window()`, `resample_frequency`, `lapply.windowed()`.
 
 ## New
 
-* `vectorcardiogram()`, `atrial_vectorcardiogram()` — Kors transform to X, Y, Z,
-  cut at the wave boundaries; returns `loop`, `components`, GEH.
-  `beats = "median"` or `"all"`. Exported `kors` dataset.
+* `vcg()` — Kors transform to X, Y, Z, cut at the wave boundaries; returns
+  `loop`, `components`, GEH. `method = "ventricular"` (default) traces the QRS
+  and T waves, `"atrial"` the P wave. `beats = "median"` or `"all"`. Exported
+  `kors` dataset.
 * `by_beat()` — fixed span around a fiducial, equal lengths, nothing to pad.
 * `by_pwave()` — P onset to QRS onset. `by_rhythm()` gains `reject_overlap`.
 * `baseline_window()` — removes each window's isoelectric offset. Do it before

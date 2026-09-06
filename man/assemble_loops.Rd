@@ -18,8 +18,8 @@ A \code{list} of \code{loop} and \code{components}, both \code{data.table}s.
 }
 \description{
 Takes what \code{\link[=trace_loops]{trace_loops()}} cut and returns the pair both
-vectorcardiogram functions hand back: the named wave's loop, beat by beat,
-and the components read off it.
+\code{\link[=vcg]{vcg()}} hands back: the named wave's loop, beat by beat, and the components
+read off it.
 }
 \details{
 Naming a \code{repolarization} wave adds the global electric heterogeneity

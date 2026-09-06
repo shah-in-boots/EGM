@@ -36,9 +36,8 @@ measured from the origin, so an offset baseline rotates every angle.}
 A \code{list} of \code{frequency} and \code{beats}.
 }
 \description{
-Shared engine behind \code{\link[=vectorcardiogram]{vectorcardiogram()}} and
-\code{\link[=atrial_vectorcardiogram]{atrial_vectorcardiogram()}}. Gates the record on the surface lead contract,
-cuts it into beats, and transforms each one.
+Shared engine behind \code{\link[=vcg]{vcg()}}. Gates the record on the surface
+lead contract, cuts it into beats, and transforms each one.
 }
 \details{
 A beat runs from the onset of the first wave in \code{waves} to the offset

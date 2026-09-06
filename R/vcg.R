@@ -4,7 +4,7 @@
 #'
 #' @description The linear map from the 12-lead ECG to the orthogonal X, Y, Z
 #'   leads of the Frank vectorcardiographic system, used by
-#'   [vectorcardiogram()] and [atrial_vectorcardiogram()].
+#'   [vcg()].
 #'
 #' @details Only eight leads enter the transformation. III, aVR, aVL and aVF are
 #'   exact linear combinations of I and II, so a matrix over all twelve would be
@@ -39,16 +39,16 @@
 #' # The orthogonal leads are row combinations of the eight source leads
 #' kors["Z", ]
 #'
-#' @seealso [vectorcardiogram()]
+#' @seealso [vcg()]
 "kors"
 
 #' Reconstruct a vectorcardiogram from the 12-lead ECG
 #'
-#' @description `vectorcardiogram()` traces the ventricular loop and
-#'   `atrial_vectorcardiogram()` the atrial loop, both by applying the [kors]
-#'   transformation to the surface ECG and cutting the result at the annotated
-#'   wave boundaries. Each returns the orthogonal X, Y, Z signal together with
-#'   the components extracted from it.
+#' @description `vcg()` applies the [kors] transformation to the surface ECG and
+#'   cuts the result at the annotated wave boundaries, tracing the ventricular
+#'   loop by default and the atrial loop where `method = "atrial"`. It returns
+#'   the orthogonal X, Y, Z signal together with the components extracted from
+#'   it.
 #'
 #' @details
 #'
@@ -81,7 +81,7 @@
 #' to reduce. So
 #'
 #' ```r
-#' vectorcardiogram(ecg)
+#' vcg(ecg)
 #' ```
 #'
 #' and
@@ -90,13 +90,13 @@
 #' ecg |>
 #'   get_windows() |>
 #'   median_window(align_feature = "N") |>
-#'   vectorcardiogram()
+#'   vcg()
 #' ```
 #'
 #' both describe one beat, the first taking `beats = "median"` from its default
 #' and the second building the beat itself. Reach for the second when the
 #' windowing or the alignment needs to be something other than the default;
-#' [map_windows()] will run either function over every window of a collection.
+#' [map_windows()] will run `vcg()` over every window of a collection.
 #'
 #' # Components
 #'
@@ -123,6 +123,12 @@
 #'   is how a 12-lead record read straight off disk, or the surface leads of an
 #'   electrophysiology study, become usable. All eight leads of the [kors]
 #'   transformation must be present.
+#'
+#' @param method Which loop to trace. `"ventricular"` (default) cuts the QRS and
+#'   T waves and reports the global electric heterogeneity components alongside
+#'   the geometric ones; `"atrial"` cuts the P wave alone and reports the
+#'   geometric components only. Each needs the record's own delineation of the
+#'   waves it cuts.
 #'
 #' @param beats Which beats to trace when the object holds more than one.
 #'   `"median"` (default) reduces them with [median_window()] and returns a single
@@ -180,9 +186,9 @@
 #'   | `svg_azimuth`, `svg_elevation` | degrees | yes |
 #'   | `sai_qrst` | signal units x seconds | no |
 #'
-#'   The last five are returned by `vectorcardiogram()` only; they are the global
-#'   electric heterogeneity components, and `atrial_vectorcardiogram()` declines
-#'   to report a QRS-T relationship for a P loop.
+#'   The last five are returned under `method = "ventricular"` only; they are the
+#'   global electric heterogeneity components, and the atrial loop declines to
+#'   report a QRS-T relationship for a P loop.
 #'
 #' @inheritSection channels Guiding channel
 #'
@@ -226,56 +232,42 @@
 #' ecg <- read_wfdb("muse-sinus", system.file("extdata", package = "EGM"),
 #'                  annotator = "ecgpuwave")
 #'
-#' vectorcardiogram(ecg)$components
-#' atrial_vectorcardiogram(ecg, beats = "all")$components
+#' vcg(ecg)$components
+#' vcg(ecg, method = "atrial", beats = "all")$components
 #'
 #' # The same loop, with the windowing and alignment chosen explicitly
 #' ecg |>
 #'   get_windows(by = by_rhythm(channel = 2)) |>
 #'   median_window(align_feature = "N", channel = 2) |>
-#'   vectorcardiogram()
+#'   vcg()
 #' }
 #'
-#' @name vectorcardiogram
+#' @name vcg
 #' @export
-vectorcardiogram <- function(
+vcg <- function(
   object,
+  method = c("ventricular", "atrial"),
   beats = c("median", "all"),
   channel = NULL,
   baseline = TRUE
 ) {
-  assemble_loops(
-    trace_loops(
-      object,
-      waves = c("QRS", "T"),
-      beats = match.arg(beats),
-      channel = channel,
-      baseline = baseline,
-      what = "The vectorcardiogram"
-    ),
-    wave = "QRS",
-    repolarization = "T"
-  )
-}
+  method <- match.arg(method)
 
-#' @rdname vectorcardiogram
-#' @export
-atrial_vectorcardiogram <- function(
-  object,
-  beats = c("median", "all"),
-  channel = NULL,
-  baseline = TRUE
-) {
+  # The ventricular loop carries the T wave because the GEH components are read
+  # across both waves; the atrial one has no counterpart to be read against.
+  waves <- if (method == "ventricular") c("QRS", "T") else "P"
+
   assemble_loops(
     trace_loops(
       object,
-      waves = "P",
+      waves = waves,
       beats = match.arg(beats),
       channel = channel,
       baseline = baseline,
-      what = "The atrial vectorcardiogram"
+      what = paste("The", method, "vectorcardiogram")
     ),
-    wave = "P"
+    wave = waves[1],
+    repolarization = if (method == "ventricular") "T" else NULL
   )
 }
 
@@ -283,9 +275,8 @@ atrial_vectorcardiogram <- function(
 
 #' Cut the orthogonal signal into beats
 #'
-#' @description Shared engine behind [vectorcardiogram()] and
-#'   [atrial_vectorcardiogram()]. Gates the record on the surface lead contract,
-#'   cuts it into beats, and transforms each one.
+#' @description Shared engine behind [vcg()]. Gates the record on the surface
+#'   lead contract, cuts it into beats, and transforms each one.
 #'
 #' @details A beat runs from the onset of the first wave in `waves` to the offset
 #'   of the last, so every wave the components are read from travels with it.
@@ -296,7 +287,7 @@ atrial_vectorcardiogram <- function(
 #'   Each returned beat holds `xyz`, the orthogonal signal over the whole span,
 #'   and `segment`, that span cut into the individual waves.
 #'
-#' @inheritParams vectorcardiogram
+#' @inheritParams vcg
 #' @param waves A `character` vector of waves to cut, in order.
 #' @param what A `character` naming the caller, used in error messages.
 #'
@@ -549,8 +540,8 @@ loop_components <- function(xyz, frequency) {
 #' Assemble traced beats into the tables the caller gets back
 #'
 #' @description Takes what [trace_loops()] cut and returns the pair both
-#'   vectorcardiogram functions hand back: the named wave's loop, beat by beat,
-#'   and the components read off it.
+#'   [vcg()] hands back: the named wave's loop, beat by beat, and the components
+#'   read off it.
 #'
 #' @details Naming a `repolarization` wave adds the global electric heterogeneity
 #'   components. Those describe the discordance between depolarization and

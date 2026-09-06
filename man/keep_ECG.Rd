@@ -19,7 +19,7 @@ one of them is an \code{ECG}.}
 A window cut from an \link{ECG}, and a beat derived from such windows,
 holds the same leads and so is still an \code{ECG}. Without this the class would
 be lost at the first transform, and analyses gated on it - notably
-\code{\link[=vectorcardiogram]{vectorcardiogram()}} - could not be handed a windowed beat.
+\code{\link[=vcg]{vcg()}} - could not be handed a windowed beat.
 }
 \details{
 The class is set directly rather than through \code{\link[=ECG]{ECG()}}, which would
